@@ -1,0 +1,45 @@
+.header {
+  position: relative;
+  height: 100%;
+  background-color: transparent;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  z-index: 1;
+}
+
+.buttonBlock {
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  gap: 1rem;
+  margin: 2rem auto;
+  z-index: 2;
+  pointer-events: none;
+
+  div {
+    pointer-events: painted;
+  }
+
+}
+
+.userBlock {
+  position: absolute;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: 1rem;
+  color: white;
+  text-align: center;
+  z-index: 2;
+  pointer-events: auto;
+
+  h3 {
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.5);
+    margin: 0;
+    font-family: "Times New Roman", Times, serif;
+  }
+}

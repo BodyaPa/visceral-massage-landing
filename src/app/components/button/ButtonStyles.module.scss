@@ -1,0 +1,17 @@
+.defaultStyle {
+  margin: 10px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: white;
+  transition: 0.3s;
+  font-family: "Times New Roman", Times, serif;
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.defaultStyle:hover {
+  transition: 0.3s;
+  color: gray;
+  text-underline: #515151;
+}

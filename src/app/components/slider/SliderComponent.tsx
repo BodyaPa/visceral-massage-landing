@@ -1,49 +1,68 @@
-"use client"
+"use client";
 
 import styles from "./SliderStyles.module.scss";
-import {PhotoConfig} from "@/app/components/header/classes/PhotoConfig";
-import PhotoConfigClass from "@/app/components/header/classes/PhotoConfigClass";
-import React, {useEffect} from "react";
+import React, {useEffect, useMemo, useRef, useState} from "react";
 import SliderButtons from "@/app/components/slider/sliderButtons/SliderButtons";
+import PhotoConfigClass from "@/app/components/header/classes/PhotoConfigClass";
 
 export default function SliderComponent() {
-    const [activeIndex, setActiveIndex] = React.useState(0);
+    const [activeIndex, setActiveIndex] = useState(0);
 
-    const photoConfig: PhotoConfig[] = [
-        new PhotoConfigClass("/images/1.jpg"),
-        new PhotoConfigClass("/images/2.jpg"),
-        new PhotoConfigClass("/images/3.jpg"),
-    ];
+    const photoConfig = useMemo(
+        () => [
+            new PhotoConfigClass("/images/1.jpg"),
+            new PhotoConfigClass("/images/2.jpg"),
+            new PhotoConfigClass("/images/3.jpg"),
+        ],
+        []
+    );
 
-    useEffect( () => {
-        setInterval(() => {
-            setActiveIndex(activeIndex =>
-                photoConfig.length - 1 === activeIndex ? 0 :
-                activeIndex + 1);
+    useEffect(() => {
+        const timer = window.setInterval(() => {
+            setActiveIndex((i) => (i === photoConfig.length - 1 ? 0 : i + 1));
         }, 10000);
-    }, [])
 
-    useEffect( () => {
-       photoConfig.length == activeIndex
-           ? setActiveIndex(0)
-           : activeIndex
-    }, [activeIndex])
+        photoConfig.length == activeIndex ? setActiveIndex(0) : activeIndex
+        return () => window.clearInterval(timer);
+    }, [photoConfig.length, activeIndex]);
+
+    const layerRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        const speed = 0.5;
+
+        const onScroll = () => {
+            if (!layerRef.current) return;
+            const py = window.scrollY * speed;
+            layerRef.current.style.setProperty("--py", `${py}px`);
+        };
+
+        onScroll();
+        window.addEventListener("scroll", onScroll, { passive: true });
+        return () => window.removeEventListener("scroll", onScroll);
+    }, []);
 
     return (
         <div className={styles.content}>
-            <SliderButtons setPhotoIndex={setActiveIndex} index={activeIndex} plusOne={false}/>
-            <div>
-                {photoConfig.map((content, index) => (
-                    <img
-                        className={`${styles.photo} ${index === activeIndex ? styles["photo-active"] : ""}`}
-                        src={content.src}
-                        key={index}
-                        alt=""
-                    />
-                ))}
+            <SliderButtons setPhotoIndex={setActiveIndex} index={activeIndex} plusOne={false} />
+
+            <div className={styles.stage}>
+                <div ref={layerRef} className={styles.parallaxLayer}>
+                    {photoConfig.map((content, index) => (
+                        <img
+                            key={index}
+                            className={`${styles.photo} ${index === activeIndex ? styles.photoActive : ""}`}
+                            src={content.src}
+                            alt=""
+                            draggable={false}
+                            loading={index === 0 ? "eager" : "lazy"}
+                        />
+                    ))}
+                </div>
+                <div className={styles.overlay} />
             </div>
-            <SliderButtons setPhotoIndex={setActiveIndex} index={activeIndex} plusOne={true}/>
+
+            <SliderButtons setPhotoIndex={setActiveIndex} index={activeIndex} plusOne={true} />
         </div>
     );
 }
-

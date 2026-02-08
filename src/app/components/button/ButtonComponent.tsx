@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 export default function ButtonComponent({ text, styleName, url}: ButtonConfig) {
     const router = useRouter();
 
-    function  haveUrl () {
+    function haveUrl () {
         return url != undefined ? router.push(url) : router.push("");
     }
 

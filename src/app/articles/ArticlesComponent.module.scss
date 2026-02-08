@@ -1,13 +1,134 @@
 .content {
   width: 100%;
-  height: 0;
+  flex: 1;
+  min-width: 0;
   display: flex;
-  z-index: 1;
+  justify-content: center;
+  padding: 40px 0 40px 0;
+}
+
+.articlesBlock {
+  width: 100%;
+  max-width: 1000px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.articleLink {
+  text-decoration: none;
+  color: inherit;
+  display: block;
 }
 
 .previewArticleBlock {
   width: 100%;
-  padding: 10px 0 20px 20px;
-  background-color: #f6f6f6;
+  position: relative;
 
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 14px;
+
+  padding: 18px 18px 16px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+
+  transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+  animation: fadeIn 0.35s ease-out both;
 }
+
+.previewArticleBlock:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.98);
+  box-shadow: 0 14px 35px rgba(0,0,0,0.10);
+}
+
+.previewArticleBlock::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.18);
+  transition: background 160ms ease, width 160ms ease;
+}
+
+.previewArticleBlock:hover::before {
+  background: rgba(0,0,0,0.55);
+  width: 4px;
+}
+
+.title {
+  margin: 0 0 10px 0;
+  font-size: clamp(18px, 2.2vw, 26px);
+  line-height: 1.2;
+  color: #111;
+  letter-spacing: -0.01em;
+}
+
+.previewArticleBlock :global(p) {
+  margin: 0;
+  color: rgba(0,0,0,0.75);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.previewArticleBlock :global(ul),
+.previewArticleBlock :global(ol) {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: rgba(0,0,0,0.75);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// skeleton
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeletonTitle,
+.skeletonLine {
+  border-radius: 10px;
+  background: linear-gradient(
+                  90deg,
+                  rgba(255,255,255,0.10) 0%,
+                  rgba(255,255,255,0.18) 35%,
+                  rgba(255,255,255,0.10) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+.skeletonTitle {
+  height: 22px;
+  width: 60%;
+  margin-bottom: 12px;
+}
+
+.skeletonLine {
+  height: 14px;
+  width: 92%;
+  margin-bottom: 10px;
+}
+
+.skeletonLine:last-child {
+  width: 75%;
+  margin-bottom: 0;
+}
+
+// skeleton end

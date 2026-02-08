@@ -1,45 +1,93 @@
 .header {
   position: relative;
-  height: 100%;
-  background-color: transparent;
+  min-height: 100vh;
+  width: 100%;
   display: flex;
-  flex-direction: row;
   justify-content: space-between;
+  align-items: stretch;
   z-index: 1;
+}
+
+.buttonsWrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-self: flex-end;
+  margin: 2rem 0;
+}
+
+.stickySentinel {
+  height: 1px;
+}
+
+.stickyPlaceholder {
+  height: 0;
 }
 
 .buttonBlock {
   display: flex;
-  align-items: end;
+  align-items: flex-end;
   justify-content: center;
-  gap: 1rem;
-  margin: 2rem auto;
-  z-index: 2;
+
+  z-index: 3;
   pointer-events: none;
+}
 
-  div {
-    pointer-events: painted;
-  }
+.buttonInner {
+  pointer-events: auto;
+  display: flex;
+  gap: 0.8rem;
+  padding: 0.75rem 1rem;
+  border-radius: 50px;
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
 
+  transition: border-radius 220ms ease, padding 220ms ease, transform 220ms ease, opacity 220ms ease;
+}
+
+.isStuck {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+
+  pointer-events: none;
+}
+
+.isStuck .buttonInner {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  padding: 0.3rem 1rem;
+  animation: slideDown 220ms ease;
+}
+
+@keyframes slideDown {
+  from { transform: translate3d(0, -10px, 0); opacity: 0.85; }
+  to   { transform: translate3d(0, 0, 0); opacity: 1; }
 }
 
 .userBlock {
-  position: absolute;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: end;
-  gap: 1rem;
-  color: white;
-  text-align: center;
-  z-index: 2;
+  position: fixed;
+  top: 0;
+  right: 0;
+
+  z-index: 4;
   pointer-events: auto;
 
   h3 {
-    padding: 10px;
-    background: rgba(0, 0, 0, 0.3);
-    box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.5);
+    padding: 10px 12px;
+    border-radius: 0 0 0 20px;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
     margin: 0;
+    color: #fff;
     font-family: "Times New Roman", Times, serif;
   }
 }

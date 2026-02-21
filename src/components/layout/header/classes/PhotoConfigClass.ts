@@ -1,4 +1,4 @@
-import {PhotoConfig} from "@/app/components/header/classes/PhotoConfig";
+import {PhotoConfig} from "@/components/layout/header/classes/PhotoConfig";
 
 
 export default class PhotoConfigClass implements PhotoConfig {

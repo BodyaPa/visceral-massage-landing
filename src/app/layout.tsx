@@ -1,5 +1,5 @@
-import "@/styles/global.scss";
-import HeaderComponent from "@/app/components/header/HeaderComponent";
+import "../styles/global.scss";
+import HeaderComponent from "@/components/layout/header/HeaderComponent";
 import Providers from "./providers";
 
 export default function RootLayout({children,}: {

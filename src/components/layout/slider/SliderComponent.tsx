@@ -2,8 +2,8 @@
 
 import styles from "./SliderStyles.module.scss";
 import React, {useEffect, useMemo, useRef, useState} from "react";
-import SliderButtons from "@/app/components/slider/sliderButtons/SliderButtons";
-import PhotoConfigClass from "@/app/components/header/classes/PhotoConfigClass";
+import SliderButtons from "@/components/layout/slider/sliderButtons/SliderButtons";
+import PhotoConfigClass from "@/components/layout/header/classes/PhotoConfigClass";
 
 export default function SliderComponent() {
     const [activeIndex, setActiveIndex] = useState(0);
@@ -22,7 +22,11 @@ export default function SliderComponent() {
             setActiveIndex((i) => (i === photoConfig.length - 1 ? 0 : i + 1));
         }, 10000);
 
-        photoConfig.length == activeIndex ? setActiveIndex(0) : activeIndex
+        if (activeIndex < 0) {
+            setActiveIndex(photoConfig.length - 1)
+        } else {
+            photoConfig.length == activeIndex ? setActiveIndex(0) : activeIndex
+        }
         return () => window.clearInterval(timer);
     }, [photoConfig.length, activeIndex]);
 

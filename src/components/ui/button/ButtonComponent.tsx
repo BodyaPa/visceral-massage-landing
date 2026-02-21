@@ -1,6 +1,6 @@
 'use client'
 
-import {ButtonConfig} from "@/app/components/header/classes/ButtonConfig";
+import {ButtonConfig} from "@/components/layout/header/classes/ButtonConfig";
 import styles from "./ButtonStyles.module.scss"
 import { useRouter } from 'next/navigation'
 

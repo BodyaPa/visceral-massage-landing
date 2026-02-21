@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./HeaderStyles.module.scss";
-import ButtonComponent from "@/app/components/button/ButtonComponent";
-import ButtonConfigClass from "@/app/components/header/classes/ButtonConfigClass";
-import { ButtonConfig } from "@/app/components/header/classes/ButtonConfig";
-import SliderComponent from "@/app/components/slider/SliderComponent";
+import ButtonComponent from "@/components/ui/button/ButtonComponent";
+import ButtonConfigClass from "@/components/layout/header/classes/ButtonConfigClass";
+import { ButtonConfig } from "@/components/layout/header/classes/ButtonConfig";
+import SliderComponent from "@/components/layout/slider/SliderComponent";
 
 export default function HeaderComponent() {
     const blockRef = useRef<HTMLDivElement | null>(null);

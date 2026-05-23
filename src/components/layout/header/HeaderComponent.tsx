@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import styles from "./HeaderStyles.module.scss";
 import ButtonComponent from "@/components/ui/button/ButtonComponent";
@@ -85,7 +85,9 @@ export default function HeaderComponent() {
 
             <div className={styles.userBlock}>
                 <div className={styles.userPanel}>
-                    <LanguageSwitcher />
+                    <Suspense fallback={null}>
+                        <LanguageSwitcher />
+                    </Suspense>
                     <h3 key={locale} className={styles.authText}>
                         {t("login")} | {t("register")}
                     </h3>

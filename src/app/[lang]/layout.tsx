@@ -5,9 +5,21 @@ import {ReactNode} from "react";
 import {notFound} from "next/navigation";
 import {NextIntlClientProvider} from "next-intl";
 import {getMessages, getTranslations, setRequestLocale} from "next-intl/server";
-import {locales} from "@/i18n";
+import {isLocale, locales, type Locale} from "@/i18n";
 import type {Metadata} from "next";
 import {toLanguageTag} from '@/shared/lib/i18n/toLanguageTag';
+import {getAlternates} from "@/shared/lib/seo/getAlternates";
+
+type Props = {
+    children: ReactNode;
+    params: Promise<{lang: string}>;
+};
+
+async function getLocale(params: Promise<{lang: string}>): Promise<Locale> {
+    const {lang} = await params;
+    if (!isLocale(lang)) notFound();
+    return lang;
+}
 
 export function generateStaticParams() {
     return locales.map((lang) => ({lang}));
@@ -18,9 +30,9 @@ export async function generateMetadata({
                                        }: {
     params: Promise<{lang: string}>;
 }): Promise<Metadata> {
-    const {lang} = await params;
+    const locale = await getLocale(params);
 
-    const t = await getTranslations({locale: lang, namespace: "meta"});
+    const t = await getTranslations({locale, namespace: "meta"});
 
     return {
         metadataBase: new URL("https://example.com"), // later
@@ -29,32 +41,23 @@ export async function generateMetadata({
             template: `%s | Ataraksia`
         },
         description: t("description"),
-        alternates: {
-            languages: {
-                uk: '/ua',
-                en: '/en'
-            }
-        }
+        alternates: getAlternates("/", locale)
     };
 }
 
 export default async function LocaleLayout({
                                                children,
                                                params
-                                           }: {
-    children: ReactNode;
-    params: Promise<{lang: string}>;
-}) {
-    const {lang} = await params;
-    if (!locales.includes(lang as any)) notFound();
+                                           }: Props) {
+    const locale = await getLocale(params);
 
-    setRequestLocale(lang);
+    setRequestLocale(locale);
     const messages = await getMessages();
 
     return (
-        <html lang={toLanguageTag(lang as any)}>
+        <html lang={toLanguageTag(locale)}>
         <body>
-        <NextIntlClientProvider locale={lang} messages={messages}>
+        <NextIntlClientProvider locale={locale} messages={messages}>
             <HeaderComponent />
             <Providers>{children}</Providers>
             {/* <FooterComponent /> */}
@@ -63,4 +66,3 @@ export default async function LocaleLayout({
         </html>
     );
 }
-

@@ -24,8 +24,8 @@ export default function SliderComponent() {
 
         if (activeIndex < 0) {
             setActiveIndex(photoConfig.length - 1)
-        } else {
-            photoConfig.length == activeIndex ? setActiveIndex(0) : activeIndex
+        } else if (activeIndex >= photoConfig.length) {
+            setActiveIndex(0)
         }
         return () => window.clearInterval(timer);
     }, [photoConfig.length, activeIndex]);

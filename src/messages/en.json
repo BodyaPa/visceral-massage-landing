@@ -32,6 +32,16 @@
       "subtitle": "Write to us or reach out in the way that works best for you."
     }
   },
+  "calendar": {
+    "meta": {
+      "title": "Schedule",
+      "description": "View the Ataraksia schedule and available appointment times."
+    },
+    "page": {
+      "title": "Schedule",
+      "subtitle": "Available appointment times will appear here."
+    }
+  },
   "home": {
     "meta": {
       "description": "Ataraksia is a space of care, recovery, and an attentive approach to the body."

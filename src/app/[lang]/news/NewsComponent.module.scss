@@ -7,7 +7,7 @@
   padding: 40px 0 40px 0;
 }
 
-.articlesBlock {
+.newsBlock {
   width: 100%;
   max-width: 1000px;
   display: flex;
@@ -15,13 +15,13 @@
   gap: 14px;
 }
 
-.articleLink {
+.newsLink {
   text-decoration: none;
   color: inherit;
   display: block;
 }
 
-.previewArticleBlock {
+.previewNewsBlock {
   width: 100%;
   position: relative;
 
@@ -36,13 +36,13 @@
   animation: fadeIn 0.35s ease-out both;
 }
 
-.previewArticleBlock:hover {
+.previewNewsBlock:hover {
   transform: translateY(-2px);
   background: rgba(255,255,255,0.98);
   box-shadow: 0 14px 35px rgba(0,0,0,0.10);
 }
 
-.previewArticleBlock::before {
+.previewNewsBlock::before {
   content: "";
   position: absolute;
   left: 0;
@@ -54,7 +54,7 @@
   transition: background 160ms ease, width 160ms ease;
 }
 
-.previewArticleBlock:hover::before {
+.previewNewsBlock:hover::before {
   background: rgba(0,0,0,0.55);
   width: 4px;
 }
@@ -67,15 +67,15 @@
   letter-spacing: -0.01em;
 }
 
-.previewArticleBlock :global(p) {
+.previewNewsBlock :global(p) {
   margin: 0;
   color: rgba(0,0,0,0.75);
   font-size: 14px;
   line-height: 1.55;
 }
 
-.previewArticleBlock :global(ul),
-.previewArticleBlock :global(ol) {
+.previewNewsBlock :global(ul),
+.previewNewsBlock :global(ol) {
   margin: 8px 0 0;
   padding-left: 18px;
   color: rgba(0,0,0,0.75);

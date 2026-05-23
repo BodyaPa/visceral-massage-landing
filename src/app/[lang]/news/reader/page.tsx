@@ -2,7 +2,7 @@
 
 import {useCallback, useRef} from "react";
 import {useSearchParams} from "next/navigation";
-import {useGetArticleQuery} from "@/features/articles/articles.api";
+import {useGetNewsQuery} from "@/features/news/news.api";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import styles from "./reader.module.scss";
@@ -16,7 +16,7 @@ export default function Page() {
     const idParam = sp.get("id");
     const id = idParam ? Number(idParam) : null;
 
-    const {data, isLoading} = useGetArticleQuery(id ?? 0, {skip: id === null});
+    const {data, isLoading} = useGetNewsQuery(id ?? 0, {skip: id === null});
 
     const scrollToCard = useCallback(() => {
         const el = cardRef.current;

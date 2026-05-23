@@ -1,7 +1,7 @@
-export type ArticleId = number;
+export type NewsId = number;
 
-export interface Article {
-    id: ArticleId;
+export interface NewsItem {
+    id: NewsId;
     title: string;
     content: string;
 }

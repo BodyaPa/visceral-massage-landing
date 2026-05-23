@@ -1,11 +1,11 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { rootReducer } from "./rootReducer";
-import { articlesApi } from "@/features/articles/articles.api";
+import { newsApi } from "@/features/news/news.api";
 
 export const makeStore = () =>
     configureStore({
         reducer: rootReducer,
-        middleware: (getDefault) => getDefault().concat(articlesApi.middleware),
+        middleware: (getDefault) => getDefault().concat(newsApi.middleware),
         devTools: process.env.NODE_ENV !== "production",
     });
 

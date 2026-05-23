@@ -1,8 +1,8 @@
 import { combineReducers } from "@reduxjs/toolkit";
-import { articlesApi } from "@/features/articles/articles.api";
+import { newsApi } from "@/features/news/news.api";
 
 export const rootReducer = combineReducers({
-    [articlesApi.reducerPath]: articlesApi.reducer,
+    [newsApi.reducerPath]: newsApi.reducer,
 });
 
 export type RootState = ReturnType<typeof rootReducer>;

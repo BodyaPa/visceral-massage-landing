@@ -1,6 +1,7 @@
 import type {Metadata} from "next";
 import {getTranslations} from "next-intl/server";
 import type {Locale} from "@/i18n";
+import {getAlternates} from "@/shared/lib/seo/getAlternates";
 
 type Props = {
     params: Promise<{lang: string}>;
@@ -16,7 +17,8 @@ export async function generateMetadata({params}: Props): Promise<Metadata> {
     });
 
     return {
-        description: t("description")
+        description: t("description"),
+        alternates: getAlternates("/", locale)
     };
 }
 

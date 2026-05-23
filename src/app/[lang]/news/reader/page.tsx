@@ -1,6 +1,6 @@
 "use client";
 
-import {useCallback, useRef} from "react";
+import {Suspense, useCallback, useRef} from "react";
 import {useSearchParams} from "next/navigation";
 import {useGetNewsQuery} from "@/features/news/news.api";
 import Markdown from "react-markdown";
@@ -8,7 +8,7 @@ import remarkGfm from "remark-gfm";
 import styles from "./reader.module.scss";
 import {useSmartAutoScroll} from "@/shared/lib/scroll/useSmartAutoScroll";
 
-export default function Page() {
+function NewsReaderContent() {
     const contentRef = useRef<HTMLDivElement | null>(null);
     const cardRef = useRef<HTMLElement | null>(null);
 
@@ -64,3 +64,12 @@ export default function Page() {
         </div>
     );
 }
+
+export default function NewsReaderPage() {
+    return (
+        <Suspense fallback={<div className={styles.content} />}>
+            <NewsReaderContent />
+        </Suspense>
+    );
+}
+

@@ -1,3 +1,7 @@
-export const locales = ['ua', 'en'];
+export const locales = ['ua', 'en'] as const;
 export type Locale = (typeof locales)[number];
-export const defaultLocale = 'ua';
+export const defaultLocale: Locale = 'ua';
+
+export function isLocale(value: string): value is Locale {
+    return locales.some((locale) => locale === value);
+}

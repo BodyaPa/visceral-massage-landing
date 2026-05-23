@@ -5,10 +5,15 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { useListArticlesQuery } from "@/features/articles/articles.api";
 import styles from "./ArticlesComponent.module.scss";
+import {useParams} from "next/navigation";
+import type {Locale} from "@/i18n";
+import {withLocale} from "@/shared/lib/locale/withLocale";
 
 export default function Page() {
     const contentRef = useRef<HTMLDivElement | null>(null);
     const { data, isLoading } = useListArticlesQuery({ page: 0, size: 10 });
+    const params = useParams();
+    const lang = params.lang as Locale;
 
     const articles = data?.content ?? [];
 
@@ -42,7 +47,10 @@ export default function Page() {
         <div ref={contentRef} className={styles.content}>
             <div className={styles.articlesBlock}>
                 {articles.map((article) => (
-                    <Link scroll={false} className={styles.articleLink} key={article.id} href={`/articles/reader?id=${article.id}`}>
+                    <Link scroll={false} className={styles.articleLink} key={article.id} href={{
+                        pathname: withLocale('/news/reader', lang),
+                        query: {id: article.id}
+                    }}>
                         <div className={styles.previewArticleBlock}>
                             <h2 className={styles.title}>{article.title}</h2>
                             {article.content ? <TextPreview content={article.content} /> : null}

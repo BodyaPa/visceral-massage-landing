@@ -1,25 +1,31 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import styles from "./HeaderStyles.module.scss";
 import ButtonComponent from "@/components/ui/button/ButtonComponent";
 import ButtonConfigClass from "@/components/layout/header/classes/ButtonConfigClass";
 import { ButtonConfig } from "@/components/layout/header/classes/ButtonConfig";
 import SliderComponent from "@/components/layout/slider/SliderComponent";
+import LanguageSwitcher from '@/components/common/LanguageSwitcher';
 
 export default function HeaderComponent() {
+    const t = useTranslations("nav");
+    const locale = useLocale();
+
     const blockRef = useRef<HTMLDivElement | null>(null);
     const sentinelRef = useRef<HTMLDivElement | null>(null);
     const placeholderRef = useRef<HTMLDivElement | null>(null);
     const [stuck, setStuck] = useState(false);
+
     const buttonsConfig: ButtonConfig[] = useMemo(
         () => [
-            new ButtonConfigClass("Статті", "defaultStyle", "/articles"),
-            new ButtonConfigClass("Графік", "defaultStyle", "/calendar"),
-            new ButtonConfigClass("Контакти", "defaultStyle", "/contact"),
-            new ButtonConfigClass("Про нас", "defaultStyle", "/about"),
+            new ButtonConfigClass(t("news"), "defaultStyle", "/news"),
+            new ButtonConfigClass(t("calendar"), "defaultStyle", "/calendar"),
+            new ButtonConfigClass(t("contact"), "defaultStyle", "/contact"),
+            new ButtonConfigClass(t("about"), "defaultStyle", "/about"),
         ],
-        []
+        [t]
     );
 
     const syncPlaceholder = () => {
@@ -64,15 +70,26 @@ export default function HeaderComponent() {
 
                 <div ref={blockRef} className={`${styles.buttonBlock} ${stuck ? styles.isStuck : ""}`}>
                     <div className={styles.buttonInner}>
-                        {buttonsConfig.map((b, i) => (
-                            <ButtonComponent key={i} text={b.text} url={b.url} />
+                        {buttonsConfig.map((b) => (
+                            <ButtonComponent
+                                key={b.url}
+                                text={b.text}
+                                url={b.url}
+                                localeKey={locale}
+                                styleName={b.styleName}
+                            />
                         ))}
                     </div>
                 </div>
             </div>
 
             <div className={styles.userBlock}>
-                <h3>Увійти | Реєстрація</h3>
+                <div className={styles.userPanel}>
+                    <LanguageSwitcher />
+                    <h3 key={locale} className={styles.authText}>
+                        {t("login")} | {t("register")}
+                    </h3>
+                </div>
             </div>
         </header>
     );

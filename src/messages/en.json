@@ -1,0 +1,54 @@
+{
+  "nav": {
+    "home": "Home",
+    "about": "About",
+    "contact": "Contact",
+    "news": "News",
+    "calendar": "Schedule",
+    "login": "Login",
+    "register": "Register"
+  },
+  "meta": {
+    "title": "Ataraksia",
+    "description": "Visceral massage, schedule, news and contacts."
+  },
+  "about": {
+    "meta": {
+      "title": "About",
+      "description": "Learn more about Ataraksia, our approach, and our values."
+    },
+    "page": {
+      "title": "About",
+      "subtitle": "We created Ataraksia as a space of care, recovery, and attentive work with the body."
+    }
+  },
+  "contact": {
+    "meta": {
+      "title": "Contact",
+      "description": "Get in touch with Ataraksia for booking, consultation, or additional information."
+    },
+    "page": {
+      "title": "Contact",
+      "subtitle": "Write to us or reach out in the way that works best for you."
+    }
+  },
+  "home": {
+    "meta": {
+      "description": "Ataraksia is a space of care, recovery, and an attentive approach to the body."
+    },
+    "page": {
+      "title": "Ataraksia",
+      "subtitle": "A space of care, recovery, and attentive work with the body."
+    }
+  },
+  "news": {
+    "meta": {
+      "title": "News",
+      "description": "Latest news, publications, and updates from Ataraksia."
+    },
+    "page": {
+      "title": "News",
+      "subtitle": "Follow the latest news, publications, and updates from Ataraksia."
+    }
+  }
+}

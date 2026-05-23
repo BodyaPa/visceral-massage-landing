@@ -4,14 +4,39 @@
   background: none;
   cursor: pointer;
   color: white;
-  transition: 0.3s;
+  transition: color 0.3s ease;
   font-family: "Times New Roman", Times, serif;
   font-weight: bold;
   font-size: 1rem;
+
+  min-width: 110px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  text-decoration: none;
 }
 
 .defaultStyle:hover {
-  transition: 0.3s;
   color: gray;
-  text-underline: #515151;
+  text-decoration: underline;
+  text-decoration-color: #515151;
+}
+
+.labelAnimated {
+  display: inline-block;
+  animation: fadeSlideIn 0.22s ease;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
 }

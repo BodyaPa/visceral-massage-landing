@@ -76,18 +76,47 @@
   position: fixed;
   top: 0;
   right: 0;
-
   z-index: 4;
   pointer-events: auto;
+}
 
-  h3 {
-    padding: 10px 12px;
-    border-radius: 0 0 0 20px;
-    background: rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(10px);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-    margin: 0;
-    color: #fff;
-    font-family: "Times New Roman", Times, serif;
+.userPanel {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 10px 12px;
+  border-radius: 0 0 0 20px;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.userPanel h3 {
+  margin: 0;
+  color: #fff;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 18px;
+}
+
+.authText {
+  margin: 0;
+  min-width: 190px;
+  text-align: right;
+  white-space: nowrap;
+  color: #fff;
+  font-family: "Times New Roman", Times, serif;
+  animation: fadeSlideIn 0.22s ease;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
   }
 }

@@ -4,10 +4,10 @@ import {useRef} from "react";
 import Link from "next/link";
 import {useParams} from "next/navigation";
 import ReactMarkdown from "react-markdown";
-import {useListArticlesQuery} from "@/features/articles/articles.api";
 import type {Locale} from "@/i18n";
 import {withLocale} from "@/shared/lib/locale/withLocale";
-import styles from "./ArticlesComponent.module.scss";
+import styles from "./NewsComponent.module.scss";
+import {useListNewsQuery} from "@/features/news/news.api";
 
 function TextPreview({content}: { content: string }) {
     const parts = content.split("\n");
@@ -18,19 +18,19 @@ function TextPreview({content}: { content: string }) {
 
 export default function NewsList() {
     const contentRef = useRef<HTMLDivElement | null>(null);
-    const {data, isLoading} = useListArticlesQuery({page: 0, size: 10});
+    const {data, isLoading} = useListNewsQuery({page: 0, size: 10});
     const params = useParams();
     const lang = params.lang as Locale;
 
-    const articles = data?.content ?? [];
+    const news = data?.content ?? [];
 
     if (isLoading) {
         return (
             <div ref={contentRef} className={styles.content}>
-                <div className={styles.articlesBlock}>
+                <div className={styles.newsBlock}>
                     {Array.from({length: 6}).map((_, index) => (
-                        <div key={index} className={styles.articleLinkSkeleton}>
-                            <div className={styles.previewArticleBlock}>
+                        <div key={index} className={styles.newsLinkSkeleton}>
+                            <div className={styles.previewNewsBlock}>
                                 <div className={styles.skeletonTitle} />
                                 <div className={styles.skeletonLine} />
                                 <div className={styles.skeletonLine} />
@@ -44,20 +44,20 @@ export default function NewsList() {
 
     return (
         <div ref={contentRef} className={styles.content}>
-            <div className={styles.articlesBlock}>
-                {articles.map((article) => (
+            <div className={styles.newsBlock}>
+                {news.map((news) => (
                     <Link
                         scroll={false}
-                        className={styles.articleLink}
-                        key={article.id}
+                        className={styles.newsLink}
+                        key={news.id}
                         href={{
                             pathname: withLocale("/news/reader", lang),
-                            query: {id: article.id}
+                            query: {id: news.id}
                         }}
                     >
-                        <div className={styles.previewArticleBlock}>
-                            <h2 className={styles.title}>{article.title}</h2>
-                            {article.content ? <TextPreview content={article.content} /> : null}
+                        <div className={styles.previewNewsBlock}>
+                            <h2 className={styles.title}>{news.title}</h2>
+                            {news.content ? <TextPreview content={news.content} /> : null}
                         </div>
                     </Link>
                 ))}

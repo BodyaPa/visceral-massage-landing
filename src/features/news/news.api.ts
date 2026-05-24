@@ -27,22 +27,22 @@ export const newsApi = createApi({
         }),
 
         createNews: build.mutation<NewsItem, CreateNewsDto>({
-            query: (body) => ({ url: `/news`, method: "POST", body }),
+            query: (body) => ({ url: `/admin/news`, method: "POST", body }),
             invalidatesTags: [{ type: "News", id: "LIST" }],
         }),
 
         updateNewsPut: build.mutation<NewsItem, { id: NewsId; body: Required<UpdateNewsDto> }>({
-            query: ({ id, body }) => ({ url: `/news/${id}`, method: "PUT", body }),
+            query: ({ id, body }) => ({ url: `/admin/news/${id}`, method: "PUT", body }),
             invalidatesTags: (result, error, { id }) => [{ type: "News", id }, { type: "News", id: "LIST" }],
         }),
 
         updateNewsPatch: build.mutation<NewsItem, { id: NewsId; body: UpdateNewsDto }>({
-            query: ({ id, body }) => ({ url: `/news/${id}`, method: "PATCH", body }),
+            query: ({ id, body }) => ({ url: `/admin/news/${id}`, method: "PATCH", body }),
             invalidatesTags: (result, error, { id }) => [{ type: "News", id }, { type: "News", id: "LIST" }],
         }),
 
         deleteNews: build.mutation<void, NewsId>({
-            query: (id) => ({ url: `/news/${id}`, method: "DELETE" }),
+            query: (id) => ({ url: `/admin/news/${id}`, method: "DELETE" }),
             invalidatesTags: (result, error, id) => [{ type: "News", id }, { type: "News", id: "LIST" }],
         }),
     }),

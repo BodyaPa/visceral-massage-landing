@@ -8,6 +8,7 @@
     "login": "Login",
     "register": "Register",
     "admin": "Admin",
+    "personalAccount": "Personal account",
     "logout": "Logout",
     "loggingOut": "Signing out...",
     "logoutSuccess": "You have signed out.",
@@ -51,6 +52,16 @@
       "subtitle": "Available appointment times will appear here."
     }
   },
+  "accountPage": {
+    "meta": {
+      "title": "Personal account"
+    },
+    "title": "Personal account",
+    "subtitle": "Your appointments and profile management will be available here.",
+    "back": "← Back to home",
+    "name": "Name",
+    "nameUnavailable": "Name has not been provided yet"
+  },
   "home": {
     "meta": {
       "description": "Ataraksia is a space of care, recovery, and an attentive approach to the body."
@@ -68,6 +79,7 @@
     "page": {
       "title": "News",
       "subtitle": "Follow the latest news, publications, and updates from Ataraksia.",
+      "createAction": "Create news item",
       "translationUnavailableTitle": "Translation not available yet",
       "translationUnavailableContent": "This news item does not have an English version yet."
     }
@@ -92,7 +104,8 @@
       },
       "page": {
         "title": "Manage news",
-        "subtitle": "Create and edit Ukrainian and English news versions."
+        "subtitle": "Create and edit Ukrainian and English news versions.",
+        "createAction": "Add"
       },
       "editor": {
         "new": "New item",
@@ -101,12 +114,21 @@
         "untitled": "Untitled",
         "createTitle": "Create news item",
         "editTitle": "Edit news item",
+        "versions": "News language versions",
         "ukrainian": "Українська версія",
         "english": "English version",
         "titleUa": "Ukrainian title",
         "contentUa": "Ukrainian content",
         "titleEn": "English title",
         "contentEn": "English content",
+        "format": {
+          "bold": "Bold text",
+          "italic": "Italic text",
+          "heading": "Heading",
+          "bulletList": "Bullet list",
+          "orderedList": "Numbered list",
+          "blockquote": "Block quote"
+        },
         "hint": "Enter both a title and content for at least one language. An incomplete language version cannot be saved.",
         "translationRequired": "Enter both a title and content for at least one language version.",
         "save": "Save",

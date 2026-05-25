@@ -17,6 +17,8 @@ export default function HeaderComponent() {
     const locale = useLocale();
     const pathname = usePathname();
     const isAuthPage = pathname.endsWith("/auth") || pathname.endsWith("/login") || pathname.endsWith("/register");
+    const isManagementPage = pathname.includes("/admin") || pathname.endsWith("/account");
+    const usesBackgroundSlider = isAuthPage || isManagementPage;
 
     const blockRef = useRef<HTMLDivElement | null>(null);
     const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -93,9 +95,9 @@ export default function HeaderComponent() {
 
     return (
         <header className={styles.header}>
-            <SliderComponent background={isAuthPage} />
+            <SliderComponent background={usesBackgroundSlider} />
 
-            {isAuthPage ? null : <div className={styles.buttonsWrap}>
+            {usesBackgroundSlider ? null : <div className={styles.buttonsWrap}>
                 <div ref={sentinelRef} className={styles.stickySentinel} />
                 <div ref={placeholderRef} className={styles.stickyPlaceholder} />
 
@@ -114,7 +116,7 @@ export default function HeaderComponent() {
                 </div>
             </div>}
 
-            {isAuthPage ? null : <div className={styles.userBlock}>
+            {usesBackgroundSlider ? null : <div className={styles.userBlock}>
                 <div className={styles.userPanel}>
                     <Suspense fallback={null}>
                             <LanguageSwitcher />

@@ -1,6 +1,6 @@
 import {fetchBaseQuery, type BaseQueryFn, type FetchArgs, type FetchBaseQueryError} from "@reduxjs/toolkit/query/react";
 import { API_URL } from "@/shared/constants/env";
-import {CSRF_HEADER_NAME, getCsrfToken} from "@/shared/api/csrf";
+import {clearCsrfToken, CSRF_HEADER_NAME, getCsrfToken} from "@/shared/api/csrf";
 
 const rawBaseQuery = fetchBaseQuery({
     baseUrl: `${API_URL}/api`,
@@ -20,6 +20,17 @@ function requiresCsrfToken(args: string | FetchArgs) {
     return !["GET", "HEAD", "OPTIONS"].includes(method);
 }
 
+async function sendProtectedRequest(
+    args: FetchArgs,
+    api: Parameters<typeof rawBaseQuery>[1],
+    extraOptions: Parameters<typeof rawBaseQuery>[2]
+) {
+    const headers = new Headers(args.headers as HeadersInit | undefined);
+    headers.set(CSRF_HEADER_NAME, await getCsrfToken());
+
+    return rawBaseQuery({...args, headers}, api, extraOptions);
+}
+
 export const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
     args,
     api,
@@ -30,11 +41,14 @@ export const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryE
     }
 
     try {
-        const csrfToken = await getCsrfToken();
-        const headers = new Headers(args.headers as HeadersInit | undefined);
-        headers.set(CSRF_HEADER_NAME, csrfToken);
+        let result = await sendProtectedRequest(args, api, extraOptions);
 
-        return rawBaseQuery({...args, headers}, api, extraOptions);
+        if (result.error?.status === 403) {
+            clearCsrfToken();
+            result = await sendProtectedRequest(args, api, extraOptions);
+        }
+
+        return result;
     } catch (error) {
         return {
             error: {

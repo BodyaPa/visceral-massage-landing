@@ -4,6 +4,7 @@ import {type FormEvent, useState} from "react";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import type {NewsAdminItem} from "@/types/news";
+import NewsRichTextEditor from "./NewsRichTextEditor";
 import {
     type CreateNewsDto,
     useCreateNewsMutation,
@@ -18,6 +19,8 @@ type NewsDraft = {
     titleEn: string;
     contentEn: string;
 };
+
+type TranslationTab = "ua" | "en";
 
 const emptyDraft: NewsDraft = {
     titleUa: "",
@@ -58,6 +61,7 @@ export default function AdminNewsEditor() {
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [draft, setDraft] = useState<NewsDraft>(emptyDraft);
     const [error, setError] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<TranslationTab>("ua");
 
     const news = data?.content ?? [];
     const submitting = isCreating || isUpdating || isDeleting;
@@ -66,12 +70,14 @@ export default function AdminNewsEditor() {
         setSelectedId(null);
         setDraft(emptyDraft);
         setError(null);
+        setActiveTab("ua");
     }
 
     function selectNews(item: NewsAdminItem) {
         setSelectedId(item.id);
         setDraft(toDraft(item));
         setError(null);
+        setActiveTab(item.titleUa || !item.titleEn ? "ua" : "en");
     }
 
     function setField(field: keyof NewsDraft, value: string) {
@@ -166,25 +172,58 @@ export default function AdminNewsEditor() {
                     {selectedId === null ? t("createTitle") : t("editTitle")}
                 </h2>
 
-                <TranslationFields
-                    content={draft.contentUa}
-                    contentLabel={t("contentUa")}
-                    language={t("ukrainian")}
-                    onContentChange={(value) => setField("contentUa", value)}
-                    onTitleChange={(value) => setField("titleUa", value)}
-                    title={draft.titleUa}
-                    titleLabel={t("titleUa")}
-                />
+                <div className="flex gap-2 border-b border-stone-200 pb-3" role="tablist" aria-label={t("versions")}>
+                    <LanguageTab
+                        active={activeTab === "ua"}
+                        filled={Boolean(draft.titleUa.trim() && draft.contentUa.trim())}
+                        label={t("ukrainian")}
+                        onSelect={() => setActiveTab("ua")}
+                    />
+                    <LanguageTab
+                        active={activeTab === "en"}
+                        filled={Boolean(draft.titleEn.trim() && draft.contentEn.trim())}
+                        label={t("english")}
+                        onSelect={() => setActiveTab("en")}
+                    />
+                </div>
 
-                <TranslationFields
-                    content={draft.contentEn}
-                    contentLabel={t("contentEn")}
-                    language={t("english")}
-                    onContentChange={(value) => setField("contentEn", value)}
-                    onTitleChange={(value) => setField("titleEn", value)}
-                    title={draft.titleEn}
-                    titleLabel={t("titleEn")}
-                />
+                {activeTab === "ua" ? (
+                    <TranslationFields
+                        content={draft.contentUa}
+                        contentLabel={t("contentUa")}
+                        language={t("ukrainian")}
+                        onContentChange={(value) => setField("contentUa", value)}
+                        onTitleChange={(value) => setField("titleUa", value)}
+                        title={draft.titleUa}
+                        titleLabel={t("titleUa")}
+                        toolbarLabels={{
+                            bold: t("format.bold"),
+                            italic: t("format.italic"),
+                            heading: t("format.heading"),
+                            bulletList: t("format.bulletList"),
+                            orderedList: t("format.orderedList"),
+                            blockquote: t("format.blockquote")
+                        }}
+                    />
+                ) : (
+                    <TranslationFields
+                        content={draft.contentEn}
+                        contentLabel={t("contentEn")}
+                        language={t("english")}
+                        onContentChange={(value) => setField("contentEn", value)}
+                        onTitleChange={(value) => setField("titleEn", value)}
+                        title={draft.titleEn}
+                        titleLabel={t("titleEn")}
+                        toolbarLabels={{
+                            bold: t("format.bold"),
+                            italic: t("format.italic"),
+                            heading: t("format.heading"),
+                            bulletList: t("format.bulletList"),
+                            orderedList: t("format.orderedList"),
+                            blockquote: t("format.blockquote")
+                        }}
+                    />
+                )}
 
                 <p className="text-sm text-stone-600">{t("hint")}</p>
                 {error ? <p className="rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p> : null}
@@ -213,6 +252,28 @@ export default function AdminNewsEditor() {
     );
 }
 
+function LanguageTab({active, filled, label, onSelect}: {
+    active: boolean;
+    filled: boolean;
+    label: string;
+    onSelect: () => void;
+}) {
+    return (
+        <button
+            aria-selected={active}
+            className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium ${
+                active ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-700 hover:bg-stone-200"
+            }`}
+            onClick={onSelect}
+            role="tab"
+            type="button"
+        >
+            {label}
+            {filled ? <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" /> : null}
+        </button>
+    );
+}
+
 type TranslationFieldsProps = {
     language: string;
     titleLabel: string;
@@ -221,6 +282,14 @@ type TranslationFieldsProps = {
     content: string;
     onTitleChange: (value: string) => void;
     onContentChange: (value: string) => void;
+    toolbarLabels: {
+        bold: string;
+        italic: string;
+        heading: string;
+        bulletList: string;
+        orderedList: string;
+        blockquote: string;
+    };
 };
 
 function TranslationFields(props: TranslationFieldsProps) {
@@ -237,15 +306,15 @@ function TranslationFields(props: TranslationFieldsProps) {
                     value={props.title}
                 />
             </label>
-            <label className="block space-y-1 text-sm font-medium text-stone-800">
+            <div className="block space-y-1 text-sm font-medium text-stone-800">
                 <span>{props.contentLabel}</span>
-                <textarea
-                    className="min-h-40 w-full rounded-md border border-stone-300 bg-white px-3 py-2 font-normal"
-                    maxLength={100000}
-                    onChange={(event) => props.onContentChange(event.target.value)}
+                <NewsRichTextEditor
+                    ariaLabel={props.contentLabel}
+                    labels={props.toolbarLabels}
+                    onChange={props.onContentChange}
                     value={props.content}
                 />
-            </label>
+            </div>
         </fieldset>
     );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {useRouter} from "next/navigation";
 import {useLocale, useTranslations} from "next-intl";
 import type {Locale} from "@/i18n";
@@ -13,22 +13,47 @@ import {logout, type AuthenticatedUser} from "./auth.client";
 type Props = {
     user: AuthenticatedUser | null;
     loading: boolean;
-    onLogout: () => void;
+    onLogout?: () => void;
+    tone?: "dark" | "light";
 };
 
-export default function AuthSessionPanel({user, loading, onLogout}: Props) {
+export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"}: Props) {
     const locale = useLocale() as Locale;
     const t = useTranslations("nav");
     const router = useRouter();
     const toast = useToast();
     const [submitting, setSubmitting] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        function closeOnOutsideClick(event: MouseEvent) {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setMenuOpen(false);
+            }
+        }
+
+        function closeOnEscape(event: KeyboardEvent) {
+            if (event.key === "Escape") {
+                setMenuOpen(false);
+            }
+        }
+
+        document.addEventListener("mousedown", closeOnOutsideClick);
+        document.addEventListener("keydown", closeOnEscape);
+
+        return () => {
+            document.removeEventListener("mousedown", closeOnOutsideClick);
+            document.removeEventListener("keydown", closeOnEscape);
+        };
+    }, []);
 
     async function handleLogout() {
         setSubmitting(true);
         try {
             await logout();
             toast.success(t("logoutSuccess"));
-            onLogout();
+            onLogout?.();
             router.replace(withLocale("/", locale));
             router.refresh();
         } catch {
@@ -52,15 +77,40 @@ export default function AuthSessionPanel({user, loading, onLogout}: Props) {
     }
 
     return (
-        <div className={styles.authActions}>
-            <span className={styles.accountText}>
-                {[user.firstName, user.lastName].filter(Boolean).join(" ") || t("account")}
-            </span>
-            {user.role === "ADMIN" ? <Link className={styles.authLink} href={withLocale("/admin", locale)}>{t("admin")}</Link> : null}
-            <span aria-hidden="true">|</span>
-            <button className={styles.authButton} type="button" disabled={submitting} onClick={handleLogout}>
-                {submitting ? t("loggingOut") : t("logout")}
+        <div className={`${styles.accountMenu} ${tone === "light" ? styles.accountMenuLight : ""}`} ref={menuRef}>
+            <button
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
+                className={styles.accountTrigger}
+                onClick={() => setMenuOpen((current) => !current)}
+                type="button"
+            >
+                <span className={styles.accountText}>
+                    {[user.firstName, user.lastName].filter(Boolean).join(" ") || t("account")}
+                </span>
+                <span aria-hidden="true" className={`${styles.accountChevron} ${menuOpen ? styles.isOpen : ""}`} />
             </button>
+            {menuOpen ? (
+                <div className={styles.accountDropdown} role="menu">
+                    <Link className={styles.accountMenuLink} href={withLocale("/account", locale)} role="menuitem">
+                        {t("personalAccount")}
+                    </Link>
+                    {user.role === "ADMIN" ? (
+                        <Link className={styles.accountMenuLink} href={withLocale("/admin", locale)} role="menuitem">
+                            {t("admin")}
+                        </Link>
+                    ) : null}
+                    <button
+                        className={styles.accountMenuButton}
+                        disabled={submitting}
+                        onClick={handleLogout}
+                        role="menuitem"
+                        type="button"
+                    >
+                        {submitting ? t("loggingOut") : t("logout")}
+                    </button>
+                </div>
+            ) : null}
         </div>
     );
 }

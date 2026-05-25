@@ -38,4 +38,43 @@ describe("baseQuery", () => {
         const mutationRequest = fetchMock.mock.calls[1][0] as Request;
         expect(mutationRequest.headers.get("X-XSRF-TOKEN")).toBe("admin-token");
     });
+
+    it("retries an admin mutation once with a refreshed CSRF token after a forbidden response", async () => {
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce(new Response(
+                JSON.stringify({token: "stale-token"}),
+                {status: 200, headers: {"Content-Type": "application/json"}}
+            ))
+            .mockResolvedValueOnce(new Response(null, {status: 403}))
+            .mockResolvedValueOnce(new Response(
+                JSON.stringify({token: "fresh-token"}),
+                {status: 200, headers: {"Content-Type": "application/json"}}
+            ))
+            .mockResolvedValueOnce(new Response(
+                JSON.stringify({id: 1}),
+                {status: 200, headers: {"Content-Type": "application/json"}}
+            ));
+        vi.stubGlobal("fetch", fetchMock);
+
+        const {baseQuery} = await import("./baseQuery");
+
+        const result = await baseQuery(
+            {url: "/admin/news", method: "POST", body: {titleUa: "Новина", contentUa: "Текст"}},
+            {
+                signal: new AbortController().signal,
+                abort: vi.fn(),
+                dispatch: vi.fn(),
+                getState: vi.fn(),
+                extra: undefined,
+                endpoint: "createNews",
+                type: "mutation",
+                forced: false
+            },
+            {}
+        );
+
+        expect(result).toMatchObject({data: {id: 1}});
+        const retryRequest = fetchMock.mock.calls[3][0] as Request;
+        expect(retryRequest.headers.get("X-XSRF-TOKEN")).toBe("fresh-token");
+    });
 });

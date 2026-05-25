@@ -149,6 +149,92 @@
   text-overflow: ellipsis;
 }
 
+.accountMenu {
+  position: relative;
+  color: #fff;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 18px;
+  animation: fadeSlideIn 0.22s ease;
+}
+
+.accountMenuLight {
+  color: #292524;
+}
+
+.accountMenuLight .accountDropdown {
+  background: rgba(250, 250, 249, 0.98);
+  border: 1px solid rgba(214, 211, 209, 0.9);
+  color: #292524;
+}
+
+.accountMenuLight .accountMenuLink:hover,
+.accountMenuLight .accountMenuButton:hover {
+  background: rgba(231, 229, 228, 0.75);
+}
+
+.accountTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.accountChevron {
+  display: inline-block;
+  border-top: 7px solid currentColor;
+  border-right: 5px solid transparent;
+  border-left: 5px solid transparent;
+  transition: transform 180ms ease;
+}
+
+.accountChevron.isOpen {
+  transform: rotate(180deg);
+}
+
+.accountDropdown {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  display: flex;
+  min-width: 190px;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.4rem;
+  border-radius: 12px;
+  background: rgba(25, 25, 25, 0.92);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(12px);
+}
+
+.accountMenuLink,
+.accountMenuButton {
+  border: 0;
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.accountMenuLink:hover,
+.accountMenuButton:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.accountMenuButton:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
 @keyframes fadeSlideIn {
   from {
     opacity: 0;

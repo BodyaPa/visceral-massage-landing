@@ -32,6 +32,17 @@ export const newsApi = createApi({
             providesTags: (result, error, {id}) => [{ type: "News", id }],
         }),
 
+        listAdminNews: build.query<PageResponse<NewsAdminItem>, { page?: number; size?: number }>({
+            query: ({page = 0, size = 50} = {}) => `/admin/news?page=${page}&size=${size}`,
+            providesTags: (result) =>
+                result
+                    ? [
+                        ...result.content.map((item) => ({type: "News" as const, id: item.id})),
+                        {type: "News" as const, id: "LIST"}
+                    ]
+                    : [{type: "News" as const, id: "LIST"}],
+        }),
+
         createNews: build.mutation<NewsAdminItem, CreateNewsDto>({
             query: (body) => ({ url: `/admin/news`, method: "POST", body }),
             invalidatesTags: [{ type: "News", id: "LIST" }],
@@ -57,6 +68,7 @@ export const newsApi = createApi({
 export const {
     useListNewsQuery,
     useGetNewsQuery,
+    useListAdminNewsQuery,
     useCreateNewsMutation,
     useUpdateNewsPutMutation,
     useUpdateNewsPatchMutation,

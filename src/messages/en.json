@@ -92,7 +92,32 @@
       },
       "page": {
         "title": "Manage news",
-        "subtitle": "News translation editing will be added with the multilingual content model."
+        "subtitle": "Create and edit Ukrainian and English news versions."
+      },
+      "editor": {
+        "new": "New item",
+        "loading": "Loading news...",
+        "empty": "There are no news items yet.",
+        "untitled": "Untitled",
+        "createTitle": "Create news item",
+        "editTitle": "Edit news item",
+        "ukrainian": "Українська версія",
+        "english": "English version",
+        "titleUa": "Ukrainian title",
+        "contentUa": "Ukrainian content",
+        "titleEn": "English title",
+        "contentEn": "English content",
+        "hint": "Enter both a title and content for at least one language. An incomplete language version cannot be saved.",
+        "translationRequired": "Enter both a title and content for at least one language version.",
+        "save": "Save",
+        "saving": "Saving...",
+        "delete": "Delete",
+        "deleteConfirm": "Delete this news item?",
+        "created": "News item created.",
+        "updated": "News item updated.",
+        "deleted": "News item deleted.",
+        "saveError": "Unable to save the news item. Check the translations.",
+        "deleteError": "Unable to delete the news item."
       }
     }
   },

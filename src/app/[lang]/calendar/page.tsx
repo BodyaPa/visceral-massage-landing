@@ -2,10 +2,13 @@ import type {Metadata} from "next";
 import {getTranslations} from "next-intl/server";
 import type {Locale} from "@/i18n";
 import {getAlternates} from "@/shared/lib/seo/getAlternates";
+import {requireAuthenticatedUser} from "@/features/auth/auth.server";
 
 type Props = {
     params: Promise<{lang: string}>;
 };
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({params}: Props): Promise<Metadata> {
     const {lang} = await params;
@@ -20,6 +23,7 @@ export async function generateMetadata({params}: Props): Promise<Metadata> {
 }
 
 export default async function CalendarPage({params}: Props) {
+    await requireAuthenticatedUser();
     const {lang} = await params;
     const locale = lang as Locale;
     const t = await getTranslations({locale, namespace: "calendar.page"});

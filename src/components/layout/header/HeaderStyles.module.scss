@@ -108,6 +108,47 @@
   animation: fadeSlideIn 0.22s ease;
 }
 
+.authActions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 190px;
+  justify-content: flex-end;
+  color: #fff;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 18px;
+  white-space: nowrap;
+  animation: fadeSlideIn 0.22s ease;
+}
+
+.authLink,
+.authButton {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.authButton:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.authLink:hover,
+.authButton:hover {
+  color: #d0d0d0;
+  text-decoration: underline;
+}
+
+.accountText {
+  max-width: 210px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 @keyframes fadeSlideIn {
   from {
     opacity: 0;

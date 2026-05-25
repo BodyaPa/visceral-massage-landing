@@ -5,7 +5,11 @@ import React, {useEffect, useMemo, useRef, useState} from "react";
 import SliderButtons from "@/components/layout/slider/sliderButtons/SliderButtons";
 import PhotoConfigClass from "@/components/layout/header/classes/PhotoConfigClass";
 
-export default function SliderComponent() {
+type Props = {
+    background?: boolean;
+};
+
+export default function SliderComponent({background = false}: Props) {
     const [activeIndex, setActiveIndex] = useState(0);
 
     const photoConfig = useMemo(
@@ -47,8 +51,8 @@ export default function SliderComponent() {
     }, []);
 
     return (
-        <div className={styles.content}>
-            <SliderButtons setPhotoIndex={setActiveIndex} index={activeIndex} plusOne={false} />
+        <div className={`${styles.content} ${background ? styles.background : ""}`}>
+            {background ? null : <SliderButtons setPhotoIndex={setActiveIndex} index={activeIndex} plusOne={false} />}
 
             <div className={styles.stage}>
                 <div ref={layerRef} className={styles.parallaxLayer}>
@@ -66,7 +70,7 @@ export default function SliderComponent() {
                 <div className={styles.overlay} />
             </div>
 
-            <SliderButtons setPhotoIndex={setActiveIndex} index={activeIndex} plusOne={true} />
+            {background ? null : <SliderButtons setPhotoIndex={setActiveIndex} index={activeIndex} plusOne={true} />}
         </div>
     );
 }

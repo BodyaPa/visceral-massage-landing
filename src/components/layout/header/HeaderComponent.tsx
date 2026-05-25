@@ -2,38 +2,60 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import {usePathname} from "next/navigation";
 import styles from "./HeaderStyles.module.scss";
 import ButtonComponent from "@/components/ui/button/ButtonComponent";
 import ButtonConfigClass from "@/components/layout/header/classes/ButtonConfigClass";
 import { ButtonConfig } from "@/components/layout/header/classes/ButtonConfig";
 import SliderComponent from "@/components/layout/slider/SliderComponent";
 import LanguageSwitcher from '@/components/common/LanguageSwitcher';
+import AuthSessionPanel from "@/features/auth/AuthSessionPanel";
+import {getCurrentUser, type AuthenticatedUser} from "@/features/auth/auth.client";
 
 export default function HeaderComponent() {
     const t = useTranslations("nav");
     const locale = useLocale();
+    const pathname = usePathname();
+    const isAuthPage = pathname.endsWith("/auth") || pathname.endsWith("/login") || pathname.endsWith("/register");
 
     const blockRef = useRef<HTMLDivElement | null>(null);
     const sentinelRef = useRef<HTMLDivElement | null>(null);
     const placeholderRef = useRef<HTMLDivElement | null>(null);
     const [stuck, setStuck] = useState(false);
+    const [user, setUser] = useState<AuthenticatedUser | null>(null);
+    const [sessionLoading, setSessionLoading] = useState(true);
 
     const buttonsConfig: ButtonConfig[] = useMemo(
         () => [
+            new ButtonConfigClass(t("home"), "defaultStyle", "/"),
             new ButtonConfigClass(t("news"), "defaultStyle", "/news"),
-            new ButtonConfigClass(t("calendar"), "defaultStyle", "/calendar"),
-            new ButtonConfigClass(t("contact"), "defaultStyle", "/contact"),
             new ButtonConfigClass(t("about"), "defaultStyle", "/about"),
+            new ButtonConfigClass(t("contact"), "defaultStyle", "/contact"),
+            ...(user ? [
+                new ButtonConfigClass(t("calendar"), "defaultStyle", "/calendar")
+            ] : [])
         ],
-        [t]
+        [t, user]
     );
 
-    const syncPlaceholder = () => {
-        const el = blockRef.current;
-        const ph = placeholderRef.current;
-        if (!el || !ph) return;
-        ph.style.height = stuck ? `${el.offsetHeight}px` : "0px";
-    };
+    useEffect(() => {
+        let active = true;
+
+        getCurrentUser()
+            .then((currentUser) => {
+                if (active) setUser(currentUser);
+            })
+            .catch(() => {
+                if (active) setUser(null);
+            })
+            .finally(() => {
+                if (active) setSessionLoading(false);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [pathname]);
 
     useEffect(() => {
         const onScroll = () => {
@@ -45,26 +67,35 @@ export default function HeaderComponent() {
         };
 
         onScroll();
-        syncPlaceholder();
 
         window.addEventListener("scroll", onScroll, { passive: true });
-        window.addEventListener("resize", syncPlaceholder);
 
         return () => {
             window.removeEventListener("scroll", onScroll);
-            window.removeEventListener("resize", syncPlaceholder);
         };
     }, []);
 
     useEffect(() => {
+        const syncPlaceholder = () => {
+            const el = blockRef.current;
+            const ph = placeholderRef.current;
+            if (!el || !ph) return;
+            ph.style.height = stuck ? `${el.offsetHeight}px` : "0px";
+        };
+
         syncPlaceholder();
+        window.addEventListener("resize", syncPlaceholder);
+
+        return () => {
+            window.removeEventListener("resize", syncPlaceholder);
+        };
     }, [stuck]);
 
     return (
         <header className={styles.header}>
-            <SliderComponent />
+            <SliderComponent background={isAuthPage} />
 
-            <div className={styles.buttonsWrap}>
+            {isAuthPage ? null : <div className={styles.buttonsWrap}>
                 <div ref={sentinelRef} className={styles.stickySentinel} />
                 <div ref={placeholderRef} className={styles.stickyPlaceholder} />
 
@@ -81,18 +112,16 @@ export default function HeaderComponent() {
                         ))}
                     </div>
                 </div>
-            </div>
+            </div>}
 
-            <div className={styles.userBlock}>
+            {isAuthPage ? null : <div className={styles.userBlock}>
                 <div className={styles.userPanel}>
                     <Suspense fallback={null}>
-                        <LanguageSwitcher />
+                            <LanguageSwitcher />
                     </Suspense>
-                    <h3 key={locale} className={styles.authText}>
-                        {t("login")} | {t("register")}
-                    </h3>
+                    <AuthSessionPanel key={locale} user={user} loading={sessionLoading} onLogout={() => setUser(null)} />
                 </div>
-            </div>
+            </div>}
         </header>
     );
 }

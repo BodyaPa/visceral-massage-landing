@@ -9,6 +9,7 @@ import {isLocale, locales, type Locale} from "@/i18n";
 import type {Metadata} from "next";
 import {toLanguageTag} from '@/shared/lib/i18n/toLanguageTag';
 import {getAlternates} from "@/shared/lib/seo/getAlternates";
+import {ToastProvider} from "@/components/ui/toast/ToastProvider";
 
 type Props = {
     children: ReactNode;
@@ -58,8 +59,10 @@ export default async function LocaleLayout({
         <html lang={toLanguageTag(locale)}>
         <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
-            <HeaderComponent />
-            <Providers>{children}</Providers>
+            <ToastProvider>
+                <HeaderComponent />
+                <Providers>{children}</Providers>
+            </ToastProvider>
             {/* <FooterComponent /> */}
         </NextIntlClientProvider>
         </body>

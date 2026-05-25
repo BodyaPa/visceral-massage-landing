@@ -6,7 +6,16 @@
     "news": "News",
     "calendar": "Schedule",
     "login": "Login",
-    "register": "Register"
+    "register": "Register",
+    "admin": "Admin",
+    "logout": "Logout",
+    "loggingOut": "Signing out...",
+    "logoutSuccess": "You have signed out.",
+    "logoutError": "Unable to sign out",
+    "account": "user"
+  },
+  "toast": {
+    "dismiss": "Dismiss notification"
   },
   "meta": {
     "title": "Ataraksia",
@@ -59,6 +68,76 @@
     "page": {
       "title": "News",
       "subtitle": "Follow the latest news, publications, and updates from Ataraksia."
+    }
+  },
+  "admin": {
+    "account": "Administrator",
+    "meta": {
+      "title": "Admin panel"
+    },
+    "navigation": {
+      "label": "Administrator navigation",
+      "dashboard": "Dashboard",
+      "news": "News"
+    },
+    "dashboard": {
+      "title": "Admin panel",
+      "subtitle": "Protected content management area for Ataraksia."
+    },
+    "news": {
+      "meta": {
+        "title": "Manage news"
+      },
+      "page": {
+        "title": "Manage news",
+        "subtitle": "News translation editing will be added with the multilingual content model."
+      }
+    }
+  },
+  "auth": {
+    "metaTitle": "Login and registration",
+    "back": "← Back to home",
+    "fields": {
+      "identifier": "Phone number or email",
+      "identifierPlaceholder": "+380..., 0... or name@example.com",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "phone": "Phone number",
+      "email": "Email",
+      "password": "Password"
+    },
+    "submitting": "Please wait...",
+    "login": {
+      "tab": "Login",
+      "title": "Login",
+      "subtitle": "Sign in to your account.",
+      "submit": "Login",
+      "success": "You have signed in successfully.",
+      "error": "Incorrect phone number, email, or password.",
+      "alternative": "Do not have an account yet?",
+      "alternativeLink": "Register"
+    },
+    "register": {
+      "tab": "Register",
+      "title": "Register",
+      "subtitle": "Create an account for future appointment booking.",
+      "submit": "Register",
+      "success": "Registration completed successfully.",
+      "contactHint": "Provide at least one contact: phone number or email.",
+      "contactRequired": "Enter a phone number or email to register.",
+      "passwordTitle": "Password requirements",
+      "passwordError": "The password does not meet the security requirements.",
+      "password": {
+        "length": "at least 12 characters",
+        "upper": "uppercase letter",
+        "lower": "lowercase letter",
+        "number": "number",
+        "special": "special character"
+      },
+      "existingAccount": "An account with these contact details already exists. Try signing in.",
+      "error": "Unable to register. Check your name, contact details, and password.",
+      "alternative": "Already have an account?",
+      "alternativeLink": "Login"
     }
   }
 }

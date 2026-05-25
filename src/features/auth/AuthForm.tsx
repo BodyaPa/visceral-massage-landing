@@ -57,21 +57,21 @@ export default function AuthForm({initialMode = "login"}: Props) {
         setSubmitting(true);
 
         try {
-            const user = mode === "login"
-                ? await login({
+            await (mode === "login"
+                ? login({
                     identifier: String(formData.get("identifier") ?? "").trim(),
                     password
                 })
-                : await register({
+                : register({
                     phone: phone || undefined,
                     email: email || undefined,
                     firstName: String(formData.get("firstName") ?? "").trim(),
                     lastName: String(formData.get("lastName") ?? "").trim(),
                     password
-                });
+                }));
 
             toast.success(t(`${mode}.success`));
-            router.replace(withLocale(user.role === "ADMIN" ? "/admin" : "/", locale));
+            router.replace(withLocale("/", locale));
             router.refresh();
         } catch (requestError) {
             let message: string;
@@ -100,7 +100,8 @@ export default function AuthForm({initialMode = "login"}: Props) {
 
     return (
         <form
-            className="w-full max-w-xl space-y-4 rounded-2xl border border-stone-200/80 bg-stone-50/95 p-5 shadow-2xl backdrop-blur-sm sm:p-7"
+            className="auth-card w-full max-w-xl space-y-4 rounded-2xl border border-stone-200/80 bg-stone-50/95 p-5 shadow-2xl backdrop-blur-sm sm:p-7"
+            key={mode}
             onSubmit={handleSubmit}
         >
             <Link

@@ -97,4 +97,70 @@ describe("client authentication requests", () => {
             })
         );
     });
+
+    it("restores the visible user session through the refresh cookie when access expires", async () => {
+        const user = {id: 1, phone: null, email: "admin@example.com", firstName: "Admin", lastName: "User", role: "ADMIN"};
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce(new Response(null, {status: 401}))
+            .mockResolvedValueOnce(new Response(
+                JSON.stringify({token: "refresh-token"}),
+                {status: 200, headers: {"Content-Type": "application/json"}}
+            ))
+            .mockResolvedValueOnce(new Response(null, {status: 204}))
+            .mockResolvedValueOnce(new Response(
+                JSON.stringify(user),
+                {status: 200, headers: {"Content-Type": "application/json"}}
+            ));
+        vi.stubGlobal("fetch", fetchMock);
+
+        const {getCurrentUser} = await import("./auth.client");
+
+        await expect(getCurrentUser()).resolves.toEqual(user);
+        expect(fetchMock).toHaveBeenNthCalledWith(
+            3,
+            "http://localhost:8080/api/auth/refresh",
+            expect.objectContaining({
+                method: "POST",
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-XSRF-TOKEN": "refresh-token"
+                }
+            })
+        );
+    });
+
+    it("shares one rotating refresh request between concurrent session restorations", async () => {
+        const user = {id: 2, phone: null, email: null, firstName: "Iryna", lastName: "Koval", role: "USER"};
+        let resolveRefresh: ((response: Response) => void) | undefined;
+        const refreshResponse = new Promise<Response>((resolve) => {
+            resolveRefresh = resolve;
+        });
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce(new Response(null, {status: 401}))
+            .mockResolvedValueOnce(new Response(null, {status: 401}))
+            .mockResolvedValueOnce(new Response(
+                JSON.stringify({token: "single-refresh-token"}),
+                {status: 200, headers: {"Content-Type": "application/json"}}
+            ))
+            .mockImplementationOnce(() => refreshResponse)
+            .mockResolvedValueOnce(new Response(
+                JSON.stringify(user),
+                {status: 200, headers: {"Content-Type": "application/json"}}
+            ))
+            .mockResolvedValueOnce(new Response(
+                JSON.stringify(user),
+                {status: 200, headers: {"Content-Type": "application/json"}}
+            ));
+        vi.stubGlobal("fetch", fetchMock);
+
+        const {getCurrentUser} = await import("./auth.client");
+        const requests = [getCurrentUser(), getCurrentUser()];
+
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+        resolveRefresh?.(new Response(null, {status: 204}));
+
+        await expect(Promise.all(requests)).resolves.toEqual([user, user]);
+        expect(fetchMock.mock.calls.filter(([url]) => url === "http://localhost:8080/api/auth/refresh")).toHaveLength(1);
+    });
 });

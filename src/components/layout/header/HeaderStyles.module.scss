@@ -36,7 +36,10 @@
 .buttonInner {
   pointer-events: auto;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 0.8rem;
+  max-width: calc(100vw - 2rem);
   padding: 0.75rem 1rem;
   border-radius: 50px;
   background: rgba(0, 0, 0, 0.25);
@@ -170,6 +173,41 @@
 .accountMenuLight .accountMenuLink:hover,
 .accountMenuLight .accountMenuButton:hover {
   background: rgba(231, 229, 228, 0.75);
+}
+
+.managementIdentity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.9rem;
+  color: #fff;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 18px;
+  white-space: nowrap;
+}
+
+.managementIdentity.accountMenuLight {
+  color: #292524;
+}
+
+.managementLogout {
+  border: 1px solid rgba(214, 211, 209, 0.9);
+  border-radius: 9px;
+  padding: 0.4rem 0.7rem;
+  background: rgba(255, 255, 255, 0.55);
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 180ms ease, border-color 180ms ease, opacity 180ms ease;
+}
+
+.managementLogout:hover {
+  background: rgba(231, 229, 228, 0.75);
+}
+
+.managementLogout:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .accountTrigger {

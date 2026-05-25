@@ -1,6 +1,7 @@
 import {fetchBaseQuery, type BaseQueryFn, type FetchArgs, type FetchBaseQueryError} from "@reduxjs/toolkit/query/react";
 import { API_URL } from "@/shared/constants/env";
 import {clearCsrfToken, CSRF_HEADER_NAME, getCsrfToken} from "@/shared/api/csrf";
+import {refreshSession} from "@/features/auth/auth.client";
 
 const rawBaseQuery = fetchBaseQuery({
     baseUrl: `${API_URL}/api`,
@@ -31,21 +32,35 @@ async function sendProtectedRequest(
     return rawBaseQuery({...args, headers}, api, extraOptions);
 }
 
+function isAuthenticationError(result: {error?: FetchBaseQueryError}) {
+    return result.error?.status === 401 || result.error?.status === 403;
+}
+
 export const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
     args,
     api,
     extraOptions
 ) => {
-    if (!requiresCsrfToken(args) || typeof args === "string") {
-        return rawBaseQuery(args, api, extraOptions);
-    }
-
     try {
-        let result = await sendProtectedRequest(args, api, extraOptions);
+        const protectedMutation = requiresCsrfToken(args) && typeof args !== "string";
+        let result = protectedMutation
+            ? await sendProtectedRequest(args, api, extraOptions)
+            : await rawBaseQuery(args, api, extraOptions);
 
-        if (result.error?.status === 403) {
+        if (protectedMutation && result.error?.status === 403) {
             clearCsrfToken();
             result = await sendProtectedRequest(args, api, extraOptions);
+        }
+
+        if (isAuthenticationError(result)) {
+            try {
+                await refreshSession();
+                result = protectedMutation
+                    ? await sendProtectedRequest(args, api, extraOptions)
+                    : await rawBaseQuery(args, api, extraOptions);
+            } catch {
+                // Keep the original unauthorized response when the refresh session is unavailable.
+            }
         }
 
         return result;

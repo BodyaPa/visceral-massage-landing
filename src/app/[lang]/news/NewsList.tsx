@@ -10,6 +10,7 @@ import {withLocale} from "@/shared/lib/locale/withLocale";
 import styles from "./NewsComponent.module.scss";
 import {useListNewsQuery} from "@/features/news/news.api";
 import {getCurrentUser} from "@/features/auth/auth.client";
+import AuthenticatedLink from "@/features/auth/AuthenticatedLink";
 
 function TextPreview({content}: { content: string }) {
     const parts = content.split("\n");
@@ -91,14 +92,16 @@ export default function NewsList() {
 
                 {canCreateNews ? (
                     <aside className={styles.adminPanel} aria-label={adminNewsT("title")}>
-                        <Link
+                        <AuthenticatedLink
                             aria-label={adminNewsT("createAction")}
                             className={styles.createNewsButton}
+                            fallbackHref={withLocale("/auth?mode=login", lang)}
                             href={withLocale("/admin/news", lang)}
+                            onSessionExpired={() => setCanCreateNews(false)}
                         >
                             <span aria-hidden="true">+</span>
                             <span>{adminNewsT("createAction")}</span>
-                        </Link>
+                        </AuthenticatedLink>
                     </aside>
                 ) : null}
             </div>

@@ -1,5 +1,4 @@
 import type {ReactNode} from "react";
-import Link from "next/link";
 import {Suspense} from "react";
 import {getTranslations} from "next-intl/server";
 import {requireAdmin} from "@/features/auth/auth.server";
@@ -7,6 +6,8 @@ import type {Locale} from "@/i18n";
 import {withLocale} from "@/shared/lib/locale/withLocale";
 import LanguageSwitcher from "@/components/common/LanguageSwitcher";
 import AuthSessionPanel from "@/features/auth/AuthSessionPanel";
+import Link from "next/link";
+import AdminNavigation from "./AdminNavigation";
 
 type Props = {
     children: ReactNode;
@@ -22,28 +23,29 @@ export default async function AdminLayout({children, params}: Props) {
     const t = await getTranslations({locale, namespace: "admin"});
 
     return (
-        <main className="fixed inset-0 z-[5] overflow-y-auto p-4 sm:p-6">
-            <div className="flex min-h-full w-full items-center justify-center py-12">
-                <div className="w-full max-w-6xl space-y-5 rounded-2xl border border-stone-200/80 bg-stone-50/95 p-5 shadow-2xl backdrop-blur-sm sm:p-7">
-                    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 pb-4">
-                        <nav className="flex flex-wrap items-center gap-4" aria-label={t("navigation.label")}>
-                            <Link className="font-medium text-stone-900 hover:underline" href={withLocale("/admin", locale)}>
-                                {t("navigation.dashboard")}
-                            </Link>
-                            <Link className="font-medium text-stone-900 hover:underline" href={withLocale("/admin/news", locale)}>
-                                {t("navigation.news")}
-                            </Link>
-                        </nav>
-                        <div className="flex items-center gap-4">
-                            <Suspense fallback={null}>
-                                <LanguageSwitcher />
-                            </Suspense>
-                            <AuthSessionPanel loading={false} tone="light" user={user} />
-                        </div>
+        <main className="fixed inset-0 z-[5] overflow-y-auto p-3 sm:p-5">
+            <section className="management-workspace mx-auto flex min-h-[calc(100vh-1.5rem)] w-full max-w-[1440px] flex-col rounded-2xl border border-stone-200/80 bg-stone-50/95 shadow-2xl backdrop-blur-sm sm:min-h-[calc(100vh-2.5rem)]">
+                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 px-4 py-4 sm:px-6">
+                    <Link
+                        className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100"
+                        href={withLocale("/", locale)}
+                    >
+                        {t("navigation.home")}
+                    </Link>
+                    <div className="flex items-center gap-4">
+                        <Suspense fallback={null}>
+                            <LanguageSwitcher requiresSession tone="light" />
+                        </Suspense>
+                        <AuthSessionPanel loading={false} tone="light" user={user} variant="management" />
                     </div>
-                    <section>{children}</section>
                 </div>
-            </div>
+                <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 sm:p-6 md:grid-cols-[200px_minmax(0,1fr)]">
+                    <AdminNavigation locale={locale} />
+                    <div className="management-content min-w-0">
+                        {children}
+                    </div>
+                </div>
+            </section>
         </main>
     );
 }

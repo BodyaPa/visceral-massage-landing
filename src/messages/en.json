@@ -8,6 +8,7 @@
     "login": "Login",
     "register": "Register",
     "admin": "Admin",
+    "manageNews": "Manage news",
     "personalAccount": "Personal account",
     "logout": "Logout",
     "loggingOut": "Signing out...",
@@ -58,7 +59,9 @@
     },
     "title": "Personal account",
     "subtitle": "Your appointments and profile management will be available here.",
-    "back": "← Back to home",
+    "back": "← Home",
+    "admin": "Admin",
+    "manageNews": "Manage news",
     "name": "Name",
     "nameUnavailable": "Name has not been provided yet"
   },
@@ -91,8 +94,10 @@
     },
     "navigation": {
       "label": "Administrator navigation",
-      "dashboard": "Dashboard",
-      "news": "News"
+      "home": "← Home",
+      "dashboard": "Admin",
+      "news": "Manage news",
+      "account": "Personal account"
     },
     "dashboard": {
       "title": "Admin panel",
@@ -109,11 +114,13 @@
       },
       "editor": {
         "new": "New item",
+        "items": "Your news items",
         "loading": "Loading news...",
         "empty": "There are no news items yet.",
         "untitled": "Untitled",
         "createTitle": "Create news item",
         "editTitle": "Edit news item",
+        "formHint": "Choose a language version and compose the news content.",
         "versions": "News language versions",
         "ukrainian": "Українська версія",
         "english": "English version",

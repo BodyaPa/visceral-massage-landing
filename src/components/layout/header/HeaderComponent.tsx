@@ -10,7 +10,9 @@ import { ButtonConfig } from "@/components/layout/header/classes/ButtonConfig";
 import SliderComponent from "@/components/layout/slider/SliderComponent";
 import LanguageSwitcher from '@/components/common/LanguageSwitcher';
 import AuthSessionPanel from "@/features/auth/AuthSessionPanel";
-import {getCurrentUser, type AuthenticatedUser} from "@/features/auth/auth.client";
+import {getCurrentUser, refreshSession, type AuthenticatedUser} from "@/features/auth/auth.client";
+
+const SESSION_KEEP_ALIVE_INTERVAL_MS = 10 * 60 * 1000;
 
 export default function HeaderComponent() {
     const t = useTranslations("nav");
@@ -58,6 +60,27 @@ export default function HeaderComponent() {
             active = false;
         };
     }, [pathname]);
+
+    useEffect(() => {
+        if (!user) {
+            return;
+        }
+
+        const keepSessionAlive = () => {
+            if (document.visibilityState !== "visible") {
+                return;
+            }
+
+            refreshSession().catch(() => {
+                setUser(null);
+            });
+        };
+        const interval = window.setInterval(keepSessionAlive, SESSION_KEEP_ALIVE_INTERVAL_MS);
+
+        return () => {
+            window.clearInterval(interval);
+        };
+    }, [user]);
 
     useEffect(() => {
         const onScroll = () => {
@@ -119,7 +142,7 @@ export default function HeaderComponent() {
             {usesBackgroundSlider ? null : <div className={styles.userBlock}>
                 <div className={styles.userPanel}>
                     <Suspense fallback={null}>
-                            <LanguageSwitcher />
+                            <LanguageSwitcher requiresSession={isManagementPage} />
                     </Suspense>
                     <AuthSessionPanel key={locale} user={user} loading={sessionLoading} onLogout={() => setUser(null)} />
                 </div>

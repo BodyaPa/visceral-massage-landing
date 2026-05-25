@@ -131,32 +131,35 @@ export default function AdminNewsEditor() {
     }
 
     return (
-        <div className="grid gap-6 xl:grid-cols-[280px_1fr]">
-            <aside className="space-y-3 rounded-xl border border-stone-200 bg-stone-50 p-4">
-                <button
-                    className="w-full rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-white"
-                    onClick={createNew}
-                    type="button"
-                >
-                    {t("new")}
-                </button>
+        <div className="grid items-start gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <aside className="space-y-3 rounded-xl border border-stone-200/90 bg-white/[.92] p-4 shadow-sm lg:sticky lg:top-6">
+                <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-stone-700">{t("items")}</p>
+                    <button
+                        className="rounded-full bg-stone-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-stone-700"
+                        onClick={createNew}
+                        type="button"
+                    >
+                        + {t("new")}
+                    </button>
+                </div>
 
                 {isLoading ? <p className="text-sm text-stone-600">{t("loading")}</p> : null}
                 {!isLoading && news.length === 0 ? <p className="text-sm text-stone-600">{t("empty")}</p> : null}
 
-                <div className="space-y-2">
+                <div className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
                     {news.map((item) => (
                         <button
-                            className={`w-full rounded-md border px-3 py-2 text-left text-sm transition ${
+                            className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition ${
                                 selectedId === item.id
-                                    ? "border-stone-900 bg-white"
-                                    : "border-stone-200 bg-stone-100 hover:bg-white"
+                                    ? "border-stone-900 bg-white shadow-sm"
+                                    : "border-stone-200 bg-stone-50 hover:bg-white"
                             }`}
                             key={item.id}
                             onClick={() => selectNews(item)}
                             type="button"
                         >
-                            <span className="block font-medium text-stone-900">
+                            <span className="block truncate font-medium text-stone-900">
                                 {item.titleUa ?? item.titleEn ?? t("untitled")}
                             </span>
                             <span className="block text-xs text-stone-500">
@@ -167,10 +170,13 @@ export default function AdminNewsEditor() {
                 </div>
             </aside>
 
-            <form className="space-y-5 rounded-xl border border-stone-200 bg-white p-5" onSubmit={submit}>
-                <h2 className="text-xl font-semibold">
-                    {selectedId === null ? t("createTitle") : t("editTitle")}
-                </h2>
+            <form className="min-w-0 space-y-5 rounded-xl border border-stone-200 bg-white/[.92] p-5 shadow-sm sm:p-6" onSubmit={submit}>
+                <div>
+                    <h2 className="text-xl font-semibold">
+                        {selectedId === null ? t("createTitle") : t("editTitle")}
+                    </h2>
+                    <p className="mt-1 text-sm text-stone-500">{t("formHint")}</p>
+                </div>
 
                 <div className="flex gap-2 border-b border-stone-200 pb-3" role="tablist" aria-label={t("versions")}>
                     <LanguageTab

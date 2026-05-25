@@ -5,6 +5,7 @@ import {useParams} from 'next/navigation';
 import styles from './ButtonStyles.module.scss';
 import {withLocale} from '@/shared/lib/locale/withLocale';
 import type {Locale} from '@/i18n';
+import AuthenticatedLink from '@/features/auth/AuthenticatedLink';
 
 type ButtonProps = {
     text: string;
@@ -48,6 +49,20 @@ export default function ButtonComponent({
                     {text}
                 </span>
             </button>
+        );
+    }
+
+    if (url && ["/calendar", "/account", "/admin", "/admin/news"].includes(url)) {
+        return (
+            <AuthenticatedLink
+                className={className}
+                fallbackHref={withLocale("/auth?mode=login", lang)}
+                href={href}
+            >
+                <span key={localeKey} className={styles.labelAnimated}>
+                    {text}
+                </span>
+            </AuthenticatedLink>
         );
     }
 

@@ -10,6 +10,8 @@ import {
     prepareLocaleSwitchScrollRestore,
     restoreScrollAfterNavigation
 } from "@/shared/lib/scroll/scrollManager";
+import {withLocale} from "@/shared/lib/locale/withLocale";
+import {getCurrentUser} from "@/features/auth/auth.client";
 
 
 function replaceLocaleInPath(pathname: string, newLocale: Locale) {
@@ -22,7 +24,12 @@ function replaceLocaleInPath(pathname: string, newLocale: Locale) {
     return segments.join("/") || `/${newLocale}`;
 }
 
-export default function LanguageSwitcher() {
+type Props = {
+    requiresSession?: boolean;
+    tone?: "dark" | "light";
+};
+
+export default function LanguageSwitcher({requiresSession = false, tone = "dark"}: Props) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -62,13 +69,25 @@ export default function LanguageSwitcher() {
         setDisplayLocale(newLocale);
         prepareLocaleSwitchScrollRestore();
 
-        timeoutRef.current = window.setTimeout(() => {
+        timeoutRef.current = window.setTimeout(async () => {
+            if (requiresSession) {
+                try {
+                    if (!await getCurrentUser()) {
+                        router.replace(withLocale("/auth?mode=login", newLocale));
+                        return;
+                    }
+                } catch {
+                    router.replace(withLocale("/auth?mode=login", newLocale));
+                    return;
+                }
+            }
+
             router.replace(href, {scroll: false});
         }, 180);
     }
 
     return (
-        <div className={styles.switcher}>
+        <div className={`${styles.switcher} ${tone === "light" ? styles.light : ""}`}>
             <div
                 className={`${styles.thumb} ${
                     displayLocale === "en" ? styles.thumbEn : styles.thumbUa

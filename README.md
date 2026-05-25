@@ -58,6 +58,15 @@ character. Auth mutations retry once with a freshly issued CSRF token if a
 stale token/cookie pair is rejected. Legacy `/login` and `/register` routes
 redirect to the corresponding mode.
 
+Access cookies remain short-lived. If one expires while the long-lived
+refresh cookie is still valid, frontend session checks and authenticated API
+requests call `POST /api/auth/refresh` with CSRF protection, accept the
+rotated `HttpOnly` cookies, and retry once. The browser does not persist or
+read JWT values. Navigation into server-protected pages also checks and
+restores the session before the server-side role guard is evaluated. An open,
+visible authenticated page refreshes the session before the 15-minute access
+cookie expires, so an idle tab does not lose its valid refresh session.
+
 ## UI Notifications
 
 `ToastProvider` is mounted in the localized layout above both the header and

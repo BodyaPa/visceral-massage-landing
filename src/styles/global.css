@@ -19,3 +19,34 @@ main {
   width: 100%;
   display: block;
 }
+
+.management-workspace {
+  transition: background-color 220ms ease, box-shadow 220ms ease;
+}
+
+.auth-card {
+  animation: content-enter 200ms ease-out both;
+}
+
+@keyframes content-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .management-workspace {
+    animation: none;
+    transition: none;
+  }
+
+  .auth-card {
+    animation: none;
+  }
+}

@@ -77,4 +77,39 @@ describe("baseQuery", () => {
         const retryRequest = fetchMock.mock.calls[3][0] as Request;
         expect(retryRequest.headers.get("X-XSRF-TOKEN")).toBe("fresh-token");
     });
+
+    it("refreshes an expired access session before retrying an admin query", async () => {
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce(new Response(null, {status: 401}))
+            .mockResolvedValueOnce(new Response(
+                JSON.stringify({token: "session-token"}),
+                {status: 200, headers: {"Content-Type": "application/json"}}
+            ))
+            .mockResolvedValueOnce(new Response(null, {status: 204}))
+            .mockResolvedValueOnce(new Response(
+                JSON.stringify({content: []}),
+                {status: 200, headers: {"Content-Type": "application/json"}}
+            ));
+        vi.stubGlobal("fetch", fetchMock);
+
+        const {baseQuery} = await import("./baseQuery");
+
+        const result = await baseQuery(
+            "/admin/news?page=0&size=50",
+            {
+                signal: new AbortController().signal,
+                abort: vi.fn(),
+                dispatch: vi.fn(),
+                getState: vi.fn(),
+                extra: undefined,
+                endpoint: "listAdminNews",
+                type: "query",
+                forced: false
+            },
+            {}
+        );
+
+        expect(result).toMatchObject({data: {content: []}});
+        expect(fetchMock).toHaveBeenCalledTimes(4);
+    });
 });

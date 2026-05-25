@@ -27,9 +27,11 @@ export default async function AdminNewsPage({params}: Props) {
     const t = await getTranslations({locale, namespace: "admin.news.page"});
 
     return (
-        <div className="space-y-4">
-            <h1 className="text-3xl font-bold">{t("title")}</h1>
-            <p className="max-w-2xl text-base text-stone-600">{t("subtitle")}</p>
+        <div className="mx-auto w-full max-w-[1320px] space-y-5">
+            <section className="space-y-3">
+                <h1 className="text-3xl font-bold">{t("title")}</h1>
+                <p className="max-w-2xl text-base text-stone-600">{t("subtitle")}</p>
+            </section>
             <AdminNewsEditor />
         </div>
     );

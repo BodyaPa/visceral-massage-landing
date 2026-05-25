@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {useEffect, useRef, useState} from "react";
 import {useRouter} from "next/navigation";
 import {useLocale, useTranslations} from "next-intl";
@@ -9,15 +8,18 @@ import {withLocale} from "@/shared/lib/locale/withLocale";
 import styles from "@/components/layout/header/HeaderStyles.module.scss";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {logout, type AuthenticatedUser} from "./auth.client";
+import AuthenticatedLink from "./AuthenticatedLink";
+import Link from "next/link";
 
 type Props = {
     user: AuthenticatedUser | null;
     loading: boolean;
     onLogout?: () => void;
     tone?: "dark" | "light";
+    variant?: "menu" | "management";
 };
 
-export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"}: Props) {
+export default function AuthSessionPanel({user, loading, onLogout, tone = "dark", variant = "menu"}: Props) {
     const locale = useLocale() as Locale;
     const t = useTranslations("nav");
     const router = useRouter();
@@ -25,8 +27,15 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
     const [submitting, setSubmitting] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement | null>(null);
+    const displayName = user
+        ? [user.firstName, user.lastName].filter(Boolean).join(" ") || t("account")
+        : "";
 
     useEffect(() => {
+        if (variant !== "menu") {
+            return;
+        }
+
         function closeOnOutsideClick(event: MouseEvent) {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
                 setMenuOpen(false);
@@ -46,7 +55,7 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
             document.removeEventListener("mousedown", closeOnOutsideClick);
             document.removeEventListener("keydown", closeOnEscape);
         };
-    }, []);
+    }, [variant]);
 
     async function handleLogout() {
         setSubmitting(true);
@@ -76,6 +85,22 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
         );
     }
 
+    if (variant === "management") {
+        return (
+            <div className={`${styles.managementIdentity} ${tone === "light" ? styles.accountMenuLight : ""}`}>
+                <span className={styles.accountText}>{displayName}</span>
+                <button
+                    className={styles.managementLogout}
+                    disabled={submitting}
+                    onClick={handleLogout}
+                    type="button"
+                >
+                    {submitting ? t("loggingOut") : t("logout")}
+                </button>
+            </div>
+        );
+    }
+
     return (
         <div className={`${styles.accountMenu} ${tone === "light" ? styles.accountMenuLight : ""}`} ref={menuRef}>
             <button
@@ -85,20 +110,41 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
                 onClick={() => setMenuOpen((current) => !current)}
                 type="button"
             >
-                <span className={styles.accountText}>
-                    {[user.firstName, user.lastName].filter(Boolean).join(" ") || t("account")}
-                </span>
+                <span className={styles.accountText}>{displayName}</span>
                 <span aria-hidden="true" className={`${styles.accountChevron} ${menuOpen ? styles.isOpen : ""}`} />
             </button>
             {menuOpen ? (
                 <div className={styles.accountDropdown} role="menu">
-                    <Link className={styles.accountMenuLink} href={withLocale("/account", locale)} role="menuitem">
+                    <AuthenticatedLink
+                        className={styles.accountMenuLink}
+                        fallbackHref={withLocale("/auth?mode=login", locale)}
+                        href={withLocale("/account", locale)}
+                        onSessionExpired={onLogout}
+                        role="menuitem"
+                    >
                         {t("personalAccount")}
-                    </Link>
+                    </AuthenticatedLink>
                     {user.role === "ADMIN" ? (
-                        <Link className={styles.accountMenuLink} href={withLocale("/admin", locale)} role="menuitem">
-                            {t("admin")}
-                        </Link>
+                        <>
+                            <AuthenticatedLink
+                                className={styles.accountMenuLink}
+                                fallbackHref={withLocale("/auth?mode=login", locale)}
+                                href={withLocale("/admin", locale)}
+                                onSessionExpired={onLogout}
+                                role="menuitem"
+                            >
+                                {t("admin")}
+                            </AuthenticatedLink>
+                            <AuthenticatedLink
+                                className={styles.accountMenuLink}
+                                fallbackHref={withLocale("/auth?mode=login", locale)}
+                                href={withLocale("/admin/news", locale)}
+                                onSessionExpired={onLogout}
+                                role="menuitem"
+                            >
+                                {t("manageNews")}
+                            </AuthenticatedLink>
+                        </>
                     ) : null}
                     <button
                         className={styles.accountMenuButton}

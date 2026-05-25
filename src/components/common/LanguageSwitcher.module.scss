@@ -62,3 +62,23 @@
 .active {
   color: #fff;
 }
+
+.light {
+  background: rgba(231, 229, 228, 0.8);
+}
+
+.light .thumb {
+  background: #fff;
+  box-shadow:
+          0 2px 7px rgba(41, 37, 36, 0.12),
+          inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.light .langButton {
+  color: rgba(87, 83, 78, 0.82);
+}
+
+.light .langButton:hover,
+.light .active {
+  color: #1c1917;
+}

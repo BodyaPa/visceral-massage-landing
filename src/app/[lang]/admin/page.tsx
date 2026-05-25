@@ -26,9 +26,9 @@ export default async function AdminPage({params}: Props) {
     const t = await getTranslations({locale, namespace: "admin.dashboard"});
 
     return (
-        <div className="space-y-4">
+        <section className="w-full max-w-4xl space-y-4 rounded-2xl border border-stone-200 bg-white/90 p-6 shadow-sm sm:p-8">
             <h1 className="text-3xl font-bold">{t("title")}</h1>
             <p className="max-w-2xl text-base text-stone-600">{t("subtitle")}</p>
-        </div>
+        </section>
     );
 }

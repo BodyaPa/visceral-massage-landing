@@ -41,8 +41,8 @@ export default function NewsRichTextEditor({value, ariaLabel, labels, onChange}:
     }
 
     return (
-        <div className="overflow-hidden rounded-md border border-stone-300 bg-white">
-            <div className="flex flex-wrap gap-1 border-b border-stone-200 bg-stone-100 p-2">
+        <div className="overflow-hidden rounded-lg border border-stone-300 bg-white shadow-inner transition focus-within:border-stone-500 focus-within:ring-1 focus-within:ring-stone-400">
+            <div className="flex flex-wrap gap-1.5 border-b border-stone-200 bg-stone-50 p-2.5">
                 <ToolbarButton active={editor.isActive("bold")} label={labels.bold} onClick={() => editor.chain().focus().toggleBold().run()}>
                     <strong>B</strong>
                 </ToolbarButton>
@@ -53,10 +53,10 @@ export default function NewsRichTextEditor({value, ariaLabel, labels, onChange}:
                     H2
                 </ToolbarButton>
                 <ToolbarButton active={editor.isActive("bulletList")} label={labels.bulletList} onClick={() => editor.chain().focus().toggleBulletList().run()}>
-                    • List
+                    &bull;
                 </ToolbarButton>
                 <ToolbarButton active={editor.isActive("orderedList")} label={labels.orderedList} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
-                    1. List
+                    1.
                 </ToolbarButton>
                 <ToolbarButton active={editor.isActive("blockquote")} label={labels.blockquote} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
                     &quot;&quot;
@@ -64,7 +64,7 @@ export default function NewsRichTextEditor({value, ariaLabel, labels, onChange}:
             </div>
             <EditorContent
                 aria-label={ariaLabel}
-                className="[&_.ProseMirror]:min-h-40 [&_.ProseMirror]:px-3 [&_.ProseMirror]:py-2 [&_.ProseMirror]:outline-none [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_blockquote]:border-l-4 [&_.ProseMirror_blockquote]:border-stone-300 [&_.ProseMirror_blockquote]:pl-3 [&_.ProseMirror_blockquote]:text-stone-600"
+                className="[&_.ProseMirror]:min-h-56 [&_.ProseMirror]:px-4 [&_.ProseMirror]:py-3 [&_.ProseMirror]:text-base [&_.ProseMirror]:leading-7 [&_.ProseMirror]:outline-none [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_blockquote]:border-l-4 [&_.ProseMirror_blockquote]:border-stone-300 [&_.ProseMirror_blockquote]:pl-3 [&_.ProseMirror_blockquote]:text-stone-600"
                 editor={editor}
             />
         </div>

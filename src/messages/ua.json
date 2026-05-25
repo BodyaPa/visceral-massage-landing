@@ -67,7 +67,9 @@
     },
     "page": {
       "title": "Новини",
-      "subtitle": "Слідкуйте за новинами, публікаціями та оновленнями Ataraksia."
+      "subtitle": "Слідкуйте за новинами, публікаціями та оновленнями Ataraksia.",
+      "translationUnavailableTitle": "Переклад цієї новини ще недоступний",
+      "translationUnavailableContent": "Ця новина поки не має української версії."
     }
   },
   "admin": {

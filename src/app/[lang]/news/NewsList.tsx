@@ -3,6 +3,7 @@
 import {useRef} from "react";
 import Link from "next/link";
 import {useParams} from "next/navigation";
+import {useTranslations} from "next-intl";
 import ReactMarkdown from "react-markdown";
 import type {Locale} from "@/i18n";
 import {withLocale} from "@/shared/lib/locale/withLocale";
@@ -18,9 +19,10 @@ function TextPreview({content}: { content: string }) {
 
 export default function NewsList() {
     const contentRef = useRef<HTMLDivElement | null>(null);
-    const {data, isLoading} = useListNewsQuery({page: 0, size: 10});
     const params = useParams();
     const lang = params.lang as Locale;
+    const t = useTranslations("news.page");
+    const {data, isLoading} = useListNewsQuery({lang, page: 0, size: 10});
 
     const news = data?.content ?? [];
 
@@ -56,8 +58,12 @@ export default function NewsList() {
                         }}
                     >
                         <div className={styles.previewNewsBlock}>
-                            <h2 className={styles.title}>{news.title}</h2>
-                            {news.content ? <TextPreview content={news.content} /> : null}
+                            <h2 className={styles.title}>
+                                {news.translationAvailable ? news.title : t("translationUnavailableTitle")}
+                            </h2>
+                            {news.translationAvailable && news.content
+                                ? <TextPreview content={news.content} />
+                                : <p>{t("translationUnavailableContent")}</p>}
                         </div>
                     </Link>
                 ))}

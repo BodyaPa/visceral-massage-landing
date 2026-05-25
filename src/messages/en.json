@@ -67,7 +67,9 @@
     },
     "page": {
       "title": "News",
-      "subtitle": "Follow the latest news, publications, and updates from Ataraksia."
+      "subtitle": "Follow the latest news, publications, and updates from Ataraksia.",
+      "translationUnavailableTitle": "Translation not available yet",
+      "translationUnavailableContent": "This news item does not have an English version yet."
     }
   },
   "admin": {

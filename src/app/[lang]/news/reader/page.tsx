@@ -1,8 +1,10 @@
 "use client";
 
 import {Suspense, useCallback, useRef} from "react";
-import {useSearchParams} from "next/navigation";
+import {useParams, useSearchParams} from "next/navigation";
+import {useTranslations} from "next-intl";
 import {useGetNewsQuery} from "@/features/news/news.api";
+import type {Locale} from "@/i18n";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import styles from "./reader.module.scss";
@@ -11,12 +13,15 @@ import {useSmartAutoScroll} from "@/shared/lib/scroll/useSmartAutoScroll";
 function NewsReaderContent() {
     const contentRef = useRef<HTMLDivElement | null>(null);
     const cardRef = useRef<HTMLElement | null>(null);
+    const params = useParams();
+    const lang = params.lang as Locale;
+    const t = useTranslations("news.page");
 
     const sp = useSearchParams();
     const idParam = sp.get("id");
     const id = idParam ? Number(idParam) : null;
 
-    const {data, isLoading} = useGetNewsQuery(id ?? 0, {skip: id === null});
+    const {data, isLoading} = useGetNewsQuery({id: id ?? 0, lang}, {skip: id === null});
 
     const scrollToCard = useCallback(() => {
         const el = cardRef.current;
@@ -47,8 +52,13 @@ function NewsReaderContent() {
         );
     }
 
-    const title = data?.title ?? "";
-    const markdown = data?.content ?? "";
+    const translationAvailable = data?.translationAvailable ?? false;
+    const title = data
+        ? translationAvailable ? data.title ?? "" : t("translationUnavailableTitle")
+        : "";
+    const markdown = data
+        ? translationAvailable ? data.content ?? "" : t("translationUnavailableContent")
+        : "";
 
     return (
         <div ref={contentRef} className={styles.content}>
@@ -72,4 +82,3 @@ export default function NewsReaderPage() {
         </Suspense>
     );
 }
-

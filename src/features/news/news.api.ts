@@ -1,17 +1,23 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { baseQuery } from "@/shared/api/baseQuery";
-import type { NewsItem, NewsId, PageResponse } from "@/types/news";
+import type { Locale } from "@/i18n";
+import type { NewsAdminItem, NewsItem, NewsId, PageResponse } from "@/types/news";
 
-export interface CreateNewsDto { title: string; content: string; }
-export interface UpdateNewsDto { title?: string; content?: string; }
+export interface CreateNewsDto {
+    titleUa?: string;
+    contentUa?: string;
+    titleEn?: string;
+    contentEn?: string;
+}
+export type UpdateNewsDto = CreateNewsDto;
 
 export const newsApi = createApi({
     reducerPath: "newsApi",
     baseQuery,
     tagTypes: ["News"],
     endpoints: (build) => ({
-        listNews: build.query<PageResponse<NewsItem>, { page?: number; size?: number }>({
-            query: ({ page = 0, size = 10 } = {}) => `/news?page=${page}&size=${size}`,
+        listNews: build.query<PageResponse<NewsItem>, { lang: Locale; page?: number; size?: number }>({
+            query: ({ lang, page = 0, size = 10 }) => `/news?lang=${lang}&page=${page}&size=${size}`,
             providesTags: (result) =>
                 result
                     ? [
@@ -21,22 +27,22 @@ export const newsApi = createApi({
                     : [{ type: "News" as const, id: "LIST" }],
         }),
 
-        getNews: build.query<NewsItem, NewsId>({
-            query: (id) => `/news/${id}`,
-            providesTags: (result, error, id) => [{ type: "News", id }],
+        getNews: build.query<NewsItem, { id: NewsId; lang: Locale }>({
+            query: ({id, lang}) => `/news/${id}?lang=${lang}`,
+            providesTags: (result, error, {id}) => [{ type: "News", id }],
         }),
 
-        createNews: build.mutation<NewsItem, CreateNewsDto>({
+        createNews: build.mutation<NewsAdminItem, CreateNewsDto>({
             query: (body) => ({ url: `/admin/news`, method: "POST", body }),
             invalidatesTags: [{ type: "News", id: "LIST" }],
         }),
 
-        updateNewsPut: build.mutation<NewsItem, { id: NewsId; body: Required<UpdateNewsDto> }>({
+        updateNewsPut: build.mutation<NewsAdminItem, { id: NewsId; body: UpdateNewsDto }>({
             query: ({ id, body }) => ({ url: `/admin/news/${id}`, method: "PUT", body }),
             invalidatesTags: (result, error, { id }) => [{ type: "News", id }, { type: "News", id: "LIST" }],
         }),
 
-        updateNewsPatch: build.mutation<NewsItem, { id: NewsId; body: UpdateNewsDto }>({
+        updateNewsPatch: build.mutation<NewsAdminItem, { id: NewsId; body: UpdateNewsDto }>({
             query: ({ id, body }) => ({ url: `/admin/news/${id}`, method: "PATCH", body }),
             invalidatesTags: (result, error, { id }) => [{ type: "News", id }, { type: "News", id: "LIST" }],
         }),

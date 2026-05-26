@@ -39,6 +39,42 @@ describe("baseQuery", () => {
         expect(mutationRequest.headers.get("X-XSRF-TOKEN")).toBe("admin-token");
     });
 
+    it("keeps multipart uploads browser-encoded while adding CSRF protection", async () => {
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce(new Response(
+                JSON.stringify({token: "media-token"}),
+                {status: 200, headers: {"Content-Type": "application/json"}}
+            ))
+            .mockResolvedValueOnce(new Response(
+                JSON.stringify({id: "asset-id"}),
+                {status: 201, headers: {"Content-Type": "application/json"}}
+            ));
+        vi.stubGlobal("fetch", fetchMock);
+
+        const {baseQuery} = await import("./baseQuery");
+        const body = new FormData();
+        body.append("file", new Blob(["image"], {type: "image/png"}), "news.png");
+
+        await baseQuery(
+            {url: "/admin/media", method: "POST", body},
+            {
+                signal: new AbortController().signal,
+                abort: vi.fn(),
+                dispatch: vi.fn(),
+                getState: vi.fn(),
+                extra: undefined,
+                endpoint: "uploadMedia",
+                type: "mutation",
+                forced: false
+            },
+            {}
+        );
+
+        const uploadRequest = fetchMock.mock.calls[1][0] as Request;
+        expect(uploadRequest.headers.get("X-XSRF-TOKEN")).toBe("media-token");
+        expect(uploadRequest.headers.get("Content-Type")).toMatch(/^multipart\/form-data; boundary=/);
+    });
+
     it("retries an admin mutation once with a refreshed CSRF token after a forbidden response", async () => {
         const fetchMock = vi.fn()
             .mockResolvedValueOnce(new Response(

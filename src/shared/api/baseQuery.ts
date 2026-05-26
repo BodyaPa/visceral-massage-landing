@@ -6,8 +6,13 @@ import {refreshSession} from "@/features/auth/auth.client";
 const rawBaseQuery = fetchBaseQuery({
     baseUrl: `${API_URL}/api`,
     credentials: "include",
-    prepareHeaders: (headers) => {
-        headers.set("Content-Type", "application/json");
+    prepareHeaders: (headers, {arg}) => {
+        const body = typeof arg === "string" ? undefined : arg.body;
+
+        if (!(body instanceof FormData)) {
+            headers.set("Content-Type", "application/json");
+        }
+
         return headers;
     },
 });

@@ -83,6 +83,28 @@ Authentication currently uses this shared surface for login, registration and
 logout results. Messages passed to it must already be localized by the calling
 feature.
 
+## News Authoring
+
+The protected localized `/[lang]/admin/news` workspace is a compact CMS view:
+it creates an empty `DRAFT` through the ADMIN API before editing, exposes
+publish/unpublish/archive/restore actions, and keeps UA/EN content editing
+separate from preview. The inspector uses ADMIN-protected media previews for
+draft covers and inline images. Repeated create clicks are disabled while the
+request is in progress; a completely empty draft is reused, and only a
+never-published draft exposes the destructive cleanup action.
+
+Article Markdown stores relative published-media paths, not local backend host
+URLs. Public news pages show only backend-returned `PUBLISHED` translations and
+render a configured cover image when one exists. Covers use an explicit
+`coverDisplayMode`: `FILL` produces a landscape cover/hero treatment, while
+`FIT` preserves screenshot or vertical-image content. Items without a cover
+remain compact text cards and render no empty hero on the reader page.
+
+The news workspace gives the content editor priority: settings remain a third
+column only on wide displays and move below the editor on tighter laptop
+widths. UA/EN and Edit/Preview panels use a stable minimum working height with
+a short visual transition to avoid abrupt layout jumps.
+
 ## Production Start
 
 Build and run the Next.js server:

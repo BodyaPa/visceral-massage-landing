@@ -22,16 +22,10 @@ export async function generateMetadata({params}: Props): Promise<Metadata> {
 }
 
 export default async function AdminNewsPage({params}: Props) {
-    const {lang} = await params;
-    const locale = lang as Locale;
-    const t = await getTranslations({locale, namespace: "admin.news.page"});
+    await params;
 
     return (
-        <div className="mx-auto w-full max-w-[1320px] space-y-5">
-            <section className="space-y-3">
-                <h1 className="text-3xl font-bold">{t("title")}</h1>
-                <p className="max-w-2xl text-base text-stone-600">{t("subtitle")}</p>
-            </section>
+        <div className="mx-auto w-full max-w-[min(1580px,calc(100vw-2rem))]">
             <AdminNewsEditor />
         </div>
     );

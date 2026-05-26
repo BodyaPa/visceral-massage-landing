@@ -15,7 +15,27 @@
   border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.08);
   min-height: 70vh;
+  overflow: hidden;
+}
+
+.articleBody {
   padding: clamp(18px, 3vw, 36px);
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  background: #e7e5e4;
+}
+
+.fillHero {
+  height: clamp(224px, 31vw, 340px);
+  background: #f5f5f4;
+}
+
+.fitHero {
+  background: #e7e5e4;
 }
 
 .header {
@@ -30,6 +50,67 @@
   line-height: 1.15;
   letter-spacing: -0.02em;
   color: #111;
+}
+
+.heroBackdropImage {
+  position: absolute;
+  inset: -18px;
+  display: block;
+  width: calc(100% + 36px);
+  height: calc(100% + 36px);
+  object-fit: cover;
+  opacity: 0.42;
+  filter: blur(18px);
+  transform: scale(1.06);
+}
+
+.heroShade {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.fitImageFrame {
+  position: relative;
+  display: flex;
+  box-sizing: border-box;
+  min-height: 240px;
+  max-height: 420px;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 24px;
+}
+
+.coverImage {
+  display: block;
+}
+
+.fillImageFrame {
+  width: 100%;
+  height: 100%;
+}
+
+.fillImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fillShade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(0deg, rgba(28, 25, 23, 0.1) 0%, transparent 45%);
+}
+
+.fitImage {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 380px;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 3px 14px rgba(28, 25, 23, 0.09);
 }
 
 //markdown styles
@@ -132,6 +213,15 @@
   opacity: 0.75;
 }
 
+.markdown img {
+  display: block;
+  max-width: 100%;
+  max-height: 540px;
+  object-fit: contain;
+  margin: 20px auto;
+  border-radius: 10px;
+}
+
 // markdown end
 
 // skeleton
@@ -153,3 +243,20 @@
 }
 
 // skeleton end
+
+@media (max-width: 640px) {
+  .fillHero {
+    height: 224px;
+  }
+
+  .fitImageFrame {
+    min-height: 220px;
+    max-height: 420px;
+    padding: 14px;
+  }
+
+  .fitImage {
+    max-height: 360px;
+    border-radius: 9px;
+  }
+}

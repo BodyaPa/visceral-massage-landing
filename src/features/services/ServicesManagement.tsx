@@ -6,6 +6,8 @@ import {useToast} from "@/components/ui/toast/ToastProvider";
 import {useCreateServiceMutation, useListAdminServicesQuery, useUpdateServiceMutation} from "@/features/services/services.api";
 import type {AdminService, ServiceInput} from "@/types/services";
 
+type ServiceEditorLanguage = "ua" | "en";
+
 const emptyServices: AdminService[] = [];
 const emptyForm: ServiceInput = {
     titleUa: "",
@@ -29,6 +31,7 @@ export default function ServicesManagement() {
     const selectedService = selectedServiceId === null
         ? null
         : services.find((service) => service.id === selectedServiceId) ?? null;
+    const [editorLanguage, setEditorLanguage] = useState<ServiceEditorLanguage>("ua");
     const [form, setForm] = useState<ServiceInput>(emptyForm);
     const [createService, {isLoading: isCreating}] = useCreateServiceMutation();
     const [updateService, {isLoading: isUpdating}] = useUpdateServiceMutation();
@@ -69,6 +72,7 @@ export default function ServicesManagement() {
 
     function startNewService() {
         setSelectedServiceId(null);
+        setEditorLanguage("ua");
         setForm(emptyForm);
     }
 
@@ -101,6 +105,9 @@ export default function ServicesManagement() {
             toast.error(t("saveError"));
         }
     }
+
+    const uaComplete = Boolean(form.titleUa.trim());
+    const enComplete = Boolean(form.titleEn?.trim());
 
     return (
         <section className="grid min-h-0 gap-4 lg:grid-cols-[minmax(380px,1fr)_minmax(460px,0.95fr)]">
@@ -189,28 +196,62 @@ export default function ServicesManagement() {
                     {selectedService ? t("editTitle") : t("createTitle")}
                 </h2>
                 <div className="mt-4 space-y-3">
-                    <Field label={t("titleUa")}>
-                        <input
-                            className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                            onChange={(event) => updateField("titleUa", event.target.value)}
-                            value={form.titleUa}
-                        />
-                    </Field>
-                    <Field label={t("descriptionUa")}>
-                        <textarea
-                            className="min-h-24 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                            onChange={(event) => updateField("descriptionUa", event.target.value)}
-                            value={form.descriptionUa ?? ""}
-                        />
-                    </Field>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        <Field label={t("titleEn")}>
-                            <input
-                                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                                onChange={(event) => updateField("titleEn", event.target.value)}
-                                value={form.titleEn ?? ""}
+                    <div className="rounded-lg border border-stone-200 bg-stone-50 p-1">
+                        <div className="grid grid-cols-2 gap-1">
+                            <LanguageButton
+                                active={editorLanguage === "ua"}
+                                complete={uaComplete}
+                                label={t("ukrainianVersion")}
+                                missingLabel={t("required")}
+                                onClick={() => setEditorLanguage("ua")}
                             />
-                        </Field>
+                            <LanguageButton
+                                active={editorLanguage === "en"}
+                                complete={enComplete}
+                                label={t("englishVersion")}
+                                missingLabel={t("optional")}
+                                onClick={() => setEditorLanguage("en")}
+                            />
+                        </div>
+                    </div>
+
+                    {editorLanguage === "ua" ? (
+                        <div className="space-y-3">
+                            <Field label={t("titleUa")}>
+                                <input
+                                    className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                                    onChange={(event) => updateField("titleUa", event.target.value)}
+                                    value={form.titleUa}
+                                />
+                            </Field>
+                            <Field label={t("descriptionUa")}>
+                                <textarea
+                                    className="min-h-28 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                                    onChange={(event) => updateField("descriptionUa", event.target.value)}
+                                    value={form.descriptionUa ?? ""}
+                                />
+                            </Field>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            <Field label={t("titleEn")}>
+                                <input
+                                    className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                                    onChange={(event) => updateField("titleEn", event.target.value)}
+                                    value={form.titleEn ?? ""}
+                                />
+                            </Field>
+                            <Field label={t("descriptionEn")}>
+                                <textarea
+                                    className="min-h-28 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                                    onChange={(event) => updateField("descriptionEn", event.target.value)}
+                                    value={form.descriptionEn ?? ""}
+                                />
+                            </Field>
+                        </div>
+                    )}
+
+                    <div className="grid gap-3 sm:grid-cols-2">
                         <Field label={t("externalPaymentUrl")}>
                             <input
                                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
@@ -219,13 +260,6 @@ export default function ServicesManagement() {
                             />
                         </Field>
                     </div>
-                    <Field label={t("descriptionEn")}>
-                        <textarea
-                            className="min-h-20 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                            onChange={(event) => updateField("descriptionEn", event.target.value)}
-                            value={form.descriptionEn ?? ""}
-                        />
-                    </Field>
                     <div className="grid gap-3 sm:grid-cols-2">
                         <Field label={t("duration")}>
                             <input
@@ -266,6 +300,32 @@ export default function ServicesManagement() {
                 </div>
             </div>
         </section>
+    );
+}
+
+function LanguageButton({active, complete, label, missingLabel, onClick}: {
+    active: boolean;
+    complete: boolean;
+    label: string;
+    missingLabel: string;
+    onClick: () => void;
+}) {
+    return (
+        <button
+            aria-pressed={active}
+            className={`flex min-h-12 items-center justify-between rounded-md px-3 py-2 text-left text-sm font-semibold transition-colors ${
+                active ? "bg-white text-stone-950 shadow-sm" : "text-stone-600 hover:bg-white/70 hover:text-stone-950"
+            }`}
+            onClick={onClick}
+            type="button"
+        >
+            <span>{label}</span>
+            <span className={`ml-3 rounded-full px-2 py-0.5 text-xs font-medium ${
+                complete ? "bg-emerald-100 text-emerald-800" : "bg-stone-200 text-stone-600"
+            }`}>
+                {complete ? "OK" : missingLabel}
+            </span>
+        </button>
     );
 }
 

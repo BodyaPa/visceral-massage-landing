@@ -7,7 +7,7 @@ describe("client authentication requests", () => {
     });
 
     it("sends the CSRF header on login mutations", async () => {
-        const user = {id: 1, phone: "+380000000001", email: null, firstName: "Iryna", lastName: "Koval", role: "USER"};
+        const user = {id: 1, phone: "+380000000001", email: null, firstName: "Iryna", lastName: "Koval", roles: ["USER"]};
         const fetchMock = vi.fn()
             .mockResolvedValueOnce(new Response(
                 JSON.stringify({token: "secure-token"}),
@@ -66,7 +66,7 @@ describe("client authentication requests", () => {
     });
 
     it("refreshes the CSRF token and retries one rejected login mutation", async () => {
-        const user = {id: 1, phone: "+380671234567", email: null, firstName: "Iryna", lastName: "Koval", role: "USER"};
+        const user = {id: 1, phone: "+380671234567", email: null, firstName: "Iryna", lastName: "Koval", roles: ["USER"]};
         const fetchMock = vi.fn()
             .mockResolvedValueOnce(new Response(
                 JSON.stringify({token: "stale-token"}),
@@ -99,7 +99,14 @@ describe("client authentication requests", () => {
     });
 
     it("restores the visible user session through the refresh cookie when access expires", async () => {
-        const user = {id: 1, phone: null, email: "admin@example.com", firstName: "Admin", lastName: "User", role: "ADMIN"};
+        const user = {
+            id: 1,
+            phone: null,
+            email: "owner@example.com",
+            firstName: "Owner",
+            lastName: "User",
+            roles: ["USER", "MASTER", "SPECIALIST", "FINANCE_MANAGER", "SMM"]
+        };
         const fetchMock = vi.fn()
             .mockResolvedValueOnce(new Response(null, {status: 401}))
             .mockResolvedValueOnce(new Response(
@@ -131,7 +138,7 @@ describe("client authentication requests", () => {
     });
 
     it("shares one rotating refresh request between concurrent session restorations", async () => {
-        const user = {id: 2, phone: null, email: null, firstName: "Iryna", lastName: "Koval", role: "USER"};
+        const user = {id: 2, phone: null, email: null, firstName: "Iryna", lastName: "Koval", roles: ["USER"]};
         let resolveRefresh: ((response: Response) => void) | undefined;
         const refreshResponse = new Promise<Response>((resolve) => {
             resolveRefresh = resolve;

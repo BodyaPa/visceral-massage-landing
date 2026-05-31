@@ -654,7 +654,7 @@ function PreviewPanel({activeTab, draft, item, onSelectTab, state, t}: {
             </div>
             {item.coverMediaId ? (
                 <div className={`overflow-hidden rounded-xl bg-stone-100 ${item.coverDisplayMode === "FIT" ? "flex max-h-80 justify-center p-3" : "h-64"}`}>
-                    {/* eslint-disable-next-line @next/next/no-img-element -- private draft cover is loaded through ADMIN media preview. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element -- private draft cover is loaded through protected media preview. */}
                     <img alt="" className={item.coverDisplayMode === "FIT" ? "max-h-72 max-w-full rounded-lg object-contain" : "h-full w-full object-cover"} src={createAdminMediaUrl(item.coverMediaId)} />
                 </div>
             ) : null}
@@ -714,7 +714,7 @@ function Inspector({archived, assets, changingMedia, isLoading, item, onDetach, 
             <section className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{t("media.cover")}</p>
                 {item.coverMediaId ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- private draft cover is loaded through ADMIN media preview.
+                    // eslint-disable-next-line @next/next/no-img-element -- private draft cover is loaded through protected media preview.
                     <img alt="" className={`h-36 w-full rounded-lg border border-stone-200 ${item.coverDisplayMode === "FIT" ? "bg-stone-50 object-contain p-2" : "object-cover"}`} src={createAdminMediaUrl(item.coverMediaId)} />
                 ) : (
                     <div className="flex h-28 items-center justify-center rounded-lg border border-dashed border-stone-300 bg-stone-50 text-xs text-stone-500">

@@ -1,13 +1,14 @@
 import type {ReactNode} from "react";
 import {Suspense} from "react";
 import {getTranslations} from "next-intl/server";
-import {requireAdmin} from "@/features/auth/auth.server";
+import {requireAnyRole} from "@/features/auth/auth.server";
 import type {Locale} from "@/i18n";
 import {withLocale} from "@/shared/lib/locale/withLocale";
 import LanguageSwitcher from "@/components/common/LanguageSwitcher";
 import AuthSessionPanel from "@/features/auth/AuthSessionPanel";
 import Link from "next/link";
 import AdminNavigation from "./AdminNavigation";
+import {hasRole} from "@/features/auth/auth.roles";
 
 type Props = {
     children: ReactNode;
@@ -19,7 +20,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminLayout({children, params}: Props) {
     const {lang} = await params;
     const locale = lang as Locale;
-    const user = await requireAdmin();
+    const user = await requireAnyRole(["MASTER", "SPECIALIST", "FINANCE_MANAGER", "SMM"]);
     const t = await getTranslations({locale, namespace: "admin"});
 
     return (
@@ -40,7 +41,11 @@ export default async function AdminLayout({children, params}: Props) {
                     </div>
                 </div>
                 <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 sm:p-6 md:grid-cols-[180px_minmax(0,1fr)] xl:grid-cols-[200px_minmax(0,1fr)]">
-                    <AdminNavigation locale={locale} />
+                    <AdminNavigation
+                        locale={locale}
+                        showNews={hasRole(user, "SMM")}
+                        showUsers={hasRole(user, "MASTER")}
+                    />
                     <div className="management-content min-w-0">
                         {children}
                     </div>

@@ -8,6 +8,7 @@ import {withLocale} from "@/shared/lib/locale/withLocale";
 import LanguageSwitcher from "@/components/common/LanguageSwitcher";
 import AuthSessionPanel from "@/features/auth/AuthSessionPanel";
 import AuthenticatedLink from "@/features/auth/AuthenticatedLink";
+import {hasManagementRole, hasRole} from "@/features/auth/auth.roles";
 
 type Props = {
     params: Promise<{lang: string}>;
@@ -61,7 +62,7 @@ export default async function AccountPage({params}: Props) {
                         >
                             {t("title")}
                         </AuthenticatedLink>
-                        {user.role === "ADMIN" ? (
+                        {hasManagementRole(user) ? (
                             <>
                                 <AuthenticatedLink
                                     className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100"
@@ -70,6 +71,7 @@ export default async function AccountPage({params}: Props) {
                                 >
                                     {t("admin")}
                                 </AuthenticatedLink>
+                                {hasRole(user, "SMM") ? (
                                 <AuthenticatedLink
                                     className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100"
                                     fallbackHref={withLocale("/auth?mode=login", locale)}
@@ -77,6 +79,7 @@ export default async function AccountPage({params}: Props) {
                                 >
                                     {t("manageNews")}
                                 </AuthenticatedLink>
+                                ) : null}
                             </>
                         ) : null}
                     </nav>

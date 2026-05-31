@@ -9,7 +9,7 @@ import {resolvePublishedMediaUrl} from "@/features/news/newsMedia";
 import {withLocale} from "@/shared/lib/locale/withLocale";
 import styles from "./NewsComponent.module.scss";
 import {useListNewsQuery} from "@/features/news/news.api";
-import {getCurrentUser} from "@/features/auth/auth.client";
+import {getCurrentUser, hasRole} from "@/features/auth/auth.client";
 import AuthenticatedLink from "@/features/auth/AuthenticatedLink";
 
 function TextPreview({content}: { content: string }) {
@@ -37,7 +37,7 @@ export default function NewsList() {
 
         getCurrentUser()
             .then((user) => {
-                if (active) setCanCreateNews(user?.role === "ADMIN");
+                if (active) setCanCreateNews(hasRole(user, "SMM"));
             })
             .catch(() => {
                 if (active) setCanCreateNews(false);

@@ -2,14 +2,15 @@ import "server-only";
 
 import {cookies} from "next/headers";
 import {notFound} from "next/navigation";
+import {hasAnyRole as hasAnyAssignedRole, hasRole as hasAssignedRole, type UserRole} from "./auth.roles";
 
-type AuthenticatedUser = {
+export type AuthenticatedUser = {
     id: number;
     phone: string | null;
     email: string | null;
     firstName: string | null;
     lastName: string | null;
-    role: "USER" | "ADMIN";
+    roles: UserRole[];
 };
 
 function getServerApiUrl() {
@@ -44,10 +45,20 @@ export async function requireAuthenticatedUser(): Promise<AuthenticatedUser> {
     return getAuthenticatedUser();
 }
 
-export async function requireAdmin(): Promise<AuthenticatedUser> {
+export async function requireRole(role: UserRole): Promise<AuthenticatedUser> {
     const user = await getAuthenticatedUser();
 
-    if (user.role !== "ADMIN") {
+    if (!hasAssignedRole(user, role)) {
+        notFound();
+    }
+
+    return user;
+}
+
+export async function requireAnyRole(roles: UserRole[]): Promise<AuthenticatedUser> {
+    const user = await getAuthenticatedUser();
+
+    if (!hasAnyAssignedRole(user, roles)) {
         notFound();
     }
 

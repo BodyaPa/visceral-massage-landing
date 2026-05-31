@@ -1,5 +1,7 @@
 import {API_URL} from "@/shared/constants/env";
 import {clearCsrfToken, CSRF_HEADER_NAME, getCsrfToken} from "@/shared/api/csrf";
+import type {UserRole} from "./auth.roles";
+export {hasAnyRole, hasManagementRole, hasRole} from "./auth.roles";
 
 export type AuthenticatedUser = {
     id: number;
@@ -7,7 +9,7 @@ export type AuthenticatedUser = {
     email: string | null;
     firstName: string | null;
     lastName: string | null;
-    role: "USER" | "ADMIN";
+    roles: UserRole[];
 };
 
 type LoginRequest = {

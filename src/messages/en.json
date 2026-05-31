@@ -97,6 +97,7 @@
       "home": "← Home",
       "dashboard": "Admin",
       "news": "Manage news",
+      "users": "Users",
       "account": "Personal account"
     },
     "dashboard": {
@@ -240,6 +241,40 @@
         "draftDeleted": "Draft deleted.",
         "saveError": "Unable to save the news item. Check the translations.",
         "deleteError": "Unable to delete the news item."
+      }
+    },
+    "users": {
+      "meta": {
+        "title": "Users"
+      },
+      "title": "Users",
+      "subtitle": "Search accounts and manage assigned roles.",
+      "search": "Search by name, phone, or email",
+      "allRoles": "All roles",
+      "allStatuses": "All statuses",
+      "enabled": "Active",
+      "disabled": "Disabled",
+      "loading": "Loading users...",
+      "loadError": "Unable to load users.",
+      "empty": "No users found.",
+      "unnamed": "Unnamed",
+      "noContact": "No contact provided",
+      "emptyValue": "Not provided",
+      "phone": "Phone",
+      "email": "Email",
+      "status": "Status",
+      "createdAt": "Created",
+      "assignedRoles": "Roles",
+      "save": "Save roles",
+      "saving": "Saving...",
+      "saveSuccess": "User roles updated.",
+      "saveError": "Unable to update roles.",
+      "roles": {
+        "USER": "User",
+        "MASTER": "Master",
+        "SPECIALIST": "Specialist",
+        "FINANCE_MANAGER": "Finance",
+        "SMM": "Content"
       }
     }
   },

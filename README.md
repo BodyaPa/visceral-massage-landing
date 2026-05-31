@@ -86,9 +86,9 @@ feature.
 ## News Authoring
 
 The protected localized `/[lang]/admin/news` workspace is a compact CMS view:
-it creates an empty `DRAFT` through the ADMIN API before editing, exposes
+it creates an empty `DRAFT` through the protected management API before editing, exposes
 publish/unpublish/archive/restore actions, and keeps UA/EN content editing
-separate from preview. The inspector uses ADMIN-protected media previews for
+separate from preview. The inspector uses protected media previews for
 draft covers and inline images. Repeated create clicks are disabled while the
 request is in progress; a completely empty draft is reused, and only a
 never-published draft exposes the destructive cleanup action.

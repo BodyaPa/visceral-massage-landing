@@ -217,14 +217,14 @@ export default function ServicesManagement() {
 
                     {editorLanguage === "ua" ? (
                         <div className="space-y-3">
-                            <Field label={t("titleUa")}>
+                            <Field label={t("titleUa")} tooltip={t("titleUaHint")}>
                                 <input
                                     className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
                                     onChange={(event) => updateField("titleUa", event.target.value)}
                                     value={form.titleUa}
                                 />
                             </Field>
-                            <Field label={t("descriptionUa")}>
+                            <Field label={t("descriptionUa")} tooltip={t("descriptionHint")}>
                                 <textarea
                                     className="min-h-28 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
                                     onChange={(event) => updateField("descriptionUa", event.target.value)}
@@ -234,14 +234,14 @@ export default function ServicesManagement() {
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            <Field label={t("titleEn")}>
+                            <Field label={t("titleEn")} tooltip={t("titleEnHint")}>
                                 <input
                                     className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
                                     onChange={(event) => updateField("titleEn", event.target.value)}
                                     value={form.titleEn ?? ""}
                                 />
                             </Field>
-                            <Field label={t("descriptionEn")}>
+                            <Field label={t("descriptionEn")} tooltip={t("descriptionHint")}>
                                 <textarea
                                     className="min-h-28 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
                                     onChange={(event) => updateField("descriptionEn", event.target.value)}
@@ -252,7 +252,7 @@ export default function ServicesManagement() {
                     )}
 
                     <div className="grid gap-3 sm:grid-cols-2">
-                        <Field label={t("externalPaymentUrl")}>
+                        <Field label={t("externalPaymentUrl")} tooltip={t("externalPaymentUrlHint")}>
                             <input
                                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
                                 onChange={(event) => updateField("externalPaymentUrl", event.target.value)}
@@ -261,7 +261,7 @@ export default function ServicesManagement() {
                         </Field>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
-                        <Field label={t("duration")}>
+                        <Field label={t("duration")} tooltip={t("durationHint")}>
                             <input
                                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
                                 min={1}
@@ -270,7 +270,7 @@ export default function ServicesManagement() {
                                 value={form.durationMinutes}
                             />
                         </Field>
-                        <Field label={t("price")}>
+                        <Field label={t("price")} tooltip={t("priceHint")}>
                             <input
                                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
                                 min={0}
@@ -329,11 +329,31 @@ function LanguageButton({active, complete, label, missingLabel, onClick}: {
     );
 }
 
-function Field({children, label}: {children: ReactNode; label: string}) {
+function Field({children, label, tooltip}: {children: ReactNode; label: string; tooltip?: string}) {
     return (
         <label className="block text-sm font-medium text-stone-800">
-            <span className="mb-1 block">{label}</span>
+            <span className="mb-1 flex items-center gap-2">
+                <span>{label}</span>
+                {tooltip ? <InfoTooltip text={tooltip} /> : null}
+            </span>
             {children}
         </label>
+    );
+}
+
+function InfoTooltip({text}: {text: string}) {
+    return (
+        <span className="group relative inline-flex">
+            <span
+                aria-label={text}
+                className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-stone-300 bg-stone-100 text-[10px] font-bold leading-none text-stone-600"
+                tabIndex={0}
+            >
+                i
+            </span>
+            <span className="pointer-events-none absolute left-1/2 top-6 z-20 hidden w-64 -translate-x-1/2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-normal leading-relaxed text-stone-700 shadow-lg group-hover:block group-focus-within:block">
+                {text}
+            </span>
+        </span>
     );
 }

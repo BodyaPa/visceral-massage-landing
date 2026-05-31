@@ -98,6 +98,7 @@
       "dashboard": "Admin",
       "news": "Manage news",
       "users": "Users",
+      "offices": "Offices",
       "account": "Personal account"
     },
     "dashboard": {
@@ -278,6 +279,34 @@
         "FINANCE_MANAGER": "Finance",
         "SMM": "Content"
       }
+    },
+    "offices": {
+      "meta": {
+        "title": "Offices"
+      },
+      "title": "Offices",
+      "subtitle": "Manage office addresses, contacts, and active status.",
+      "newOffice": "New office",
+      "search": "Search by name, address, or contact",
+      "allStatuses": "All statuses",
+      "active": "Active",
+      "inactive": "Inactive",
+      "loading": "Loading offices...",
+      "loadError": "Unable to load offices.",
+      "empty": "No offices found.",
+      "name": "Name",
+      "address": "Address",
+      "status": "Status",
+      "phone": "Phone",
+      "email": "Email",
+      "locationDetails": "Location details",
+      "createTitle": "Create office",
+      "editTitle": "Edit office",
+      "save": "Save office",
+      "saving": "Saving...",
+      "created": "Office created.",
+      "updated": "Office updated.",
+      "saveError": "Unable to save office."
     }
   },
   "auth": {

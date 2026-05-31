@@ -20,7 +20,7 @@ function listUsersPath({query, role, enabled, page = 0, size = 50}: ListUsersArg
 
     if (query?.trim()) params.set("query", query.trim());
     if (role) params.set("role", role);
-    if (enabled !== "") params.set("enabled", String(enabled));
+    if (enabled !== "" && enabled !== undefined) params.set("enabled", String(enabled));
 
     return `/admin/users?${params.toString()}`;
 }

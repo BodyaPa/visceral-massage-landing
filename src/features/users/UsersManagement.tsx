@@ -5,9 +5,11 @@ import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import type {UserRole} from "@/features/auth/auth.roles";
 import {useListUsersQuery, useUpdateUserRolesMutation} from "@/features/users/users.api";
+import type {AdminUser} from "@/types/users";
 
 const manageableRoles: UserRole[] = ["MASTER", "SPECIALIST", "FINANCE_MANAGER", "SMM"];
 const allFilterRoles: UserRole[] = ["USER", ...manageableRoles];
+const emptyUsers: AdminUser[] = [];
 
 export default function UsersManagement() {
     const t = useTranslations("admin.users");
@@ -16,20 +18,24 @@ export default function UsersManagement() {
     const [role, setRole] = useState<UserRole | "">("");
     const [enabled, setEnabled] = useState<boolean | "">("");
     const {data, isFetching, isError} = useListUsersQuery({query, role, enabled});
-    const users = data?.content ?? [];
+    const users = data?.content ?? emptyUsers;
     const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-    const selectedUser = users.find((user) => user.id === selectedUserId) ?? users[0] ?? null;
-    const selectedUserIdValue = selectedUser?.id ?? null;
-    const selectedUserRolesKey = selectedUser?.roles.join("|") ?? "";
+    const selectedUser = selectedUserId === null ? null : users.find((user) => user.id === selectedUserId) ?? null;
     const [selectedRoles, setSelectedRoles] = useState<UserRole[]>([]);
     const [updateRoles, {isLoading: isSaving}] = useUpdateUserRolesMutation();
 
     useEffect(() => {
-        if (selectedUserIdValue !== null) {
-            setSelectedUserId(selectedUserIdValue);
-            setSelectedRoles(selectedUserRolesKey.split("|").filter(Boolean) as UserRole[]);
+        if (users.length === 0) {
+            setSelectedUserId(null);
+            setSelectedRoles([]);
+            return;
         }
-    }, [selectedUserIdValue, selectedUserRolesKey]);
+
+        if (selectedUserId === null || !users.some((user) => user.id === selectedUserId)) {
+            setSelectedUserId(users[0].id);
+            setSelectedRoles(users[0].roles);
+        }
+    }, [selectedUserId, users]);
 
     const hasRole = useMemo(() => new Set(selectedRoles), [selectedRoles]);
 
@@ -100,30 +106,43 @@ export default function UsersManagement() {
                 {isError ? <p className="text-sm text-red-700">{t("loadError")}</p> : null}
                 {isFetching ? <p className="text-sm text-stone-500">{t("loading")}</p> : null}
 
-                <div className="max-h-[62vh] space-y-2 overflow-y-auto pr-1">
-                    {users.map((user) => {
-                        const active = user.id === selectedUser?.id;
-                        const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || t("unnamed");
+                <div className="max-h-[62vh] overflow-auto rounded-lg border border-stone-200">
+                    <table className="min-w-full table-fixed border-collapse text-left text-sm">
+                        <thead className="sticky top-0 bg-stone-100 text-xs font-semibold uppercase text-stone-500">
+                        <tr>
+                            <th className="w-[36%] px-3 py-2">{t("name")}</th>
+                            <th className="w-[34%] px-3 py-2">{t("contact")}</th>
+                            <th className="w-[30%] px-3 py-2">{t("assignedRoles")}</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {users.map((user) => {
+                            const active = user.id === selectedUser?.id;
+                            const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || t("unnamed");
 
-                        return (
-                            <button
-                                className={`w-full rounded-lg border p-3 text-left transition-colors ${
-                                    active ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-stone-50 text-stone-900 hover:bg-stone-100"
-                                }`}
-                                key={user.id}
-                                onClick={() => {
-                                    setSelectedUserId(user.id);
-                                    setSelectedRoles(user.roles);
-                                }}
-                                type="button"
-                            >
-                                <span className="block text-sm font-semibold">{name}</span>
-                                <span className={`mt-1 block text-xs ${active ? "text-stone-200" : "text-stone-500"}`}>
-                                    {user.email ?? user.phone ?? t("noContact")}
-                                </span>
-                            </button>
-                        );
-                    })}
+                            return (
+                                <tr
+                                    className={`cursor-pointer border-t border-stone-200 transition-colors ${
+                                        active ? "bg-stone-900 text-white" : "bg-white text-stone-900 hover:bg-stone-50"
+                                    }`}
+                                    key={user.id}
+                                    onClick={() => {
+                                        setSelectedUserId(user.id);
+                                        setSelectedRoles(user.roles);
+                                    }}
+                                >
+                                    <td className="truncate px-3 py-2 font-medium">{name}</td>
+                                    <td className={`truncate px-3 py-2 ${active ? "text-stone-200" : "text-stone-600"}`}>
+                                        {user.email ?? user.phone ?? t("noContact")}
+                                    </td>
+                                    <td className={`truncate px-3 py-2 ${active ? "text-stone-200" : "text-stone-600"}`}>
+                                        {user.roles.map((roleName) => t(`roles.${roleName}`)).join(", ")}
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                        </tbody>
+                    </table>
                     {!isFetching && users.length === 0 ? <p className="text-sm text-stone-500">{t("empty")}</p> : null}
                 </div>
             </div>

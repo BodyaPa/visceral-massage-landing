@@ -262,6 +262,8 @@
       "emptyValue": "Not provided",
       "phone": "Phone",
       "email": "Email",
+      "name": "Name",
+      "contact": "Contact",
       "status": "Status",
       "createdAt": "Created",
       "assignedRoles": "Roles",

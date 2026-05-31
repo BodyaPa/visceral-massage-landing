@@ -262,6 +262,8 @@
       "emptyValue": "Не вказано",
       "phone": "Телефон",
       "email": "Email",
+      "name": "Ім’я",
+      "contact": "Контакт",
       "status": "Статус",
       "createdAt": "Створено",
       "assignedRoles": "Ролі",

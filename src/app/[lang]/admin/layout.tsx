@@ -46,6 +46,7 @@ export default async function AdminLayout({children, params}: Props) {
                         showNews={hasRole(user, "SMM")}
                         showUsers={hasRole(user, "MASTER")}
                         showOffices={hasRole(user, "MASTER")}
+                        showServices={hasRole(user, "MASTER")}
                     />
                     <div className="management-content min-w-0">
                         {children}

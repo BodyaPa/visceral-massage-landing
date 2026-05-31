@@ -11,19 +11,21 @@ type Props = {
     showNews: boolean;
     showUsers: boolean;
     showOffices: boolean;
+    showServices: boolean;
 };
 
 const baseClassName = "rounded-lg px-3 py-2 text-sm font-medium transition-colors";
 const defaultClassName = `${baseClassName} border border-stone-200 bg-white text-stone-700 hover:bg-stone-100`;
 const activeClassName = `${baseClassName} bg-stone-900 text-white hover:bg-stone-700`;
 
-export default function AdminNavigation({locale, showNews, showUsers, showOffices}: Props) {
+export default function AdminNavigation({locale, showNews, showUsers, showOffices, showServices}: Props) {
     const pathname = usePathname();
     const t = useTranslations("admin.navigation");
     const adminHref = withLocale("/admin", locale);
     const newsHref = withLocale("/admin/news", locale);
     const usersHref = withLocale("/admin/users", locale);
     const officesHref = withLocale("/admin/offices", locale);
+    const servicesHref = withLocale("/admin/services", locale);
 
     return (
         <nav className="flex flex-wrap content-start gap-2 md:flex-col" aria-label={t("label")}>
@@ -65,6 +67,15 @@ export default function AdminNavigation({locale, showNews, showUsers, showOffice
                     aria-current={pathname === officesHref ? "page" : undefined}
                 >
                     {t("offices")}
+                </Link>
+            ) : null}
+            {showServices ? (
+                <Link
+                    className={pathname === servicesHref ? activeClassName : defaultClassName}
+                    href={servicesHref}
+                    aria-current={pathname === servicesHref ? "page" : undefined}
+                >
+                    {t("services")}
                 </Link>
             ) : null}
         </nav>

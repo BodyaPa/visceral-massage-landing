@@ -99,6 +99,7 @@
       "news": "Manage news",
       "users": "Users",
       "offices": "Offices",
+      "services": "Services",
       "account": "Personal account"
     },
     "dashboard": {
@@ -307,6 +308,37 @@
       "created": "Office created.",
       "updated": "Office updated.",
       "saveError": "Unable to save office."
+    },
+    "services": {
+      "meta": {
+        "title": "Services"
+      },
+      "title": "Services",
+      "subtitle": "Manage service titles, descriptions, duration, and base price.",
+      "newService": "New service",
+      "search": "Search by title",
+      "allStatuses": "All statuses",
+      "active": "Active",
+      "inactive": "Inactive",
+      "loading": "Loading services...",
+      "loadError": "Unable to load services.",
+      "empty": "No services found.",
+      "titleUa": "Ukrainian title",
+      "descriptionUa": "Ukrainian description",
+      "titleEn": "English title",
+      "descriptionEn": "English description",
+      "duration": "Duration",
+      "minutesShort": "min",
+      "price": "Base price",
+      "status": "Status",
+      "externalPaymentUrl": "External payment URL",
+      "createTitle": "Create service",
+      "editTitle": "Edit service",
+      "save": "Save service",
+      "saving": "Saving...",
+      "created": "Service created.",
+      "updated": "Service updated.",
+      "saveError": "Unable to save service."
     }
   },
   "auth": {

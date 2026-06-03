@@ -30,6 +30,15 @@ function resolveHref(url: string | undefined, lang: Locale) {
     return withLocale(url, lang);
 }
 
+function isProtectedInternalPath(url: string | undefined) {
+    if (!url) return false;
+
+    return url === "/account"
+        || url === "/calendar"
+        || url === "/admin"
+        || url.startsWith("/admin/");
+}
+
 export default function ButtonComponent({
                                             text,
                                             styleName,
@@ -52,7 +61,7 @@ export default function ButtonComponent({
         );
     }
 
-    if (url && ["/calendar", "/account", "/admin", "/admin/news"].includes(url)) {
+    if (isProtectedInternalPath(url)) {
         return (
             <AuthenticatedLink
                 className={className}

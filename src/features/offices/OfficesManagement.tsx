@@ -95,21 +95,26 @@ export default function OfficesManagement() {
     }
 
     return (
-        <section className="grid min-h-0 gap-4 lg:grid-cols-[minmax(360px,1fr)_minmax(420px,0.9fr)]">
-            <div className="min-w-0 rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
+        <section className="grid min-h-0 w-full gap-4 xl:grid-cols-[minmax(360px,1fr)_minmax(420px,0.9fr)]">
+            <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
                 <div className="mb-4 flex flex-col gap-3">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                             <h1 className="text-2xl font-semibold text-stone-950">{t("title")}</h1>
                             <p className="mt-1 text-sm text-stone-600">{t("subtitle")}</p>
                         </div>
-                        <button
-                            className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700"
-                            onClick={startNewOffice}
-                            type="button"
-                        >
-                            {t("newOffice")}
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-600">
+                                {offices.length}
+                            </span>
+                            <button
+                                className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700"
+                                onClick={startNewOffice}
+                                type="button"
+                            >
+                                {t("newOffice")}
+                            </button>
+                        </div>
                     </div>
                     <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_150px]">
                         <input
@@ -136,46 +141,59 @@ export default function OfficesManagement() {
                 {isError ? <p className="text-sm text-red-700">{t("loadError")}</p> : null}
                 {isFetching ? <p className="text-sm text-stone-500">{t("loading")}</p> : null}
 
-                <div className="max-h-[62vh] overflow-auto rounded-lg border border-stone-200">
-                    <table className="min-w-full table-fixed border-collapse text-left text-sm">
-                        <thead className="sticky top-0 bg-stone-100 text-xs font-semibold uppercase text-stone-500">
-                        <tr>
-                            <th className="w-[32%] px-3 py-2">{t("name")}</th>
-                            <th className="w-[44%] px-3 py-2">{t("address")}</th>
-                            <th className="w-[24%] px-3 py-2">{t("status")}</th>
-                        </tr>
-                        </thead>
-                        <tbody>
+                <div className="max-h-[62vh] overflow-y-auto rounded-lg border border-stone-200 bg-stone-50/70 p-2">
+                    <div className="space-y-2" role="list">
                         {offices.map((office) => {
                             const selected = office.id === selectedOffice?.id;
+                            const contact = office.phone ?? office.email;
                             return (
-                                <tr
-                                    className={`cursor-pointer border-t border-stone-200 transition-colors ${
-                                        selected ? "bg-stone-900 text-white" : "bg-white text-stone-900 hover:bg-stone-50"
+                                <button
+                                    aria-pressed={selected}
+                                    className={`block w-full rounded-lg border p-3 text-left transition-colors ${
+                                        selected
+                                            ? "border-stone-900 bg-stone-900 text-white shadow-sm"
+                                            : "border-stone-200 bg-white text-stone-900 hover:border-stone-300 hover:bg-stone-50"
                                     }`}
                                     key={office.id}
                                     onClick={() => selectOffice(office)}
+                                    type="button"
                                 >
-                                    <td className="truncate px-3 py-2 font-medium">{office.name}</td>
-                                    <td className={`truncate px-3 py-2 ${selected ? "text-stone-200" : "text-stone-600"}`}>
-                                        {office.address}
-                                    </td>
-                                    <td className={`px-3 py-2 ${selected ? "text-stone-200" : "text-stone-600"}`}>
-                                        {office.active ? t("active") : t("inactive")}
-                                    </td>
-                                </tr>
+                                    <span className="flex min-w-0 flex-col gap-2">
+                                        <span className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                                            <span className="min-w-0">
+                                                <span className="block truncate text-sm font-semibold">{office.name}</span>
+                                                <span className={`mt-1 block break-words text-xs ${selected ? "text-stone-200" : "text-stone-600"}`}>
+                                                    {office.address}
+                                                </span>
+                                            </span>
+                                            <StatusBadge active={selected} enabled={office.active} label={office.active ? t("active") : t("inactive")} />
+                                        </span>
+                                        {contact || office.locationDetails ? (
+                                            <span className={`block break-words text-xs ${selected ? "text-stone-200" : "text-stone-500"}`}>
+                                                {[contact, office.locationDetails].filter(Boolean).join(" · ")}
+                                            </span>
+                                        ) : null}
+                                    </span>
+                                </button>
                             );
                         })}
-                        </tbody>
-                    </table>
-                    {!isFetching && offices.length === 0 ? <p className="p-3 text-sm text-stone-500">{t("empty")}</p> : null}
+                        {!isFetching && offices.length === 0 ? <p className="p-3 text-sm text-stone-500">{t("empty")}</p> : null}
+                    </div>
                 </div>
             </div>
 
-            <div className="min-w-0 rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
-                <h2 className="text-xl font-semibold text-stone-950">
-                    {selectedOffice ? t("editTitle") : t("createTitle")}
-                </h2>
+            <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+                <div className="flex flex-col gap-2 border-b border-stone-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
+                            {selectedOffice ? `ID ${selectedOffice.id}` : t("newOffice")}
+                        </p>
+                        <h2 className="mt-1 text-xl font-semibold text-stone-950">
+                            {selectedOffice ? t("editTitle") : t("createTitle")}
+                        </h2>
+                    </div>
+                    <StatusBadge enabled={form.active} label={form.active ? t("active") : t("inactive")} />
+                </div>
                 <div className="mt-4 space-y-3">
                     <Field label={t("name")}>
                         <input
@@ -214,7 +232,9 @@ export default function OfficesManagement() {
                             value={form.locationDetails ?? ""}
                         />
                     </Field>
-                    <label className="flex items-center justify-between rounded-lg border border-stone-200 px-3 py-2 text-sm text-stone-900">
+                    <label className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                        form.active ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-stone-50 text-stone-900"
+                    }`}>
                         <span>{t("active")}</span>
                         <input
                             checked={form.active}
@@ -223,7 +243,7 @@ export default function OfficesManagement() {
                         />
                     </label>
                     <button
-                        className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-400"
+                        className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-400 sm:w-fit"
                         disabled={saving || !form.name.trim() || !form.address.trim()}
                         onClick={saveOffice}
                         type="button"
@@ -233,6 +253,22 @@ export default function OfficesManagement() {
                 </div>
             </div>
         </section>
+    );
+}
+
+function StatusBadge({active = false, enabled, label}: {active?: boolean; enabled: boolean; label: string}) {
+    if (enabled) {
+        return (
+            <span className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-emerald-50 text-emerald-800"}`}>
+                {label}
+            </span>
+        );
+    }
+
+    return (
+        <span className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-stone-100 text-stone-600"}`}>
+            {label}
+        </span>
     );
 }
 

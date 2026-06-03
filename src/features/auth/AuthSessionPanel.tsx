@@ -8,7 +8,7 @@ import {withLocale} from "@/shared/lib/locale/withLocale";
 import styles from "@/components/layout/header/HeaderStyles.module.scss";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {logout, type AuthenticatedUser} from "./auth.client";
-import {hasManagementRole, hasRole} from "./auth.roles";
+import {hasManagementRole} from "./auth.roles";
 import AuthenticatedLink from "./AuthenticatedLink";
 import Link from "next/link";
 
@@ -126,28 +126,15 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
                         {t("personalAccount")}
                     </AuthenticatedLink>
                     {hasManagementRole(user) ? (
-                        <>
-                            <AuthenticatedLink
-                                className={styles.accountMenuLink}
-                                fallbackHref={withLocale("/auth?mode=login", locale)}
-                                href={withLocale("/admin", locale)}
-                                onSessionExpired={onLogout}
-                                role="menuitem"
-                            >
-                                {t("admin")}
-                            </AuthenticatedLink>
-                            {hasRole(user, "SMM") ? (
-                                <AuthenticatedLink
-                                    className={styles.accountMenuLink}
-                                    fallbackHref={withLocale("/auth?mode=login", locale)}
-                                    href={withLocale("/admin/news", locale)}
-                                    onSessionExpired={onLogout}
-                                    role="menuitem"
-                                >
-                                    {t("manageNews")}
-                                </AuthenticatedLink>
-                            ) : null}
-                        </>
+                        <AuthenticatedLink
+                            className={styles.accountMenuLink}
+                            fallbackHref={withLocale("/auth?mode=login", locale)}
+                            href={withLocale("/admin", locale)}
+                            onSessionExpired={onLogout}
+                            role="menuitem"
+                        >
+                            {t("admin")}
+                        </AuthenticatedLink>
                     ) : null}
                     <button
                         className={styles.accountMenuButton}

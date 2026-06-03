@@ -22,8 +22,9 @@ export async function generateMetadata({params}: Props): Promise<Metadata> {
     };
 }
 
-export default async function AdminOfficesPage() {
-    await requireRole("MASTER");
+export default async function AdminOfficesPage({params}: Props) {
+    const {lang} = await params;
+    await requireRole("MASTER", lang as Locale);
 
     return <OfficesManagement />;
 }

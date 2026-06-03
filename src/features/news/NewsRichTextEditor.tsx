@@ -102,7 +102,7 @@ export default function NewsRichTextEditor({value, ariaLabel, labels, imageInser
     }, [editor, imageInsertion, onImageInserted]);
 
     if (!editor) {
-        return <div className="min-h-[clamp(26rem,55vh,45rem)] rounded-md border border-stone-300 bg-white" aria-hidden="true" />;
+        return <div className="min-h-[22rem] rounded-md border border-stone-300 bg-white xl:min-h-[clamp(26rem,55vh,45rem)]" aria-hidden="true" />;
     }
 
     function setLink() {
@@ -193,7 +193,7 @@ export default function NewsRichTextEditor({value, ariaLabel, labels, imageInser
             </div>
             <EditorContent
                 aria-label={ariaLabel}
-                className="[&_.ProseMirror]:min-h-[clamp(26rem,55vh,45rem)] [&_.ProseMirror]:px-4 [&_.ProseMirror]:py-3 [&_.ProseMirror]:text-base [&_.ProseMirror]:leading-7 [&_.ProseMirror]:outline-none [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h3]:my-3 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_blockquote]:border-l-4 [&_.ProseMirror_blockquote]:border-stone-300 [&_.ProseMirror_blockquote]:pl-3 [&_.ProseMirror_blockquote]:text-stone-600 [&_.ProseMirror_a]:break-words [&_.ProseMirror_a]:text-stone-900 [&_.ProseMirror_a]:underline [&_.ProseMirror_a]:underline-offset-2 [&_.ProseMirror_code]:rounded [&_.ProseMirror_code]:bg-stone-100 [&_.ProseMirror_code]:px-1 [&_.ProseMirror_hr]:my-4 [&_.ProseMirror_hr]:border-stone-300 [&_.ProseMirror_img]:my-4 [&_.ProseMirror_img]:max-h-96 [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:rounded-lg [&_.ProseMirror_img]:object-contain"
+                className="[&_.ProseMirror]:min-h-[22rem] xl:[&_.ProseMirror]:min-h-[clamp(26rem,55vh,45rem)] [&_.ProseMirror]:px-4 [&_.ProseMirror]:py-3 [&_.ProseMirror]:text-base [&_.ProseMirror]:leading-7 [&_.ProseMirror]:outline-none [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h3]:my-3 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_blockquote]:border-l-4 [&_.ProseMirror_blockquote]:border-stone-300 [&_.ProseMirror_blockquote]:pl-3 [&_.ProseMirror_blockquote]:text-stone-600 [&_.ProseMirror_a]:break-words [&_.ProseMirror_a]:text-stone-900 [&_.ProseMirror_a]:underline [&_.ProseMirror_a]:underline-offset-2 [&_.ProseMirror_code]:rounded [&_.ProseMirror_code]:bg-stone-100 [&_.ProseMirror_code]:px-1 [&_.ProseMirror_hr]:my-4 [&_.ProseMirror_hr]:border-stone-300 [&_.ProseMirror_img]:my-4 [&_.ProseMirror_img]:max-h-96 [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:rounded-lg [&_.ProseMirror_img]:object-contain"
                 editor={editor}
             />
         </div>

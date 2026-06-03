@@ -1,6 +1,7 @@
 "use client";
 
 import styles from "./SliderStyles.module.scss";
+import Image from "next/image";
 import React, {useEffect, useMemo, useRef, useState} from "react";
 import SliderButtons from "@/components/layout/slider/sliderButtons/SliderButtons";
 import PhotoConfigClass from "@/components/layout/header/classes/PhotoConfigClass";
@@ -57,13 +58,15 @@ export default function SliderComponent({background = false}: Props) {
             <div className={styles.stage}>
                 <div ref={layerRef} className={styles.parallaxLayer}>
                     {photoConfig.map((content, index) => (
-                        <img
+                        <Image
                             key={index}
                             className={`${styles.photo} ${index === activeIndex ? styles.photoActive : ""}`}
                             src={content.src}
                             alt=""
+                            fill
                             draggable={false}
-                            loading={index === 0 ? "eager" : "lazy"}
+                            priority={index === 0}
+                            sizes="100vw"
                         />
                     ))}
                 </div>

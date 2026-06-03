@@ -10,8 +10,9 @@ type Props = {
 };
 
 export default async function Page({params}: Props) {
-    await requireRole("SMM");
     const {lang} = await params;
+    const locale = lang as Locale;
+    await requireRole("SMM", locale);
 
-    redirect(withLocale("/admin/news", lang as Locale));
+    redirect(withLocale("/admin/news", locale));
 }

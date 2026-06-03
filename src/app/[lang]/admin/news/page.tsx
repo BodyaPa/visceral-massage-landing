@@ -23,8 +23,8 @@ export async function generateMetadata({params}: Props): Promise<Metadata> {
 }
 
 export default async function AdminNewsPage({params}: Props) {
-    await params;
-    await requireRole("SMM");
+    const {lang} = await params;
+    await requireRole("SMM", lang as Locale);
 
     return (
         <div className="mx-auto w-full max-w-[min(1580px,calc(100vw-2rem))]">

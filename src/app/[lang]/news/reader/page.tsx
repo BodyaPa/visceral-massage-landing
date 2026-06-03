@@ -34,7 +34,7 @@ function NewsReaderContent() {
 
     useSmartAutoScroll({
         enabled: id !== null && !isLoading,
-        deps: [id, isLoading],
+        triggerKey: `${id ?? "none"}:${isLoading}`,
         action: scrollToCard
     });
 

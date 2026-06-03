@@ -23,9 +23,9 @@ export async function generateMetadata({params}: Props): Promise<Metadata> {
 }
 
 export default async function CalendarPage({params}: Props) {
-    await requireAuthenticatedUser();
     const {lang} = await params;
     const locale = lang as Locale;
+    await requireAuthenticatedUser(locale);
     const t = await getTranslations({locale, namespace: "calendar.page"});
 
     return (

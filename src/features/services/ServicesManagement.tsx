@@ -110,21 +110,26 @@ export default function ServicesManagement() {
     const enComplete = Boolean(form.titleEn?.trim());
 
     return (
-        <section className="grid min-h-0 gap-4 lg:grid-cols-[minmax(380px,1fr)_minmax(460px,0.95fr)]">
-            <div className="min-w-0 rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
+        <section className="grid min-h-0 w-full gap-4 xl:grid-cols-[minmax(380px,1fr)_minmax(460px,0.95fr)]">
+            <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
                 <div className="mb-4 flex flex-col gap-3">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                             <h1 className="text-2xl font-semibold text-stone-950">{t("title")}</h1>
                             <p className="mt-1 text-sm text-stone-600">{t("subtitle")}</p>
                         </div>
-                        <button
-                            className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700"
-                            onClick={startNewService}
-                            type="button"
-                        >
-                            {t("newService")}
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-600">
+                                {services.length}
+                            </span>
+                            <button
+                                className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700"
+                                onClick={startNewService}
+                                type="button"
+                            >
+                                {t("newService")}
+                            </button>
+                        </div>
                     </div>
                     <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_150px]">
                         <input
@@ -151,50 +156,60 @@ export default function ServicesManagement() {
                 {isError ? <p className="text-sm text-red-700">{t("loadError")}</p> : null}
                 {isFetching ? <p className="text-sm text-stone-500">{t("loading")}</p> : null}
 
-                <div className="max-h-[62vh] overflow-auto rounded-lg border border-stone-200">
-                    <table className="min-w-full table-fixed border-collapse text-left text-sm">
-                        <thead className="sticky top-0 bg-stone-100 text-xs font-semibold uppercase text-stone-500">
-                        <tr>
-                            <th className="w-[38%] px-3 py-2">{t("titleUa")}</th>
-                            <th className="w-[22%] px-3 py-2">{t("duration")}</th>
-                            <th className="w-[20%] px-3 py-2">{t("price")}</th>
-                            <th className="w-[20%] px-3 py-2">{t("status")}</th>
-                        </tr>
-                        </thead>
-                        <tbody>
+                <div className="max-h-[62vh] overflow-y-auto rounded-lg border border-stone-200 bg-stone-50/70 p-2">
+                    <div className="space-y-2" role="list">
                         {services.map((service) => {
                             const selected = service.id === selectedService?.id;
                             return (
-                                <tr
-                                    className={`cursor-pointer border-t border-stone-200 transition-colors ${
-                                        selected ? "bg-stone-900 text-white" : "bg-white text-stone-900 hover:bg-stone-50"
+                                <button
+                                    aria-pressed={selected}
+                                    className={`block w-full rounded-lg border p-3 text-left transition-colors ${
+                                        selected
+                                            ? "border-stone-900 bg-stone-900 text-white shadow-sm"
+                                            : "border-stone-200 bg-white text-stone-900 hover:border-stone-300 hover:bg-stone-50"
                                     }`}
                                     key={service.id}
                                     onClick={() => selectService(service)}
+                                    type="button"
                                 >
-                                    <td className="truncate px-3 py-2 font-medium">{service.titleUa}</td>
-                                    <td className={`px-3 py-2 ${selected ? "text-stone-200" : "text-stone-600"}`}>
-                                        {service.durationMinutes} {t("minutesShort")}
-                                    </td>
-                                    <td className={`px-3 py-2 ${selected ? "text-stone-200" : "text-stone-600"}`}>
-                                        {service.basePrice}
-                                    </td>
-                                    <td className={`px-3 py-2 ${selected ? "text-stone-200" : "text-stone-600"}`}>
-                                        {service.active ? t("active") : t("inactive")}
-                                    </td>
-                                </tr>
+                                    <span className="flex min-w-0 flex-col gap-2">
+                                        <span className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                                            <span className="min-w-0">
+                                                <span className="block truncate text-sm font-semibold">{service.titleUa}</span>
+                                                {service.titleEn ? (
+                                                    <span className={`mt-1 block truncate text-xs ${selected ? "text-stone-200" : "text-stone-500"}`}>
+                                                        {service.titleEn}
+                                                    </span>
+                                                ) : null}
+                                            </span>
+                                            <StatusBadge active={selected} enabled={service.active} label={service.active ? t("active") : t("inactive")} />
+                                        </span>
+                                        <span className="flex flex-wrap gap-1.5">
+                                            <MetaBadge active={selected} label={`${service.durationMinutes} ${t("minutesShort")}`} />
+                                            <MetaBadge active={selected} label={String(service.basePrice)} />
+                                            {service.externalPaymentUrl ? <MetaBadge active={selected} label={t("externalPaymentUrl")} /> : null}
+                                        </span>
+                                    </span>
+                                </button>
                             );
                         })}
-                        </tbody>
-                    </table>
-                    {!isFetching && services.length === 0 ? <p className="p-3 text-sm text-stone-500">{t("empty")}</p> : null}
+                        {!isFetching && services.length === 0 ? <p className="p-3 text-sm text-stone-500">{t("empty")}</p> : null}
+                    </div>
                 </div>
             </div>
 
-            <div className="min-w-0 rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
-                <h2 className="text-xl font-semibold text-stone-950">
-                    {selectedService ? t("editTitle") : t("createTitle")}
-                </h2>
+            <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+                <div className="flex flex-col gap-2 border-b border-stone-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
+                            {selectedService ? `ID ${selectedService.id}` : t("newService")}
+                        </p>
+                        <h2 className="mt-1 text-xl font-semibold text-stone-950">
+                            {selectedService ? t("editTitle") : t("createTitle")}
+                        </h2>
+                    </div>
+                    <StatusBadge enabled={form.active} label={form.active ? t("active") : t("inactive")} />
+                </div>
                 <div className="mt-4 space-y-3">
                     <div className="rounded-lg border border-stone-200 bg-stone-50 p-1">
                         <div className="grid grid-cols-2 gap-1">
@@ -281,7 +296,9 @@ export default function ServicesManagement() {
                             />
                         </Field>
                     </div>
-                    <label className="flex items-center justify-between rounded-lg border border-stone-200 px-3 py-2 text-sm text-stone-900">
+                    <label className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                        form.active ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-stone-50 text-stone-900"
+                    }`}>
                         <span>{t("active")}</span>
                         <input
                             checked={form.active}
@@ -290,7 +307,7 @@ export default function ServicesManagement() {
                         />
                     </label>
                     <button
-                        className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-400"
+                        className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-400 sm:w-fit"
                         disabled={saving || !form.titleUa.trim() || form.durationMinutes < 1 || form.basePrice < 0}
                         onClick={saveService}
                         type="button"
@@ -300,6 +317,30 @@ export default function ServicesManagement() {
                 </div>
             </div>
         </section>
+    );
+}
+
+function StatusBadge({active = false, enabled, label}: {active?: boolean; enabled: boolean; label: string}) {
+    if (enabled) {
+        return (
+            <span className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-emerald-50 text-emerald-800"}`}>
+                {label}
+            </span>
+        );
+    }
+
+    return (
+        <span className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-stone-100 text-stone-600"}`}>
+            {label}
+        </span>
+    );
+}
+
+function MetaBadge({active = false, label}: {active?: boolean; label: string}) {
+    return (
+        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-stone-100 text-stone-700"}`}>
+            {label}
+        </span>
     );
 }
 

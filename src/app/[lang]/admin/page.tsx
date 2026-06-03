@@ -1,6 +1,10 @@
 import type {Metadata} from "next";
 import {getTranslations} from "next-intl/server";
 import type {Locale} from "@/i18n";
+import {redirect} from "next/navigation";
+import {requireAnyRole} from "@/features/auth/auth.server";
+import {hasRole} from "@/features/auth/auth.roles";
+import {withLocale} from "@/shared/lib/locale/withLocale";
 
 type Props = {
     params: Promise<{lang: string}>;
@@ -23,12 +27,15 @@ export async function generateMetadata({params}: Props): Promise<Metadata> {
 export default async function AdminPage({params}: Props) {
     const {lang} = await params;
     const locale = lang as Locale;
-    const t = await getTranslations({locale, namespace: "admin.dashboard"});
+    const user = await requireAnyRole(["MASTER", "SPECIALIST", "FINANCE_MANAGER", "SMM"], locale);
 
-    return (
-        <section className="w-full max-w-4xl space-y-4 rounded-2xl border border-stone-200 bg-white/90 p-6 shadow-sm sm:p-8">
-            <h1 className="text-3xl font-bold">{t("title")}</h1>
-            <p className="max-w-2xl text-base text-stone-600">{t("subtitle")}</p>
-        </section>
-    );
+    if (hasRole(user, "SMM")) {
+        redirect(withLocale("/admin/news", locale));
+    }
+
+    if (hasRole(user, "MASTER")) {
+        redirect(withLocale("/admin/users", locale));
+    }
+
+    redirect(withLocale("/account", locale));
 }

@@ -21,7 +21,82 @@ main {
 }
 
 .management-workspace {
-  transition: background-color 220ms ease, box-shadow 220ms ease;
+  max-width: calc(100vw - 1.5rem);
+  view-transition-name: management-workspace;
+  transition: width 360ms ease, max-width 360ms ease, background-color 220ms ease, box-shadow 220ms ease;
+}
+
+.management-layout {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.management-content {
+  display: flex;
+  height: var(--management-content-height, auto);
+  max-width: 100%;
+  min-height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  transition: height 420ms cubic-bezier(0.2, 0, 0, 1);
+  width: 100%;
+}
+
+.management-content-inner {
+  display: flex;
+  width: 100%;
+  min-height: 100%;
+}
+
+.management-content-inner > * {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 100%;
+  view-transition-name: management-content;
+  animation: content-enter 280ms ease-out both;
+  transition: width 420ms cubic-bezier(0.2, 0, 0, 1), max-width 420ms cubic-bezier(0.2, 0, 0, 1), min-width 420ms cubic-bezier(0.2, 0, 0, 1), min-height 420ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (min-width: 640px) {
+  .management-workspace {
+    max-width: calc(100vw - 2.5rem);
+  }
+}
+
+@media (min-width: 768px) {
+  .management-workspace {
+    width: 100%;
+  }
+
+  .management-content {
+    transition: width 420ms cubic-bezier(0.2, 0, 0, 1), height 420ms cubic-bezier(0.2, 0, 0, 1);
+    width: 100%;
+  }
+
+  .management-content-inner > * {
+    flex: 1 1 auto;
+    min-width: 50vw;
+  }
+}
+
+@media (min-width: 1441px) {
+  .management-workspace {
+    width: fit-content;
+  }
+
+  .management-content {
+    width: min(max(var(--management-content-width, 50vw), 50vw), calc(100vw - 13.75rem));
+  }
+}
+
+::view-transition-old(management-workspace),
+::view-transition-new(management-workspace),
+::view-transition-old(management-content),
+::view-transition-new(management-content) {
+  animation-duration: 360ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  height: 100%;
+  overflow: clip;
 }
 
 .auth-card {
@@ -44,6 +119,17 @@ main {
   .management-workspace {
     animation: none;
     transition: none;
+    view-transition-name: none;
+  }
+
+  .management-content {
+    transition: none;
+  }
+
+  .management-content-inner > * {
+    animation: none;
+    transition: none;
+    view-transition-name: none;
   }
 
   .auth-card {

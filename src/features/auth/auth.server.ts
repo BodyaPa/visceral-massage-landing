@@ -1,7 +1,10 @@
 import "server-only";
 
 import {cookies} from "next/headers";
-import {notFound} from "next/navigation";
+import {notFound, redirect} from "next/navigation";
+import type {Locale} from "@/i18n";
+import {defaultLocale} from "@/i18n";
+import {withLocale} from "@/shared/lib/locale/withLocale";
 import {hasAnyRole as hasAnyAssignedRole, hasRole as hasAssignedRole, type UserRole} from "./auth.roles";
 
 export type AuthenticatedUser = {
@@ -19,7 +22,7 @@ function getServerApiUrl() {
         ?? "http://localhost:8080";
 }
 
-async function getAuthenticatedUser(): Promise<AuthenticatedUser> {
+async function getAuthenticatedUser(locale: Locale = defaultLocale): Promise<AuthenticatedUser> {
     const cookieHeader = (await cookies()).toString();
     const response = await fetch(`${getServerApiUrl()}/api/auth/me`, {
         headers: {
@@ -29,11 +32,11 @@ async function getAuthenticatedUser(): Promise<AuthenticatedUser> {
     });
 
     if (response.status === 400 || response.status === 401 || response.status === 403) {
-        notFound();
+        redirect(withLocale("/auth?mode=login", locale));
     }
 
     if (!response.ok) {
-        throw new Error("Failed to verify admin access.");
+        throw new Error("Failed to verify authenticated user.");
     }
 
     const user = await response.json() as AuthenticatedUser;
@@ -41,12 +44,12 @@ async function getAuthenticatedUser(): Promise<AuthenticatedUser> {
     return user;
 }
 
-export async function requireAuthenticatedUser(): Promise<AuthenticatedUser> {
-    return getAuthenticatedUser();
+export async function requireAuthenticatedUser(locale?: Locale): Promise<AuthenticatedUser> {
+    return getAuthenticatedUser(locale);
 }
 
-export async function requireRole(role: UserRole): Promise<AuthenticatedUser> {
-    const user = await getAuthenticatedUser();
+export async function requireRole(role: UserRole, locale?: Locale): Promise<AuthenticatedUser> {
+    const user = await getAuthenticatedUser(locale);
 
     if (!hasAssignedRole(user, role)) {
         notFound();
@@ -55,8 +58,8 @@ export async function requireRole(role: UserRole): Promise<AuthenticatedUser> {
     return user;
 }
 
-export async function requireAnyRole(roles: UserRole[]): Promise<AuthenticatedUser> {
-    const user = await getAuthenticatedUser();
+export async function requireAnyRole(roles: UserRole[], locale?: Locale): Promise<AuthenticatedUser> {
+    const user = await getAuthenticatedUser(locale);
 
     if (!hasAnyAssignedRole(user, roles)) {
         notFound();

@@ -410,7 +410,7 @@ export default function AdminNewsEditor() {
                 viewMode={viewMode}
             />
 
-            <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)] 2xl:grid-cols-[300px_minmax(620px,1fr)_280px]">
+            <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[260px_minmax(0,1fr)] 2xl:grid-cols-[300px_minmax(620px,1fr)_280px]">
                 <NewsSidebar
                     busy={isCreating}
                     filter={statusFilter}
@@ -425,7 +425,7 @@ export default function AdminNewsEditor() {
                     t={t}
                 />
 
-                <main className="min-h-[38rem] min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
+                <main className="min-h-[30rem] min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6 xl:min-h-[38rem]">
                     {!selectedItem ? (
                         <EmptySelection busy={isCreating} onCreate={addDraft} t={t} />
                     ) : viewMode === "preview" || archived ? (
@@ -534,7 +534,7 @@ function NewsSidebar({busy, filter, isLoading, news, onCreate, onFilter, onSearc
     const filters: StatusFilter[] = ["ALL", "DRAFT", "PUBLISHED", "ARCHIVED"];
 
     return (
-        <aside className="min-w-0 space-y-3 rounded-xl border border-stone-200 bg-white p-3 shadow-sm lg:sticky lg:top-[84px]">
+        <aside className="min-w-0 space-y-3 rounded-xl border border-stone-200 bg-white p-3 shadow-sm xl:sticky xl:top-[84px]">
             <button
                 className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-stone-700 disabled:opacity-60"
                 disabled={busy}
@@ -562,7 +562,7 @@ function NewsSidebar({busy, filter, isLoading, news, onCreate, onFilter, onSearc
                     </button>
                 ))}
             </div>
-            <div className="max-h-80 space-y-2 overflow-y-auto pt-1 lg:max-h-[calc(100vh-295px)]">
+            <div className="max-h-80 space-y-2 overflow-y-auto pt-1 xl:max-h-[calc(100vh-295px)]">
                 {isLoading ? <p className="p-2 text-sm text-stone-500">{t("loading")}</p> : null}
                 {!isLoading && news.length === 0 ? <p className="p-2 text-sm text-stone-500">{t("empty")}</p> : null}
                 {news.map((item) => (
@@ -602,7 +602,7 @@ function ContentEditor({activeTab, draft, imageInsertion, onImageInserted, onSel
     const contentField = activeTab === "ua" ? "contentUa" : "contentEn";
 
     return (
-        <section className={`${styles.panel} min-h-[clamp(35rem,60vh,47.5rem)] min-w-0 space-y-4`}>
+        <section className={`${styles.panel} min-h-[30rem] min-w-0 space-y-4 xl:min-h-[clamp(35rem,60vh,47.5rem)]`}>
             <div className="flex flex-wrap gap-2 border-b border-stone-200 pb-3" role="tablist" aria-label={t("versions")}>
                 <LanguageTab active={activeTab === "ua"} complete={state.uaComplete} label={t("ukrainian")} onSelect={() => onSelectTab("ua")} />
                 <LanguageTab active={activeTab === "en"} complete={state.enComplete} label={t("english")} onSelect={() => onSelectTab("en")} />
@@ -644,7 +644,7 @@ function PreviewPanel({activeTab, draft, item, onSelectTab, state, t}: {
     const content = activeTab === "ua" ? draft.contentUa : draft.contentEn;
 
     return (
-        <section className={`${styles.panel} min-h-[clamp(35rem,60vh,47.5rem)] min-w-0 space-y-4`}>
+        <section className={`${styles.panel} min-h-[30rem] min-w-0 space-y-4 xl:min-h-[clamp(35rem,60vh,47.5rem)]`}>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3">
                 <h2 className="text-sm font-medium text-stone-500">{t("previewTitle")}</h2>
                 <div className="flex flex-wrap gap-2" role="tablist" aria-label={t("versions")}>
@@ -692,13 +692,13 @@ function Inspector({archived, assets, changingMedia, isLoading, item, onDetach, 
     t: T;
 }) {
     if (!item) {
-        return <aside className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 text-sm text-stone-500 lg:col-start-2 2xl:col-start-auto">{t("inspectorEmpty")}</aside>;
+        return <aside className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 text-sm text-stone-500 xl:col-start-2 2xl:col-start-auto">{t("inspectorEmpty")}</aside>;
     }
 
     const cover = assets.find((asset) => asset.id === item.coverMediaId);
 
     return (
-        <aside className="min-w-0 space-y-4 rounded-xl border border-stone-200 bg-white p-4 shadow-sm lg:col-start-2 2xl:col-start-auto 2xl:sticky 2xl:top-[84px]">
+        <aside className="min-w-0 space-y-4 rounded-xl border border-stone-200 bg-white p-4 shadow-sm xl:col-start-2 2xl:col-start-auto 2xl:sticky 2xl:top-[84px]">
             <section className="space-y-2 border-b border-stone-100 pb-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{t("settings")}</p>
                 <StatusBadge status={item.status} t={t} />

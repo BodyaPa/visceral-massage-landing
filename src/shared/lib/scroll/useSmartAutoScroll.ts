@@ -5,13 +5,13 @@ import {shouldSuppressAutoScroll} from "@/shared/lib/scroll/scrollManager";
 
 type UseSmartAutoScrollOptions = {
     enabled: boolean;
-    deps?: unknown[];
+    triggerKey?: unknown;
     action: () => void;
 };
 
 export function useSmartAutoScroll({
                                        enabled,
-                                       deps = [],
+                                       triggerKey,
                                        action
                                    }: UseSmartAutoScrollOptions) {
     useEffect(() => {
@@ -31,5 +31,5 @@ export function useSmartAutoScroll({
             window.cancelAnimationFrame(raf1);
             window.cancelAnimationFrame(raf2);
         };
-    }, [enabled, action, ...deps]);
+    }, [enabled, action, triggerKey]);
 }

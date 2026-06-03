@@ -7,8 +7,7 @@
     "calendar": "Schedule",
     "login": "Login",
     "register": "Register",
-    "admin": "Admin",
-    "manageNews": "Manage news",
+    "admin": "Administration",
     "personalAccount": "Personal account",
     "logout": "Logout",
     "loggingOut": "Signing out...",
@@ -58,12 +57,31 @@
       "title": "Personal account"
     },
     "title": "Personal account",
-    "subtitle": "Your appointments and profile management will be available here.",
+    "subtitle": "Personal details, contacts, and access status for your account.",
     "back": "← Home",
-    "admin": "Admin",
-    "manageNews": "Manage news",
-    "name": "Name",
-    "nameUnavailable": "Name has not been provided yet"
+    "nameUnavailable": "Name has not been provided yet",
+    "notProvided": "Not provided",
+    "profileSection": "Profile",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "phone": "Phone",
+    "email": "Email",
+    "rolesSection": "Roles",
+    "rolesHint": "Roles are shown for reference only. Role management is available in a separate section for users with permission.",
+    "securitySection": "Access and security",
+    "securityText": "Password changes and account recovery will be available after the corresponding backend flow is added.",
+    "securityAction": "Password change unavailable",
+    "deleteSection": "Account deletion",
+    "deleteText": "Account deletion requires a separate retention policy for bookings, payments, and business history.",
+    "deleteAction": "Deletion unavailable",
+    "deleteDeferred": "This feature will be added after the retention policy and safe backend endpoint are approved.",
+    "roles": {
+      "USER": "User",
+      "MASTER": "Master",
+      "SPECIALIST": "Specialist",
+      "FINANCE_MANAGER": "Finance",
+      "SMM": "SMM"
+    }
   },
   "home": {
     "meta": {
@@ -95,16 +113,10 @@
     "navigation": {
       "label": "Administrator navigation",
       "home": "← Home",
-      "dashboard": "Admin",
       "news": "Manage news",
       "users": "Users",
       "offices": "Offices",
-      "services": "Services",
-      "account": "Personal account"
-    },
-    "dashboard": {
-      "title": "Admin panel",
-      "subtitle": "Protected content management area for Ataraksia."
+      "services": "Services"
     },
     "news": {
       "meta": {

@@ -7,8 +7,7 @@ import Link from "next/link";
 import {withLocale} from "@/shared/lib/locale/withLocale";
 import LanguageSwitcher from "@/components/common/LanguageSwitcher";
 import AuthSessionPanel from "@/features/auth/AuthSessionPanel";
-import AuthenticatedLink from "@/features/auth/AuthenticatedLink";
-import {hasManagementRole, hasRole} from "@/features/auth/auth.roles";
+import AnimatedManagementContent from "@/components/management/AnimatedManagementContent";
 
 type Props = {
     params: Promise<{lang: string}>;
@@ -33,12 +32,13 @@ export default async function AccountPage({params}: Props) {
     const {lang} = await params;
     const locale = lang as Locale;
     const t = await getTranslations({locale, namespace: "accountPage"});
-    const user = await requireAuthenticatedUser();
+    const user = await requireAuthenticatedUser(locale);
     const displayName = [user.firstName, user.lastName].filter(Boolean).join(" ") || t("nameUnavailable");
+    const contactValue = user.email ?? user.phone ?? t("notProvided");
 
     return (
         <main className="fixed inset-0 z-[5] overflow-y-auto p-3 sm:p-5">
-            <section className="management-workspace mx-auto flex min-h-[calc(100vh-1.5rem)] w-full max-w-[1440px] flex-col rounded-2xl border border-stone-200/80 bg-stone-50/95 shadow-2xl backdrop-blur-sm sm:min-h-[calc(100vh-2.5rem)]">
+            <section className="management-workspace mx-auto flex min-h-[calc(100vh-1.5rem)] w-fit max-w-full flex-col rounded-2xl border border-stone-200/80 bg-stone-50/95 shadow-2xl backdrop-blur-sm sm:min-h-[calc(100vh-2.5rem)]">
                 <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 px-4 py-4 sm:px-6">
                     <Link
                         className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100"
@@ -53,46 +53,97 @@ export default async function AccountPage({params}: Props) {
                         <AuthSessionPanel loading={false} tone="light" user={user} variant="management" />
                     </div>
                 </div>
-                <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 sm:p-6 md:grid-cols-[190px_minmax(0,1fr)]">
-                    <nav className="flex flex-wrap content-start gap-2 md:flex-col">
-                        <AuthenticatedLink
-                            className="rounded-lg bg-stone-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-stone-700"
-                            fallbackHref={withLocale("/auth?mode=login", locale)}
-                            href={withLocale("/account", locale)}
-                        >
-                            {t("title")}
-                        </AuthenticatedLink>
-                        {hasManagementRole(user) ? (
-                            <>
-                                <AuthenticatedLink
-                                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100"
-                                    fallbackHref={withLocale("/auth?mode=login", locale)}
-                                    href={withLocale("/admin", locale)}
-                                >
-                                    {t("admin")}
-                                </AuthenticatedLink>
-                                {hasRole(user, "SMM") ? (
-                                <AuthenticatedLink
-                                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100"
-                                    fallbackHref={withLocale("/auth?mode=login", locale)}
-                                    href={withLocale("/admin/news", locale)}
-                                >
-                                    {t("manageNews")}
-                                </AuthenticatedLink>
-                                ) : null}
-                            </>
-                        ) : null}
-                    </nav>
-                    <div className="management-content w-full max-w-2xl space-y-5 rounded-2xl border border-stone-200 bg-white/90 p-6 shadow-sm sm:p-8">
-                        <h1 className="text-3xl font-bold">{t("title")}</h1>
-                        <p className="text-stone-600">{t("subtitle")}</p>
-                        <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
-                            <p className="text-sm text-stone-500">{t("name")}</p>
-                            <p className="mt-1 text-lg font-medium text-stone-900">{displayName}</p>
+                <div className="management-layout grid min-h-0 flex-1 grid-cols-1 items-stretch gap-4 p-4 sm:p-6">
+                    <AnimatedManagementContent>
+                        <div className="h-full w-full max-w-5xl space-y-5 rounded-2xl border border-stone-200 bg-white/90 p-5 shadow-sm sm:p-8">
+                            <div className="flex flex-col gap-3 border-b border-stone-100 pb-5 md:flex-row md:items-end md:justify-between">
+                                <div>
+                                    <h1 className="text-2xl font-semibold text-stone-950 sm:text-3xl">{t("title")}</h1>
+                                    <p className="mt-2 max-w-2xl text-sm text-stone-600 sm:text-base">{t("subtitle")}</p>
+                                </div>
+                                <span className="w-fit rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-600">
+                                    ID {user.id}
+                                </span>
+                            </div>
+
+                            <section className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
+                                <div className="space-y-4">
+                                    <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
+                                        <p className="text-sm font-medium text-stone-500">{t("profileSection")}</p>
+                                        <p className="mt-2 text-xl font-semibold text-stone-950">{displayName}</p>
+                                        <p className="mt-1 break-words text-sm text-stone-600">{contactValue}</p>
+                                    </div>
+
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        <InfoCard label={t("firstName")} value={user.firstName ?? t("notProvided")} />
+                                        <InfoCard label={t("lastName")} value={user.lastName ?? t("notProvided")} />
+                                        <InfoCard label={t("phone")} value={user.phone ?? t("notProvided")} />
+                                        <InfoCard label={t("email")} value={user.email ?? t("notProvided")} />
+                                    </div>
+                                </div>
+
+                                <aside className="space-y-4">
+                                    <section className="rounded-xl border border-stone-200 bg-white p-4">
+                                        <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">{t("rolesSection")}</h2>
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            {user.roles.map((role) => (
+                                                <RoleBadge key={role} label={t(`roles.${role}`)} />
+                                            ))}
+                                        </div>
+                                        <p className="mt-3 text-sm text-stone-600">{t("rolesHint")}</p>
+                                    </section>
+
+                                    <section className="rounded-xl border border-stone-200 bg-stone-50 p-4">
+                                        <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">{t("securitySection")}</h2>
+                                        <p className="mt-2 text-sm text-stone-700">{t("securityText")}</p>
+                                        <button
+                                            className="mt-3 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-400"
+                                            disabled
+                                            type="button"
+                                        >
+                                            {t("securityAction")}
+                                        </button>
+                                    </section>
+                                </aside>
+                            </section>
+
+                            <section className="rounded-xl border border-red-200 bg-red-50/70 p-4">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                        <h2 className="text-base font-semibold text-red-950">{t("deleteSection")}</h2>
+                                        <p className="mt-1 max-w-2xl text-sm text-red-900/75">{t("deleteText")}</p>
+                                    </div>
+                                    <button
+                                        className="w-fit rounded-lg border border-red-200 bg-white/70 px-3 py-2 text-sm font-medium text-red-300"
+                                        disabled
+                                        type="button"
+                                    >
+                                        {t("deleteAction")}
+                                    </button>
+                                </div>
+                                <p className="mt-3 text-xs text-red-900/65">{t("deleteDeferred")}</p>
+                            </section>
                         </div>
-                    </div>
+                    </AnimatedManagementContent>
                 </div>
             </section>
         </main>
+    );
+}
+
+function InfoCard({label, value}: {label: string; value: string}) {
+    return (
+        <div className="rounded-xl border border-stone-200 bg-white p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-stone-500">{label}</p>
+            <p className="mt-2 break-words text-sm font-medium text-stone-950">{value}</p>
+        </div>
+    );
+}
+
+function RoleBadge({label}: {label: string}) {
+    return (
+        <span className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700">
+            {label}
+        </span>
     );
 }

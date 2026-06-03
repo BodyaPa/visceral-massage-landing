@@ -116,7 +116,9 @@
       "news": "Manage news",
       "users": "Users",
       "offices": "Offices",
-      "services": "Services"
+      "services": "Services",
+      "specialist": "Specialist",
+      "finance": "Finance"
     },
     "news": {
       "meta": {
@@ -255,6 +257,26 @@
         "draftDeleted": "Draft deleted.",
         "saveError": "Unable to save the news item. Check the translations.",
         "deleteError": "Unable to delete the news item."
+      }
+    },
+    "specialist": {
+      "meta": {
+        "title": "Specialist workspace"
+      },
+      "page": {
+        "title": "Specialist workspace",
+        "subtitle": "Temporary section",
+        "body": "The specialist workspace will be connected after own services, schedule, availability, and bookings are added. Administration access for this role is already available."
+      }
+    },
+    "finance": {
+      "meta": {
+        "title": "Finance"
+      },
+      "page": {
+        "title": "Finance",
+        "subtitle": "Temporary section",
+        "body": "The finance dashboard will be connected after payment review, reports, and financial operations are added. Administration access for the finance role is already available."
       }
     },
     "users": {

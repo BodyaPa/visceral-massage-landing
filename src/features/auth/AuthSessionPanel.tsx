@@ -8,7 +8,7 @@ import {withLocale} from "@/shared/lib/locale/withLocale";
 import styles from "@/components/layout/header/HeaderStyles.module.scss";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {logout, type AuthenticatedUser} from "./auth.client";
-import {hasManagementRole} from "./auth.roles";
+import {hasAdministrationSection} from "./auth.roles";
 import AuthenticatedLink from "./AuthenticatedLink";
 import Link from "next/link";
 
@@ -125,7 +125,7 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
                     >
                         {t("personalAccount")}
                     </AuthenticatedLink>
-                    {hasManagementRole(user) ? (
+                    {hasAdministrationSection(user) ? (
                         <AuthenticatedLink
                             className={styles.accountMenuLink}
                             fallbackHref={withLocale("/auth?mode=login", locale)}

@@ -15,3 +15,7 @@ export function hasAnyRole(user: RoleBearingUser | null | undefined, roles: User
 export function hasManagementRole(user: RoleBearingUser | null | undefined) {
     return hasAnyRole(user, ["MASTER", "SPECIALIST", "FINANCE_MANAGER", "SMM"]);
 }
+
+export function hasAdministrationSection(user: RoleBearingUser | null | undefined) {
+    return hasAnyRole(user, ["SMM", "MASTER", "SPECIALIST", "FINANCE_MANAGER"]);
+}

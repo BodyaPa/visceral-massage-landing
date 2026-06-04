@@ -27,7 +27,7 @@ export default async function AdminNewsPage({params}: Props) {
     await requireRole("SMM", lang as Locale);
 
     return (
-        <div className="mx-auto w-full max-w-[min(1580px,calc(100vw-2rem))]">
+        <div className="w-full">
             <AdminNewsEditor />
         </div>
     );

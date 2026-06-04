@@ -12,15 +12,16 @@ import LanguageSwitcher from '@/components/common/LanguageSwitcher';
 import AuthSessionPanel from "@/features/auth/AuthSessionPanel";
 import {getCurrentUser, refreshSession, type AuthenticatedUser} from "@/features/auth/auth.client";
 
-const SESSION_KEEP_ALIVE_INTERVAL_MS = 10 * 60 * 1000;
+const SESSION_KEEP_ALIVE_INTERVAL_MS = 45 * 1000;
 
 export default function HeaderComponent() {
     const t = useTranslations("nav");
     const locale = useLocale();
     const pathname = usePathname();
     const isAuthPage = pathname.endsWith("/auth") || pathname.endsWith("/login") || pathname.endsWith("/register");
-    const isManagementPage = pathname.includes("/admin") || pathname.endsWith("/account");
-    const usesBackgroundSlider = isAuthPage || isManagementPage;
+    const isAccountPage = pathname.endsWith("/account");
+    const isManagementPage = pathname.includes("/admin");
+    const usesBackgroundSlider = isAuthPage || isAccountPage || isManagementPage;
 
     const blockRef = useRef<HTMLDivElement | null>(null);
     const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -66,19 +67,52 @@ export default function HeaderComponent() {
             return;
         }
 
-        const keepSessionAlive = () => {
+        let active = true;
+        let refreshing = false;
+
+        const keepSessionAlive = async () => {
             if (document.visibilityState !== "visible") {
                 return;
             }
 
-            refreshSession().catch(() => {
-                setUser(null);
-            });
+            if (refreshing) {
+                return;
+            }
+
+            refreshing = true;
+
+            try {
+                await refreshSession();
+                const currentUser = await getCurrentUser();
+
+                if (active) {
+                    setUser(currentUser);
+                }
+            } catch {
+                if (active) {
+                    setUser(null);
+                }
+            } finally {
+                refreshing = false;
+            }
+        };
+        const keepSessionAliveWhenVisible = () => {
+            if (document.visibilityState === "visible") {
+                void keepSessionAlive();
+            }
         };
         const interval = window.setInterval(keepSessionAlive, SESSION_KEEP_ALIVE_INTERVAL_MS);
 
+        window.addEventListener("focus", keepSessionAlive);
+        window.addEventListener("pageshow", keepSessionAlive);
+        document.addEventListener("visibilitychange", keepSessionAliveWhenVisible);
+
         return () => {
+            active = false;
             window.clearInterval(interval);
+            window.removeEventListener("focus", keepSessionAlive);
+            window.removeEventListener("pageshow", keepSessionAlive);
+            document.removeEventListener("visibilitychange", keepSessionAliveWhenVisible);
         };
     }, [user]);
 
@@ -142,7 +176,7 @@ export default function HeaderComponent() {
             {usesBackgroundSlider ? null : <div className={styles.userBlock}>
                 <div className={styles.userPanel}>
                     <Suspense fallback={null}>
-                            <LanguageSwitcher requiresSession={isManagementPage} />
+                            <LanguageSwitcher requiresSession={isAccountPage || isManagementPage} />
                     </Suspense>
                     <AuthSessionPanel key={locale} user={user} loading={sessionLoading} onLogout={() => setUser(null)} />
                 </div>

@@ -49,7 +49,24 @@
     },
     "page": {
       "title": "Schedule",
-      "subtitle": "Available appointment times will appear here."
+      "eyebrow": "Book with Ataraksia",
+      "subtitle": "Choose a service, office, and a convenient appointment time.",
+      "bookingPanel": {"title": "Booking details", "subtitle": "Start with a service, then refine the place, specialist, and period."},
+      "upcomingTitle": "Nearest available slots",
+      "upcomingDescription": "The soonest appointment options matching your selection.",
+      "calendarTitle": "Availability calendar",
+      "calendarDescription": "Review every available option in the selected period.",
+      "calendarEmpty": "The calendar will update when availability matching your selection appears.",
+      "loading": "Updating schedule...",
+      "loadError": "Unable to load the schedule.",
+      "withoutOffice": "No office assigned",
+      "slotCount": "{count, plural, one {# slot} other {# slots}}",
+      "filters": {"service": "Service", "office": "Office", "specialist": "Specialist", "period": "Period", "selectService": "Select service", "allOffices": "All offices", "allSpecialists": "All specialists"},
+      "periods": {"days7": "Next 7 days", "days31": "Next 31 days"},
+      "summary": {"service": "Service", "duration": "Duration", "price": "Price", "place": "Place / specialist", "notSelected": "Not selected yet", "anyAvailable": "Any available", "selectServiceHint": "Select a service to book", "minutes": "{count} min"},
+      "emptyState": {"title": "No available slots match these filters", "body": "Try changing the service, office, or period. New times appear after specialists update their schedules.", "reset": "Reset filters", "allOffices": "Show all offices", "nextPeriod": "Show 31 days"},
+      "booking": {"action": "Book", "saving": "Booking...", "selectService": "Select a service first.", "created": "Booking created. Payment confirmation is pending.", "createdWithPayment": "Booking created. Use the service payment link to continue.", "error": "Unable to create the booking. Sign in or choose another slot.", "reminderOptIn": "Send appointment reminder", "reminderHint": "A reminder will only be sent for this booking."},
+      "views": {"month": "Month", "week": "Week", "day": "Day", "list": "List"}
     }
   },
   "accountPage": {
@@ -117,7 +134,7 @@
       "users": "Users",
       "offices": "Offices",
       "services": "Services",
-      "specialist": "Specialist",
+      "specialist": "Schedule",
       "finance": "Finance"
     },
     "news": {
@@ -261,12 +278,120 @@
     },
     "specialist": {
       "meta": {
-        "title": "Specialist workspace"
+        "title": "Schedule"
       },
       "page": {
-        "title": "Specialist workspace",
-        "subtitle": "Temporary section",
-        "body": "The specialist workspace will be connected after own services, schedule, availability, and bookings are added. Administration access for this role is already available."
+        "title": "Schedule",
+        "eyebrow": "Working calendar",
+        "description": "A personal specialist schedule for availability, exceptions, and future bookings. Availability is now stored by the backend, and conflicts are checked server-side.",
+        "actions": {
+          "availability": "Add availability",
+          "blocking": "Add blocked period",
+          "create": "Create availability",
+          "booking": "Create booking"
+        },
+        "stats": {"available": "Available blocks", "blocked": "Blocked periods", "bookings": "Upcoming bookings"},
+        "controls": {"today": "Today", "rangeHint": "Range navigation will be available after calendar navigation is connected."},
+        "calendar": {
+          "title": "Weekly schedule",
+          "range": "Next 31 days",
+          "pending": "Waiting for API",
+          "connected": "Connected",
+          "loading": "Updating",
+          "loadError": "Unable to load the schedule.",
+          "time": "Time",
+          "empty": "There are no availability or blocked periods in this range yet.",
+          "source": "The backend remains the source of truth for availability and conflict checks."
+        },
+        "legend": {
+          "available": "Availability",
+          "booking": "Booking",
+          "blocked": "Blocked",
+          "booked": "Booked slot"
+        },
+        "statuses": {
+          "available": "Available",
+          "blocked": "Blocked",
+          "booked": "Booked"
+        },
+        "form": {
+          "title": "Add block",
+          "availableTitle": "Create availability",
+          "blockedTitle": "Add blocked period",
+          "hint": "The backend checks the time before saving.",
+          "status": "Type",
+          "office": "Office",
+          "noOffice": "No office assigned",
+          "officesLoading": "Loading offices...",
+          "officesLoadError": "Unable to load offices.",
+          "startsAt": "Start",
+          "endsAt": "End",
+          "notes": "Note",
+          "saving": "Saving...",
+          "created": "Schedule block added.",
+          "deleted": "Schedule block deleted.",
+          "saveError": "Unable to save the block. Check the time range and conflicts.",
+          "deleteError": "Unable to delete the block.",
+          "invalidRange": "Check the block start and end time.",
+          "blockCount": "{count, plural, one {# block} other {# blocks}}"
+        },
+        "help": {"type": "Availability opens time for booking. A blocked period closes time for new bookings."},
+        "blocks": {
+          "title": "Schedule blocks",
+          "empty": "No saved blocks in this range yet.",
+          "delete": "Delete"
+        },
+        "views": {
+          "month": "Month",
+          "week": "Week",
+          "day": "Day",
+          "list": "List",
+          "hint": "Defaults: week on desktop/tablet, day or list on mobile after the calendar is connected."
+        },
+        "weekdays": {
+          "monday": "Mon",
+          "tuesday": "Tue",
+          "wednesday": "Wed",
+          "thursday": "Thu",
+          "friday": "Fri",
+          "saturday": "Sat",
+          "sunday": "Sun"
+        },
+        "manualBooking": {
+          "title": "Manual booking",
+          "body": "Create a booking for a client with an active account using their exact phone or email.",
+          "client": "Client phone or email",
+          "clientPlaceholder": "+380… or client@example.com",
+          "service": "Service",
+          "selectService": "Select a service",
+          "loadingServices": "Loading services...",
+          "servicesError": "Unable to load services.",
+          "slot": "Own available slot",
+          "selectSlot": "Select a slot",
+          "reminder": "Send the client an appointment reminder",
+          "reminderHint": "Reminder consent is stored only for this booking.",
+          "action": "Create booking",
+          "saving": "Creating...",
+          "created": "Manual booking created.",
+          "error": "Unable to create the booking. Check the client, slot, and service."
+        },
+        "bookings": {
+          "title": "Bookings",
+          "body": "Your upcoming bookings in the selected range.",
+          "empty": "There are no upcoming bookings yet.",
+          "loading": "Loading bookings...",
+          "loadError": "Unable to load bookings.",
+          "statuses": {
+            "AWAITING_PAYMENT_CONFIRMATION": "Awaiting payment",
+            "CONFIRMED": "Confirmed",
+            "CANCELLED": "Cancelled"
+          }
+        },
+        "exceptions": {
+          "title": "Exceptions",
+          "body": "Blocked and unavailable periods will appear here after saving.",
+          "empty": "There are no separate exceptions yet."
+        }
       }
     },
     "finance": {
@@ -275,8 +400,40 @@
       },
       "page": {
         "title": "Finance",
-        "subtitle": "Temporary section",
-        "body": "The finance dashboard will be connected after payment review, reports, and financial operations are added. Administration access for the finance role is already available."
+        "eyebrow": "Finance workspace",
+        "subtitle": "Payment review, booking confirmation, expenses, and reports.",
+        "loading": "Loading bookings...",
+        "loadError": "Unable to load bookings.",
+        "confirm": "Confirm",
+        "confirming": "Confirming...",
+        "confirmed": "Payment confirmed.",
+        "confirmError": "Unable to confirm payment.",
+        "unknownContact": "No contact provided",
+        "withoutOffice": "No office",
+        "statuses": {
+          "all": "All statuses",
+          "AWAITING_PAYMENT_CONFIRMATION": "Awaiting payment",
+          "CONFIRMED": "Confirmed",
+          "CANCELLED": "Cancelled"
+        },
+        "filters": {"status": "Status", "office": "Office", "allOffices": "All offices", "from": "From", "to": "To"},
+        "summary": {"pending": "Awaiting confirmation", "confirmed": "Confirmed in period", "income": "Income in period", "expenses": "Expenses in period", "result": "Estimated result"},
+        "tabs": {"label": "Finance sections", "pending": "Awaiting payment", "transactions": "Transactions", "expenses": "Expenses", "reports": "Reports / tax"},
+        "pending": {"title": "Awaiting manual confirmation", "subtitle": "Verify payment outside the system before confirming.", "emptyTitle": "Everything is reviewed", "empty": "There are no bookings awaiting manual confirmation."},
+        "transactions": {"title": "Transactions and bookings", "subtitle": "Available financial records matching the current filters.", "emptyTitle": "No records found", "empty": "Change the filters or period to review other records."},
+        "expenses": {"title": "Expenses", "subtitle": "Operating expenses matching the selected filters.", "emptyTitle": "No expenses yet", "empty": "Add the first expense or change the filters.", "hint": "Enter the actual operating expense details.", "action": "Add expense", "amount": "Amount", "category": "Category", "description": "Short description", "date": "Date", "office": "Office", "loading": "Loading expenses...", "loadError": "Unable to load expenses.", "saving": "Saving...", "created": "Expense added.", "createError": "Unable to add expense."},
+        "reports": {"title": "Reports and tax", "subtitle": "Current period summary and export preparation.", "income": "Income", "expenses": "Expenses", "taxable": "Taxable amount", "estimatedTax": "Estimated tax", "exportTitle": "Export report", "exportHint": "Export will use the date period selected above.", "disabledHint": "Available after report generation is connected.", "pdf": "Export PDF", "excel": "Export Excel"},
+        "details": {"eyebrow": "Transaction details", "close": "Close details"},
+        "table": {
+          "client": "Client",
+          "service": "Service",
+          "specialist": "Specialist",
+          "when": "Time",
+          "office": "Office",
+          "amount": "Amount",
+          "status": "Status",
+          "action": "Action"
+        }
       }
     },
     "users": {

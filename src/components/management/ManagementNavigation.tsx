@@ -27,7 +27,7 @@ export default function ManagementNavigation({locale, showNews, showUsers, showO
     const usersHref = withLocale("/admin/users", locale);
     const officesHref = withLocale("/admin/offices", locale);
     const servicesHref = withLocale("/admin/services", locale);
-    const specialistHref = withLocale("/admin/specialist", locale);
+    const scheduleHref = withLocale("/admin/schedule", locale);
     const financeHref = withLocale("/admin/finance", locale);
 
     return (
@@ -70,9 +70,9 @@ export default function ManagementNavigation({locale, showNews, showUsers, showO
             ) : null}
             {showSpecialist ? (
                 <Link
-                    aria-current={pathname === specialistHref ? "page" : undefined}
-                    className={pathname === specialistHref ? activeClassName : defaultClassName}
-                    href={specialistHref}
+                    aria-current={pathname === scheduleHref ? "page" : undefined}
+                    className={pathname === scheduleHref ? activeClassName : defaultClassName}
+                    href={scheduleHref}
                 >
                     {t("specialist")}
                 </Link>

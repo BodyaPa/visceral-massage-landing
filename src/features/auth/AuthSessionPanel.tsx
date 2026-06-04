@@ -17,7 +17,7 @@ type Props = {
     loading: boolean;
     onLogout?: () => void;
     tone?: "dark" | "light";
-    variant?: "menu" | "management";
+    variant?: "menu" | "management" | "account";
 };
 
 export default function AuthSessionPanel({user, loading, onLogout, tone = "dark", variant = "menu"}: Props) {
@@ -86,12 +86,15 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
         );
     }
 
-    if (variant === "management") {
+    if (variant === "management" || variant === "account") {
+        const identityClassName = variant === "account" ? styles.accountIdentity : styles.managementIdentity;
+        const logoutClassName = variant === "account" ? styles.accountLogout : styles.managementLogout;
+
         return (
-            <div className={`${styles.managementIdentity} ${tone === "light" ? styles.accountMenuLight : ""}`}>
+            <div className={`${identityClassName} ${tone === "light" ? styles.accountMenuLight : ""}`}>
                 <span className={styles.accountText}>{displayName}</span>
                 <button
-                    className={styles.managementLogout}
+                    className={logoutClassName}
                     disabled={submitting}
                     onClick={handleLogout}
                     type="button"

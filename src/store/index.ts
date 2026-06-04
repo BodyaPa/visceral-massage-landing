@@ -4,6 +4,8 @@ import { newsApi } from "@/features/news/news.api";
 import { usersApi } from "@/features/users/users.api";
 import { officesApi } from "@/features/offices/offices.api";
 import { servicesApi } from "@/features/services/services.api";
+import { scheduleApi } from "@/features/schedule/schedule.api";
+import { bookingsApi } from "@/features/bookings/bookings.api";
 
 export const makeStore = () =>
     configureStore({
@@ -12,7 +14,9 @@ export const makeStore = () =>
             newsApi.middleware,
             usersApi.middleware,
             officesApi.middleware,
-            servicesApi.middleware
+            servicesApi.middleware,
+            scheduleApi.middleware,
+            bookingsApi.middleware
         ),
         devTools: process.env.NODE_ENV !== "production",
     });

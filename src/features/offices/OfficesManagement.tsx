@@ -95,7 +95,7 @@ export default function OfficesManagement() {
     }
 
     return (
-        <section className="grid min-h-0 w-full gap-4 xl:grid-cols-[minmax(360px,1fr)_minmax(420px,0.9fr)]">
+        <section className="grid w-full items-start gap-5 xl:grid-cols-[minmax(360px,520px)_minmax(0,640px)]">
             <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
                 <div className="mb-4 flex flex-col gap-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -141,7 +141,7 @@ export default function OfficesManagement() {
                 {isError ? <p className="text-sm text-red-700">{t("loadError")}</p> : null}
                 {isFetching ? <p className="text-sm text-stone-500">{t("loading")}</p> : null}
 
-                <div className="max-h-[62vh] overflow-y-auto rounded-lg border border-stone-200 bg-stone-50/70 p-2">
+                <div className="max-h-[36rem] overflow-y-auto rounded-lg border border-stone-200 bg-stone-50/70 p-2">
                     <div className="space-y-2" role="list">
                         {offices.map((office) => {
                             const selected = office.id === selectedOffice?.id;
@@ -177,12 +177,17 @@ export default function OfficesManagement() {
                                 </button>
                             );
                         })}
-                        {!isFetching && offices.length === 0 ? <p className="p-3 text-sm text-stone-500">{t("empty")}</p> : null}
+                        {!isFetching && offices.length === 0 ? (
+                            <div className="rounded-lg border border-dashed border-stone-300 bg-white px-4 py-8 text-center">
+                                <p className="text-sm text-stone-600">{t("empty")}</p>
+                                <button className="mt-3 rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700" onClick={startNewOffice} type="button">{t("newOffice")}</button>
+                            </div>
+                        ) : null}
                     </div>
                 </div>
             </div>
 
-            <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+            <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex flex-col gap-2 border-b border-stone-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                         <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
@@ -227,13 +232,13 @@ export default function OfficesManagement() {
                     </div>
                     <Field label={t("locationDetails")}>
                         <textarea
-                            className="min-h-28 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                            className="min-h-20 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
                             onChange={(event) => updateField("locationDetails", event.target.value)}
                             value={form.locationDetails ?? ""}
                         />
                     </Field>
                     <label className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition-colors ${
-                        form.active ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-stone-50 text-stone-900"
+                        form.active ? "border-stone-300 bg-stone-100 text-stone-950" : "border-stone-200 bg-stone-50 text-stone-700"
                     }`}>
                         <span>{t("active")}</span>
                         <input

@@ -9,6 +9,11 @@ type ListOfficesArgs = {
     size?: number;
 };
 
+type ListPublicOfficesArgs = {
+    page?: number;
+    size?: number;
+};
+
 function listOfficesPath({query, active, page = 0, size = 100}: ListOfficesArgs) {
     const params = new URLSearchParams({
         page: String(page),
@@ -27,6 +32,13 @@ export const officesApi = createApi({
     baseQuery,
     tagTypes: ["Offices"],
     endpoints: (build) => ({
+        listPublicOffices: build.query<OfficePageResponse, ListPublicOfficesArgs | void>({
+            query: (args) => {
+                const page = args?.page ?? 0;
+                const size = args?.size ?? 100;
+                return `/offices?page=${page}&size=${size}&sort=name,asc`;
+            }
+        }),
         listOffices: build.query<OfficePageResponse, ListOfficesArgs>({
             query: listOfficesPath,
             providesTags: (result) =>
@@ -52,6 +64,7 @@ export const officesApi = createApi({
 });
 
 export const {
+    useListPublicOfficesQuery,
     useListOfficesQuery,
     useCreateOfficeMutation,
     useUpdateOfficeMutation

@@ -38,7 +38,7 @@ export default async function AdminPage({params}: Props) {
     }
 
     if (hasRole(user, "SPECIALIST")) {
-        redirect(withLocale("/admin/specialist", locale));
+        redirect(withLocale("/admin/schedule", locale));
     }
 
     if (hasRole(user, "FINANCE_MANAGER")) {

@@ -394,23 +394,7 @@ export default function AdminNewsEditor() {
 
     return (
         <div className="space-y-4">
-            <ActionBar
-                archived={archived}
-                busy={saving}
-                dirty={dirty}
-                item={selectedItem}
-                onArchive={() => changeStatus("archive")}
-                onDeleteDraft={removeDraft}
-                onPublish={publish}
-                onRestore={() => changeStatus("restore")}
-                onSave={() => saveContent()}
-                onTogglePreview={() => setViewMode((current) => current === "edit" ? "preview" : "edit")}
-                onUnpublish={() => changeStatus("unpublish")}
-                t={t}
-                viewMode={viewMode}
-            />
-
-            <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[260px_minmax(0,1fr)] 2xl:grid-cols-[300px_minmax(620px,1fr)_280px]">
+            <div className={`grid min-w-0 items-start gap-4 ${selectedItem ? "xl:grid-cols-[260px_minmax(0,1fr)] 2xl:grid-cols-[280px_minmax(0,1fr)_260px]" : "max-w-[1020px] xl:grid-cols-[280px_minmax(0,720px)]"}`}>
                 <NewsSidebar
                     busy={isCreating}
                     filter={statusFilter}
@@ -425,28 +409,45 @@ export default function AdminNewsEditor() {
                     t={t}
                 />
 
-                <main className="min-h-[30rem] min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6 xl:min-h-[38rem]">
-                    {!selectedItem ? (
-                        <EmptySelection busy={isCreating} onCreate={addDraft} t={t} />
-                    ) : viewMode === "preview" || archived ? (
-                        <PreviewPanel key={`${viewMode}-${activeTab}-${selectedItem.id}`} activeTab={activeTab} draft={draft} item={selectedItem} onSelectTab={setActiveTab} state={state} t={t} />
-                    ) : (
-                        <ContentEditor
-                            key={`${viewMode}-${activeTab}-${selectedItem.id}`}
-                            activeTab={activeTab}
-                            draft={draft}
-                            imageInsertion={imageInsertion}
-                            onImageInserted={() => setImageInsertion(null)}
-                            onSelectTab={setActiveTab}
-                            onSetField={setField}
-                            state={state}
-                            t={t}
-                            toolbarLabels={toolbarLabels}
-                        />
-                    )}
-                </main>
+                <div className="min-w-0 space-y-3">
+                    {selectedItem ? <ActionBar
+                        archived={archived}
+                        busy={saving}
+                        dirty={dirty}
+                        item={selectedItem}
+                        onArchive={() => changeStatus("archive")}
+                        onDeleteDraft={removeDraft}
+                        onPublish={publish}
+                        onRestore={() => changeStatus("restore")}
+                        onSave={() => saveContent()}
+                        onTogglePreview={() => setViewMode((current) => current === "edit" ? "preview" : "edit")}
+                        onUnpublish={() => changeStatus("unpublish")}
+                        t={t}
+                        viewMode={viewMode}
+                    /> : null}
+                    <main className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
+                        {!selectedItem ? (
+                            <EmptySelection busy={isCreating} onCreate={addDraft} t={t} />
+                        ) : viewMode === "preview" || archived ? (
+                            <PreviewPanel key={`${viewMode}-${activeTab}-${selectedItem.id}`} activeTab={activeTab} draft={draft} item={selectedItem} onSelectTab={setActiveTab} state={state} t={t} />
+                        ) : (
+                            <ContentEditor
+                                key={`${viewMode}-${activeTab}-${selectedItem.id}`}
+                                activeTab={activeTab}
+                                draft={draft}
+                                imageInsertion={imageInsertion}
+                                onImageInserted={() => setImageInsertion(null)}
+                                onSelectTab={setActiveTab}
+                                onSetField={setField}
+                                state={state}
+                                t={t}
+                                toolbarLabels={toolbarLabels}
+                            />
+                        )}
+                    </main>
+                </div>
 
-                <Inspector
+                {selectedItem ? <Inspector
                     archived={archived}
                     assets={linkedMedia}
                     changingMedia={changingMedia}
@@ -461,7 +462,7 @@ export default function AdminNewsEditor() {
                     onUpload={uploadCover}
                     state={state}
                     t={t}
-                />
+                /> : null}
             </div>
         </div>
     );
@@ -474,7 +475,7 @@ function ActionBar({archived, busy, dirty, item, onArchive, onDeleteDraft, onPub
     archived: boolean;
     busy: boolean;
     dirty: boolean;
-    item: NewsAdminItem | null;
+    item: NewsAdminItem;
     onArchive: () => void;
     onDeleteDraft: () => void;
     onPublish: () => void;
@@ -602,7 +603,7 @@ function ContentEditor({activeTab, draft, imageInsertion, onImageInserted, onSel
     const contentField = activeTab === "ua" ? "contentUa" : "contentEn";
 
     return (
-        <section className={`${styles.panel} min-h-[30rem] min-w-0 space-y-4 xl:min-h-[clamp(35rem,60vh,47.5rem)]`}>
+        <section className={`${styles.panel} min-w-0 space-y-4`}>
             <div className="flex flex-wrap gap-2 border-b border-stone-200 pb-3" role="tablist" aria-label={t("versions")}>
                 <LanguageTab active={activeTab === "ua"} complete={state.uaComplete} label={t("ukrainian")} onSelect={() => onSelectTab("ua")} />
                 <LanguageTab active={activeTab === "en"} complete={state.enComplete} label={t("english")} onSelect={() => onSelectTab("en")} />
@@ -644,7 +645,7 @@ function PreviewPanel({activeTab, draft, item, onSelectTab, state, t}: {
     const content = activeTab === "ua" ? draft.contentUa : draft.contentEn;
 
     return (
-        <section className={`${styles.panel} min-h-[30rem] min-w-0 space-y-4 xl:min-h-[clamp(35rem,60vh,47.5rem)]`}>
+        <section className={`${styles.panel} min-w-0 space-y-4`}>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3">
                 <h2 className="text-sm font-medium text-stone-500">{t("previewTitle")}</h2>
                 <div className="flex flex-wrap gap-2" role="tablist" aria-label={t("versions")}>
@@ -680,7 +681,7 @@ function Inspector({archived, assets, changingMedia, isLoading, item, onDetach, 
     assets: MediaAsset[];
     changingMedia: boolean;
     isLoading: boolean;
-    item: NewsAdminItem | null;
+    item: NewsAdminItem;
     onDetach: (asset: MediaAsset) => void;
     onInsert: (asset: MediaAsset) => void;
     onRemoveCover: () => void;
@@ -691,10 +692,6 @@ function Inspector({archived, assets, changingMedia, isLoading, item, onDetach, 
     state: TranslationState;
     t: T;
 }) {
-    if (!item) {
-        return <aside className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 text-sm text-stone-500 xl:col-start-2 2xl:col-start-auto">{t("inspectorEmpty")}</aside>;
-    }
-
     const cover = assets.find((asset) => asset.id === item.coverMediaId);
 
     return (
@@ -785,11 +782,10 @@ function Inspector({archived, assets, changingMedia, isLoading, item, onDetach, 
     );
 }
 
-function EmptySelection({busy, onCreate, t}: {busy: boolean; onCreate: () => void; t: T}) {
+function EmptySelection({t}: {busy: boolean; onCreate: () => void; t: T}) {
     return (
-        <div className="flex min-h-96 flex-col items-center justify-center gap-4 text-center">
+        <div className="flex min-h-64 items-center justify-center px-4 text-center">
             <p className="max-w-sm text-sm text-stone-500">{t("selectHint")}</p>
-            <ActionButton disabled={busy} onClick={onCreate} primary>{`+ ${busy ? t("creating") : t("new")}`}</ActionButton>
         </div>
     );
 }

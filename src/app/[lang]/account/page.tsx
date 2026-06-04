@@ -7,7 +7,6 @@ import Link from "next/link";
 import {withLocale} from "@/shared/lib/locale/withLocale";
 import LanguageSwitcher from "@/components/common/LanguageSwitcher";
 import AuthSessionPanel from "@/features/auth/AuthSessionPanel";
-import AnimatedManagementContent from "@/components/management/AnimatedManagementContent";
 
 type Props = {
     params: Promise<{lang: string}>;
@@ -38,7 +37,7 @@ export default async function AccountPage({params}: Props) {
 
     return (
         <main className="fixed inset-0 z-[5] overflow-y-auto p-3 sm:p-5">
-            <section className="management-workspace mx-auto flex min-h-[calc(100vh-1.5rem)] w-fit max-w-full flex-col rounded-2xl border border-stone-200/80 bg-stone-50/95 shadow-2xl backdrop-blur-sm sm:min-h-[calc(100vh-2.5rem)]">
+            <section className="account-workspace mx-auto flex w-fit max-w-full flex-col rounded-2xl border border-stone-200/80 bg-stone-50/95 shadow-2xl backdrop-blur-sm">
                 <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 px-4 py-4 sm:px-6">
                     <Link
                         className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100"
@@ -50,12 +49,11 @@ export default async function AccountPage({params}: Props) {
                         <Suspense fallback={null}>
                             <LanguageSwitcher requiresSession tone="light" />
                         </Suspense>
-                        <AuthSessionPanel loading={false} tone="light" user={user} variant="management" />
+                        <AuthSessionPanel loading={false} tone="light" user={user} variant="account" />
                     </div>
                 </div>
-                <div className="management-layout grid min-h-0 flex-1 grid-cols-1 items-stretch gap-4 p-4 sm:p-6">
-                    <AnimatedManagementContent>
-                        <div className="h-full w-full max-w-5xl space-y-5 rounded-2xl border border-stone-200 bg-white/90 p-5 shadow-sm sm:p-8">
+                <div className="account-layout p-4 sm:p-6">
+                    <div className="w-full max-w-5xl space-y-5 rounded-2xl border border-stone-200 bg-white/90 p-5 shadow-sm sm:p-8">
                             <div className="flex flex-col gap-3 border-b border-stone-100 pb-5 md:flex-row md:items-end md:justify-between">
                                 <div>
                                     <h1 className="text-2xl font-semibold text-stone-950 sm:text-3xl">{t("title")}</h1>
@@ -123,8 +121,7 @@ export default async function AccountPage({params}: Props) {
                                 </div>
                                 <p className="mt-3 text-xs text-red-900/65">{t("deleteDeferred")}</p>
                             </section>
-                        </div>
-                    </AnimatedManagementContent>
+                    </div>
                 </div>
             </section>
         </main>

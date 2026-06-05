@@ -82,6 +82,7 @@ export type FinanceExpenseInput = {
 export type BookingInput = {
     availabilityBlockId: number;
     serviceId: number;
+    startsAt?: string;
     reminderOptIn: boolean;
 };
 

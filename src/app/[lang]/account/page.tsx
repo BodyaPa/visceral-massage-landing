@@ -7,6 +7,7 @@ import Link from "next/link";
 import {withLocale} from "@/shared/lib/locale/withLocale";
 import LanguageSwitcher from "@/components/common/LanguageSwitcher";
 import AuthSessionPanel from "@/features/auth/AuthSessionPanel";
+import AccountBookingsPanel from "@/features/account/AccountBookingsPanel";
 
 type Props = {
     params: Promise<{lang: string}>;
@@ -104,6 +105,8 @@ export default async function AccountPage({params}: Props) {
                                     </section>
                                 </aside>
                             </section>
+
+                            <AccountBookingsPanel locale={locale} />
 
                             <section className="rounded-xl border border-red-200 bg-red-50/70 p-4">
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

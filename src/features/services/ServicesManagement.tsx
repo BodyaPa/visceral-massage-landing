@@ -16,6 +16,7 @@ const emptyForm: ServiceInput = {
     descriptionEn: "",
     durationMinutes: 60,
     basePrice: 0,
+    bookingMode: "INDIVIDUAL_APPOINTMENT",
     active: true,
     externalPaymentUrl: ""
 };
@@ -61,6 +62,7 @@ export default function ServicesManagement() {
             descriptionEn: selectedService.descriptionEn ?? "",
             durationMinutes: selectedService.durationMinutes,
             basePrice: selectedService.basePrice,
+            bookingMode: selectedService.bookingMode,
             active: selectedService.active,
             externalPaymentUrl: selectedService.externalPaymentUrl ?? ""
         });
@@ -186,6 +188,7 @@ export default function ServicesManagement() {
                                         </span>
                                         <span className="flex flex-wrap gap-1.5">
                                             <MetaBadge active={selected} label={`${service.durationMinutes} ${t("minutesShort")}`} />
+                                            <MetaBadge active={selected} label={service.bookingMode === "FIXED_EVENT" ? "Event" : "Individual"} />
                                             <MetaBadge active={selected} label={String(service.basePrice)} />
                                             {service.externalPaymentUrl ? <MetaBadge active={selected} label={t("externalPaymentUrl")} /> : null}
                                         </span>
@@ -281,6 +284,16 @@ export default function ServicesManagement() {
                         </Field>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
+                        <Field label="Booking mode" tooltip="Individual services generate free slots; fixed events are concrete sessions with capacity.">
+                            <select
+                                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                                onChange={(event) => updateField("bookingMode", event.target.value as ServiceInput["bookingMode"])}
+                                value={form.bookingMode}
+                            >
+                                <option value="INDIVIDUAL_APPOINTMENT">Individual appointment</option>
+                                <option value="FIXED_EVENT">Fixed event</option>
+                            </select>
+                        </Field>
                         <Field label={t("duration")} tooltip={t("durationHint")}>
                             <input
                                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"

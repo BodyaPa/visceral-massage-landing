@@ -1,5 +1,7 @@
 import type {PageResponse} from "@/types/news";
 
+export type ServiceBookingMode = "INDIVIDUAL_APPOINTMENT" | "FIXED_EVENT";
+
 export interface AdminService {
     id: number;
     titleUa: string;
@@ -8,6 +10,7 @@ export interface AdminService {
     descriptionEn: string | null;
     durationMinutes: number;
     basePrice: number;
+    bookingMode: ServiceBookingMode;
     active: boolean;
     externalPaymentUrl: string | null;
     createdAt: string;
@@ -20,6 +23,7 @@ export interface PublicService {
     description: string | null;
     durationMinutes: number;
     basePrice: number;
+    bookingMode: ServiceBookingMode;
 }
 
 export type AdminServicePageResponse = PageResponse<AdminService>;
@@ -32,6 +36,7 @@ export type ServiceInput = {
     descriptionEn?: string | null;
     durationMinutes: number;
     basePrice: number;
+    bookingMode: ServiceBookingMode;
     active: boolean;
     externalPaymentUrl?: string | null;
 };

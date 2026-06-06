@@ -112,7 +112,7 @@ export default function AuthForm({initialMode = "login"}: Props) {
     }
 
     async function handleRegistrationConfirm(formData: FormData) {
-        const code = String(formData.get("code") ?? "").trim();
+        const code = normalizeCode(formData.get("code"));
         setSubmitting(true);
 
         try {
@@ -135,7 +135,7 @@ export default function AuthForm({initialMode = "login"}: Props) {
 
     async function handleRecoverySubmit(formData: FormData) {
         const contact = String(formData.get("recoveryContact") ?? recoveryContact).trim();
-        const code = String(formData.get("code") ?? "").trim();
+        const code = normalizeCode(formData.get("code"));
 
         if (!contact) {
             const message = t("recovery.contactRequired");
@@ -222,7 +222,7 @@ export default function AuthForm({initialMode = "login"}: Props) {
                         <>
                             <label className="block space-y-2 text-sm font-medium text-stone-800">
                                 <span>{t("fields.recoveryCode")}</span>
-                                <input required name="code" type="text" inputMode="numeric" pattern="\\d{6}" maxLength={6} autoComplete="one-time-code" className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal" />
+                                <input required name="code" type="text" inputMode="numeric" maxLength={16} autoComplete="one-time-code" className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal" />
                             </label>
                             <label className="block space-y-2 text-sm font-medium text-stone-800">
                                 <span>{t("fields.newPassword")}</span>
@@ -274,7 +274,7 @@ export default function AuthForm({initialMode = "login"}: Props) {
                     {registrationRequested ? (
                         <label className="block space-y-2 text-sm font-medium text-stone-800">
                             <span>{t("fields.registrationCode")}</span>
-                            <input required name="code" type="text" inputMode="numeric" pattern="\\d{6}" maxLength={6} autoComplete="one-time-code" className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal" />
+                            <input required name="code" type="text" inputMode="numeric" maxLength={16} autoComplete="one-time-code" className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal" />
                         </label>
                     ) : null}
                 </>
@@ -355,4 +355,8 @@ function PasswordChecklist({passwordChecks, t}: {passwordChecks: Record<string, 
 
 function recoveryPayload(contact: string) {
     return contact.includes("@") ? {email: contact} : {phone: contact};
+}
+
+function normalizeCode(value: FormDataEntryValue | null) {
+    return String(value ?? "").replace(/\D/g, "");
 }

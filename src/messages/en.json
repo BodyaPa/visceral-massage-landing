@@ -423,7 +423,7 @@
         "transactions": {"title": "Transactions and bookings", "subtitle": "Available financial records matching the current filters.", "emptyTitle": "No records found", "empty": "Change the filters or period to review other records."},
         "expenses": {"title": "Expenses", "subtitle": "Operating expenses matching the selected filters.", "emptyTitle": "No expenses yet", "empty": "Add the first expense or change the filters.", "hint": "Enter the actual operating expense details.", "action": "Add expense", "amount": "Amount", "category": "Category", "description": "Short description", "date": "Date", "office": "Office", "loading": "Loading expenses...", "loadError": "Unable to load expenses.", "saving": "Saving...", "created": "Expense added.", "createError": "Unable to add expense."},
         "reports": {"title": "Reports and tax", "subtitle": "Current period summary and export preparation.", "income": "Income", "expenses": "Expenses", "taxable": "Taxable amount", "estimatedTax": "Estimated tax", "exportTitle": "Export report", "exportHint": "Export will use the date period selected above.", "disabledHint": "Available after report generation is connected.", "pdf": "Export PDF", "excel": "Export Excel"},
-        "details": {"eyebrow": "Transaction details", "close": "Close details"},
+        "details": {"eyebrow": "Transaction details", "close": "Close details", "paymentLink": "Payment link"},
         "table": {
           "client": "Client",
           "service": "Service",

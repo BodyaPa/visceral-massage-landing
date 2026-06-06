@@ -88,6 +88,7 @@ function EventList({cancelling, copy, events, isError, locale, onCancel}: {cance
 
 function BookingCard({booking, cancelling, copy, locale, onCancel}: {booking: Booking; cancelling: boolean; copy: Copy; locale: Locale; onCancel: (id: number) => void}) {
     const cancellable = booking.status !== "CANCELLED" && new Date(booking.startsAt).getTime() > Date.now();
+    const canPay = booking.status === "AWAITING_PAYMENT_CONFIRMATION" && Boolean(booking.externalPaymentUrl);
 
     return (
         <article className="rounded-lg border border-stone-200 bg-stone-50 p-3">
@@ -100,7 +101,10 @@ function BookingCard({booking, cancelling, copy, locale, onCancel}: {booking: Bo
             </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs font-medium text-stone-700">{formatDateTimeRange(booking.startsAt, booking.endsAt, locale)}</p>
-                {cancellable ? <button className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300" disabled={cancelling} onClick={() => onCancel(booking.id)} type="button">{copy.cancel}</button> : null}
+                <div className="flex flex-wrap justify-end gap-2">
+                    {canPay ? <a className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-50" href={booking.externalPaymentUrl ?? undefined} rel="noreferrer" target="_blank">{copy.pay}</a> : null}
+                    {cancellable ? <button className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300" disabled={cancelling} onClick={() => onCancel(booking.id)} type="button">{copy.cancel}</button> : null}
+                </div>
             </div>
         </article>
     );
@@ -171,6 +175,7 @@ function labels(locale: Locale) {
         noEvents: ua ? "Записів на події ще немає." : "No event enrollments yet.",
         loadError: ua ? "Не вдалося завантажити записи." : "Unable to load bookings.",
         cancel: ua ? "Скасувати" : "Cancel",
+        pay: ua ? "Перейти до оплати" : "Go to payment",
         cancelled: ua ? "Запис скасовано." : "Booking cancelled.",
         cancelError: ua ? "Не вдалося скасувати запис." : "Unable to cancel booking.",
         statuses: {

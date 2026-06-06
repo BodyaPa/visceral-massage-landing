@@ -552,6 +552,7 @@
       "lastName": "Last name",
       "phone": "Phone number",
       "email": "Email",
+      "recoveryContact": "Email or phone number",
       "password": "Password",
       "newPassword": "New password",
       "recoveryCode": "Recovery code"
@@ -592,15 +593,15 @@
     },
     "recovery": {
       "title": "Account recovery",
-      "subtitle": "Enter your account email. If it exists, we will send a recovery code.",
+      "subtitle": "Enter your account email or phone number. If it exists, we will send a recovery code.",
       "submit": "Send code",
       "confirmSubmit": "Change password",
-      "requestSuccess": "If an account with this email exists, a recovery code has been sent.",
+      "requestSuccess": "If an account with this contact exists, a recovery code has been sent.",
       "confirmSuccess": "Password updated. Sign in with the new password.",
       "requestError": "Unable to send the recovery code.",
       "confirmError": "Unable to change the password. Check the code and the new password.",
-      "emailRequired": "Enter an email address to recover access.",
-      "genericHint": "We do not show whether an account exists for this email. That is intentional.",
+      "contactRequired": "Enter an email address or phone number to recover access.",
+      "genericHint": "We do not show whether an account exists for this contact. That is intentional.",
       "alternative": "Remembered the password?",
       "alternativeLink": "Login"
     }

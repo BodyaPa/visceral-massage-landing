@@ -24,7 +24,7 @@ export default function AuthForm({initialMode = "login"}: Props) {
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [password, setPassword] = useState("");
-    const [recoveryEmail, setRecoveryEmail] = useState("");
+    const [recoveryContact, setRecoveryContact] = useState("");
     const [recoveryRequested, setRecoveryRequested] = useState(false);
 
     function selectMode(nextMode: Mode) {
@@ -98,11 +98,11 @@ export default function AuthForm({initialMode = "login"}: Props) {
     }
 
     async function handleRecoverySubmit(formData: FormData) {
-        const email = String(formData.get("recoveryEmail") ?? recoveryEmail).trim();
+        const contact = String(formData.get("recoveryContact") ?? recoveryContact).trim();
         const code = String(formData.get("code") ?? "").trim();
 
-        if (!email) {
-            const message = t("recovery.emailRequired");
+        if (!contact) {
+            const message = t("recovery.contactRequired");
             setError(message);
             toast.error(message);
             return;
@@ -119,14 +119,14 @@ export default function AuthForm({initialMode = "login"}: Props) {
 
         try {
             if (!recoveryRequested) {
-                await requestPasswordRecovery({email});
-                setRecoveryEmail(email);
+                await requestPasswordRecovery(recoveryPayload(contact));
+                setRecoveryContact(contact);
                 setRecoveryRequested(true);
                 toast.success(t("recovery.requestSuccess"));
                 return;
             }
 
-            await confirmPasswordRecovery({email, code, newPassword: password});
+            await confirmPasswordRecovery({...recoveryPayload(contact), code, newPassword: password});
             toast.success(t("recovery.confirmSuccess"));
             selectMode("login");
         } catch {
@@ -168,15 +168,16 @@ export default function AuthForm({initialMode = "login"}: Props) {
             {mode === "recovery" ? (
                 <>
                     <label className="block space-y-2 text-sm font-medium text-stone-800">
-                        <span>{t("fields.email")}</span>
+                        <span>{t("fields.recoveryContact")}</span>
                         <input
                             required
-                            name="recoveryEmail"
-                            type="email"
+                            name="recoveryContact"
+                            type="text"
                             maxLength={254}
-                            autoComplete="email"
-                            value={recoveryEmail}
-                            onChange={(event) => setRecoveryEmail(event.target.value)}
+                            autoComplete="username"
+                            placeholder={t("fields.identifierPlaceholder")}
+                            value={recoveryContact}
+                            onChange={(event) => setRecoveryContact(event.target.value)}
                             className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal"
                             disabled={recoveryRequested}
                         />
@@ -307,4 +308,8 @@ function PasswordChecklist({passwordChecks, t}: {passwordChecks: Record<string, 
             </div>
         </div>
     );
+}
+
+function recoveryPayload(contact: string) {
+    return contact.includes("@") ? {email: contact} : {phone: contact};
 }

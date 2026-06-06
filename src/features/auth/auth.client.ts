@@ -26,11 +26,13 @@ type RegisterRequest = {
 };
 
 type PasswordRecoveryRequest = {
-    email: string;
+    email?: string;
+    phone?: string;
 };
 
 type PasswordRecoveryConfirmRequest = {
-    email: string;
+    email?: string;
+    phone?: string;
     code: string;
     newPassword: string;
 };

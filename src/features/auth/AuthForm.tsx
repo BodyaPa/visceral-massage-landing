@@ -7,7 +7,7 @@ import {useLocale, useTranslations} from "next-intl";
 import type {Locale} from "@/i18n";
 import {withLocale} from "@/shared/lib/locale/withLocale";
 import {useToast} from "@/components/ui/toast/ToastProvider";
-import {AuthRequestError, confirmPasswordRecovery, login, register, requestPasswordRecovery} from "./auth.client";
+import {AuthRequestError, confirmPasswordRecovery, confirmRegistration, login, requestPasswordRecovery, requestRegistration} from "./auth.client";
 
 type Mode = "login" | "register" | "recovery";
 
@@ -26,12 +26,16 @@ export default function AuthForm({initialMode = "login"}: Props) {
     const [password, setPassword] = useState("");
     const [recoveryContact, setRecoveryContact] = useState("");
     const [recoveryRequested, setRecoveryRequested] = useState(false);
+    const [registrationContact, setRegistrationContact] = useState("");
+    const [registrationRequested, setRegistrationRequested] = useState(false);
 
     function selectMode(nextMode: Mode) {
         setMode(nextMode);
         setError(null);
         setPassword("");
         setRecoveryRequested(false);
+        setRegistrationContact("");
+        setRegistrationRequested(false);
         router.replace(withLocale(`/auth?mode=${nextMode}`, locale), {scroll: false});
     }
 
@@ -45,6 +49,11 @@ export default function AuthForm({initialMode = "login"}: Props) {
 
         if (mode === "recovery") {
             await handleRecoverySubmit(formData);
+            return;
+        }
+
+        if (mode === "register" && registrationRequested) {
+            await handleRegistrationConfirm(formData);
             return;
         }
 
@@ -65,22 +74,27 @@ export default function AuthForm({initialMode = "login"}: Props) {
         setSubmitting(true);
 
         try {
-            await (mode === "login"
-                ? login({
+            if (mode === "login") {
+                await login({
                     identifier: String(formData.get("identifier") ?? "").trim(),
                     password
-                })
-                : register({
+                });
+                toast.success(t("login.success"));
+                router.replace(withLocale("/", locale));
+                router.refresh();
+                return;
+            }
+
+            await requestRegistration({
                     phone: phone || undefined,
                     email: email || undefined,
                     firstName: String(formData.get("firstName") ?? "").trim(),
                     lastName: String(formData.get("lastName") ?? "").trim(),
                     password
-                }));
-
-            toast.success(t(`${mode}.success`));
-            router.replace(withLocale("/", locale));
-            router.refresh();
+            });
+            setRegistrationContact(email || phone);
+            setRegistrationRequested(true);
+            toast.success(t("register.requestSuccess"));
         } catch (requestError) {
             let message: string;
             if (mode === "register"
@@ -89,6 +103,28 @@ export default function AuthForm({initialMode = "login"}: Props) {
                 message = t("register.existingAccount");
             } else {
                 message = t(`${mode}.error`);
+            }
+            setError(message);
+            toast.error(message);
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
+    async function handleRegistrationConfirm(formData: FormData) {
+        const code = String(formData.get("code") ?? "").trim();
+        setSubmitting(true);
+
+        try {
+            await confirmRegistration({...recoveryPayload(registrationContact), code});
+            toast.success(t("register.success"));
+            router.replace(withLocale("/", locale));
+            router.refresh();
+        } catch (requestError) {
+            let message = t("register.confirmError");
+            if (requestError instanceof AuthRequestError
+                && requestError.serverMessage === "Account already registered") {
+                message = t("register.existingAccount");
             }
             setError(message);
             toast.error(message);
@@ -216,11 +252,11 @@ export default function AuthForm({initialMode = "login"}: Props) {
                     <div className="grid gap-3 sm:grid-cols-2">
                         <label className="block space-y-2 text-sm font-medium text-stone-800">
                             <span>{t("fields.firstName")}</span>
-                            <input required name="firstName" type="text" minLength={2} maxLength={50} autoComplete="given-name" className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal" />
+                            <input required name="firstName" type="text" minLength={2} maxLength={50} autoComplete="given-name" disabled={registrationRequested} className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal disabled:bg-stone-100" />
                         </label>
                         <label className="block space-y-2 text-sm font-medium text-stone-800">
                             <span>{t("fields.lastName")}</span>
-                            <input required name="lastName" type="text" minLength={2} maxLength={50} autoComplete="family-name" className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal" />
+                            <input required name="lastName" type="text" minLength={2} maxLength={50} autoComplete="family-name" disabled={registrationRequested} className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal disabled:bg-stone-100" />
                         </label>
                     </div>
 
@@ -228,13 +264,19 @@ export default function AuthForm({initialMode = "login"}: Props) {
                     <div className="grid gap-3 sm:grid-cols-2">
                         <label className="block space-y-2 text-sm font-medium text-stone-800">
                             <span>{t("fields.phone")}</span>
-                            <input name="phone" type="tel" maxLength={32} autoComplete="tel" placeholder="+380... / 0..." className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal" />
+                            <input name="phone" type="tel" maxLength={32} autoComplete="tel" placeholder="+380... / 0..." disabled={registrationRequested} className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal disabled:bg-stone-100" />
                         </label>
                         <label className="block space-y-2 text-sm font-medium text-stone-800">
                             <span>{t("fields.email")}</span>
-                            <input name="email" type="email" maxLength={254} autoComplete="email" className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal" />
+                            <input name="email" type="email" maxLength={254} autoComplete="email" disabled={registrationRequested} className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal disabled:bg-stone-100" />
                         </label>
                     </div>
+                    {registrationRequested ? (
+                        <label className="block space-y-2 text-sm font-medium text-stone-800">
+                            <span>{t("fields.registrationCode")}</span>
+                            <input required name="code" type="text" inputMode="numeric" pattern="\\d{6}" maxLength={6} autoComplete="one-time-code" className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal" />
+                        </label>
+                    ) : null}
                 </>
             )}
 
@@ -250,12 +292,13 @@ export default function AuthForm({initialMode = "login"}: Props) {
                         maxLength={128}
                         onChange={(event) => setPassword(event.target.value)}
                         autoComplete={mode === "login" ? "current-password" : "new-password"}
-                        className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal"
+                        disabled={mode === "register" && registrationRequested}
+                        className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal disabled:bg-stone-100"
                     />
                 </label>
             ) : null}
 
-            {mode === "register" ? <PasswordChecklist passwordChecks={passwordChecks} t={t} /> : null}
+            {mode === "register" && !registrationRequested ? <PasswordChecklist passwordChecks={passwordChecks} t={t} /> : null}
 
             {error ? <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p> : null}
 
@@ -264,7 +307,7 @@ export default function AuthForm({initialMode = "login"}: Props) {
                 disabled={submitting}
                 className="w-full rounded-md bg-stone-900 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
-                {submitting ? t("submitting") : mode === "recovery" && recoveryRequested ? t("recovery.confirmSubmit") : t(`${mode}.submit`)}
+                {submitting ? t("submitting") : mode === "recovery" && recoveryRequested ? t("recovery.confirmSubmit") : mode === "register" && registrationRequested ? t("register.confirmSubmit") : t(`${mode}.submit`)}
             </button>
 
             {mode === "login" ? (

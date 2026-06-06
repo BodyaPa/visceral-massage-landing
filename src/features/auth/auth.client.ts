@@ -25,6 +25,12 @@ type RegisterRequest = {
     password: string;
 };
 
+type RegisterConfirmRequest = {
+    email?: string;
+    phone?: string;
+    code: string;
+};
+
 type PasswordRecoveryRequest = {
     email?: string;
     phone?: string;
@@ -87,8 +93,12 @@ export function login(request: LoginRequest) {
     return postAuth<AuthenticatedUser>("login", request);
 }
 
-export function register(request: RegisterRequest) {
-    return postAuth<AuthenticatedUser>("register", request);
+export function requestRegistration(request: RegisterRequest) {
+    return postAuth<void>("register", request);
+}
+
+export function confirmRegistration(request: RegisterConfirmRequest) {
+    return postAuth<AuthenticatedUser>("register/confirm", request);
 }
 
 export function requestPasswordRecovery(request: PasswordRecoveryRequest) {

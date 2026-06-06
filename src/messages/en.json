@@ -555,7 +555,8 @@
       "recoveryContact": "Email or phone number",
       "password": "Password",
       "newPassword": "New password",
-      "recoveryCode": "Recovery code"
+      "recoveryCode": "Recovery code",
+      "registrationCode": "Confirmation code"
     },
     "submitting": "Please wait...",
     "login": {
@@ -574,7 +575,9 @@
       "title": "Register",
       "subtitle": "Create an account for future appointment booking.",
       "submit": "Register",
+      "confirmSubmit": "Confirm registration",
       "success": "Registration completed successfully.",
+      "requestSuccess": "Confirmation code has been sent.",
       "contactHint": "Provide at least one contact: phone number or email.",
       "contactRequired": "Enter a phone number or email to register.",
       "passwordTitle": "Password requirements",
@@ -588,6 +591,7 @@
       },
       "existingAccount": "An account with these contact details already exists. Try signing in.",
       "error": "Unable to register. Check your name, contact details, and password.",
+      "confirmError": "Unable to confirm registration. Check the code.",
       "alternative": "Already have an account?",
       "alternativeLink": "Login"
     },

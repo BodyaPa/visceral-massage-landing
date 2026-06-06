@@ -112,13 +112,13 @@ export default function ServicesManagement() {
     const enComplete = Boolean(form.titleEn?.trim());
 
     return (
-        <section className="grid w-full items-start gap-5 xl:grid-cols-[minmax(380px,520px)_minmax(0,680px)]">
+        <section className="grid w-full min-w-0 max-w-full items-start gap-5 xl:grid-cols-[minmax(380px,520px)_minmax(0,680px)]">
             <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
                 <div className="mb-4 flex flex-col gap-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                            <h1 className="text-2xl font-semibold text-stone-950">{t("title")}</h1>
-                            <p className="mt-1 text-sm text-stone-600">{t("subtitle")}</p>
+                        <div className="min-w-0">
+                            <h1 className="break-words text-2xl font-semibold text-stone-950">{t("title")}</h1>
+                            <p className="mt-1 break-words text-sm text-stone-600">{t("subtitle")}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-600">
@@ -177,9 +177,9 @@ export default function ServicesManagement() {
                                     <span className="flex min-w-0 flex-col gap-2">
                                         <span className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                                             <span className="min-w-0">
-                                                <span className="block truncate text-sm font-semibold">{service.titleUa}</span>
+                                                <span className="block break-words text-sm font-semibold">{service.titleUa}</span>
                                                 {service.titleEn ? (
-                                                    <span className={`mt-1 block truncate text-xs ${selected ? "text-stone-200" : "text-stone-500"}`}>
+                                                    <span className={`mt-1 block break-words text-xs ${selected ? "text-stone-200" : "text-stone-500"}`}>
                                                         {service.titleEn}
                                                     </span>
                                                 ) : null}
@@ -220,7 +220,7 @@ export default function ServicesManagement() {
                 </div>
                 <div className="mt-4 space-y-3">
                     <div className="rounded-lg border border-stone-200 bg-stone-50 p-1">
-                        <div className="grid grid-cols-2 gap-1">
+                        <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
                             <LanguageButton
                                 active={editorLanguage === "ua"}
                                 complete={uaComplete}
@@ -274,7 +274,7 @@ export default function ServicesManagement() {
                         </div>
                     )}
 
-                    <div className="max-w-xl">
+                    <div className="max-w-full sm:max-w-xl">
                         <Field label={t("externalPaymentUrl")} tooltip={t("externalPaymentUrlHint")}>
                             <input
                                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
@@ -314,10 +314,10 @@ export default function ServicesManagement() {
                             />
                         </Field>
                     </div>
-                    <label className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                    <label className={`flex min-w-0 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition-colors ${
                         form.active ? "border-stone-300 bg-stone-100 text-stone-950" : "border-stone-200 bg-stone-50 text-stone-700"
                     }`}>
-                        <span>{t("active")}</span>
+                        <span className="min-w-0 break-words">{t("active")}</span>
                         <input
                             checked={form.active}
                             onChange={(event) => updateField("active", event.target.checked)}
@@ -341,14 +341,14 @@ export default function ServicesManagement() {
 function StatusBadge({active = false, enabled, label}: {active?: boolean; enabled: boolean; label: string}) {
     if (enabled) {
         return (
-            <span className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-emerald-50 text-emerald-800"}`}>
+            <span className={`w-fit max-w-full break-words rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-emerald-50 text-emerald-800"}`}>
                 {label}
             </span>
         );
     }
 
     return (
-        <span className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-stone-100 text-stone-600"}`}>
+        <span className={`w-fit max-w-full break-words rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-stone-100 text-stone-600"}`}>
             {label}
         </span>
     );
@@ -356,7 +356,7 @@ function StatusBadge({active = false, enabled, label}: {active?: boolean; enable
 
 function MetaBadge({active = false, label}: {active?: boolean; label: string}) {
     return (
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-stone-100 text-stone-700"}`}>
+        <span className={`max-w-full break-words rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-stone-100 text-stone-700"}`}>
             {label}
         </span>
     );
@@ -372,14 +372,14 @@ function LanguageButton({active, complete, label, missingLabel, onClick}: {
     return (
         <button
             aria-pressed={active}
-            className={`flex min-h-12 items-center justify-between rounded-md px-3 py-2 text-left text-sm font-semibold transition-colors ${
+            className={`flex min-h-12 min-w-0 flex-wrap items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold transition-colors ${
                 active ? "bg-white text-stone-950 shadow-sm" : "text-stone-600 hover:bg-white/70 hover:text-stone-950"
             }`}
             onClick={onClick}
             type="button"
         >
-            <span>{label}</span>
-            <span className={`ml-3 rounded-full px-2 py-0.5 text-xs font-medium ${
+            <span className="min-w-0 break-words">{label}</span>
+            <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
                 complete ? "bg-emerald-100 text-emerald-800" : "bg-stone-200 text-stone-600"
             }`}>
                 {complete ? "OK" : missingLabel}
@@ -390,9 +390,9 @@ function LanguageButton({active, complete, label, missingLabel, onClick}: {
 
 function Field({children, label, tooltip}: {children: ReactNode; label: string; tooltip?: string}) {
     return (
-        <label className="block text-sm font-medium text-stone-800">
-            <span className="mb-1 flex items-center gap-2">
-                <span>{label}</span>
+        <label className="block min-w-0 text-sm font-medium text-stone-800">
+            <span className="mb-1 flex min-w-0 flex-wrap items-center gap-2">
+                <span className="min-w-0 break-words">{label}</span>
                 {tooltip ? <InfoTooltip text={tooltip} /> : null}
             </span>
             {children}
@@ -410,7 +410,7 @@ function InfoTooltip({text}: {text: string}) {
             >
                 i
             </span>
-            <span className="pointer-events-none absolute left-1/2 top-6 z-20 hidden w-64 -translate-x-1/2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-normal leading-relaxed text-stone-700 shadow-lg group-hover:block group-focus-within:block">
+            <span className="pointer-events-none absolute left-1/2 top-6 z-20 hidden w-[min(16rem,calc(100vw-3rem))] -translate-x-1/2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-normal leading-relaxed text-stone-700 shadow-lg group-hover:block group-focus-within:block">
                 {text}
             </span>
         </span>

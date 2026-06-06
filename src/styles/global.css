@@ -1,29 +1,70 @@
 @import "tailwindcss";
 @import "react-big-calendar/lib/css/react-big-calendar.css";
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
   font-family: sans-serif;
+  overflow-wrap: anywhere;
 }
 
 body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  overflow-x: clip;
 }
 
 main {
   flex: 1;
   width: 100%;
   display: block;
+  max-width: 100%;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+input,
+select,
+textarea,
+button {
+  max-width: 100%;
 }
 
 .ataraksia-calendar .rbc-calendar {
   color: #292524;
   font-size: 0.8125rem;
+  min-width: 0;
+}
+
+.ataraksia-calendar-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.ataraksia-calendar-scroll .rbc-calendar {
+  min-width: 720px;
+}
+
+@media (min-width: 768px) {
+  .ataraksia-calendar-scroll .rbc-calendar {
+    min-width: 0;
+  }
 }
 
 .ataraksia-calendar .rbc-header,
@@ -52,6 +93,8 @@ main {
   border: 1px solid transparent;
   border-radius: 0.375rem;
   padding: 0.15rem 0.3rem;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .ataraksia-calendar .ataraksia-calendar-event-available {

@@ -52,6 +52,7 @@ export default function PublicSchedulePage() {
     const [slotForServiceChoice, setSlotForServiceChoice] = useState<PublicScheduleAvailabilityBlock | null>(null);
     const [savedFilters, setSavedFilters] = useState<FilterState | null>(null);
     const [paymentPrompt, setPaymentPrompt] = useState<PaymentPrompt | null>(null);
+    const [filtersOpen, setFiltersOpen] = useState(false);
     const range = useMemo(() => buildRange(filters.period), [filters.period]);
 
     const {data: officesData} = useListPublicOfficesQuery({size: 100});
@@ -195,7 +196,7 @@ export default function PublicSchedulePage() {
     }
 
     return (
-        <main className="mx-auto w-full max-w-[1440px] space-y-5 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        <main className="mx-auto w-full max-w-[1440px] space-y-5 overflow-x-clip px-3 py-6 sm:px-6 lg:px-8 lg:py-10">
             <header className="border-b border-stone-200 pb-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">{copy.eyebrow}</p>
                 <h1 className="mt-2 text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl">{copy.title}</h1>
@@ -203,7 +204,16 @@ export default function PublicSchedulePage() {
             </header>
 
             <section className="rounded-2xl border border-stone-200 bg-white p-3 shadow-sm">
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                        <h2 className="text-sm font-semibold text-stone-950">{copy.filtersTitle}</h2>
+                        <p className="mt-1 text-xs leading-5 text-stone-500">{copy.filtersHint}</p>
+                    </div>
+                    <button className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 transition-colors hover:bg-stone-100 md:hidden" onClick={() => setFiltersOpen((current) => !current)} type="button">
+                        {filtersOpen ? copy.hideFilters : copy.showFilters}
+                    </button>
+                </div>
+                <div className={`${filtersOpen ? "grid" : "hidden"} mt-3 gap-2 sm:grid-cols-2 md:grid lg:grid-cols-6`}>
                     <SelectField label={copy.mode}>
                         <select className={compactInputClass} value={filters.mode} onChange={(event) => updateFilter("mode", event.target.value as BookingModeFilter)}>
                             <option value="all">{copy.all}</option>
@@ -244,10 +254,11 @@ export default function PublicSchedulePage() {
                         </select>
                     </SelectField>
                 </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                    {activeFilterChips(filters, services, offices, specialists, copy).map((chip) => <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-600" key={chip}>{chip}</span>)}
+                <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
+                    {activeFilterChips(filters, services, offices, specialists, copy).length === 0 ? <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-500">{copy.noActiveFilters}</span> : null}
+                    {activeFilterChips(filters, services, offices, specialists, copy).map((chip) => <span className="max-w-full break-words rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-600" key={chip}>{chip}</span>)}
                     {savedFilters ? <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800">{copy.savedActive}</span> : null}
-                    <span className="grow" />
+                    <span className="hidden grow sm:block" />
                     <button className={compactButtonClass} onClick={saveFilters} type="button">{savedFilters ? copy.updateSaved : copy.saveFilters}</button>
                     <button className={compactButtonClass} onClick={resetFilters} type="button">{copy.resetFilters}</button>
                     {savedFilters ? <button className={compactButtonClass} onClick={() => setFilters(savedFilters)} type="button">{copy.applySaved}</button> : null}
@@ -272,12 +283,12 @@ export default function PublicSchedulePage() {
 
             <section className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
                 <div className="min-w-0 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
-                    <div className="flex flex-col gap-3 border-b border-stone-200 px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
-                        <div>
+                    <div className="flex min-w-0 flex-col gap-3 border-b border-stone-200 px-3 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="min-w-0">
                             <h2 className="text-xl font-semibold text-stone-950">{copy.calendarTitle}</h2>
-                            <p className="mt-1 text-sm text-stone-500">{formatCalendarLabel(selectedView, range, locale)}</p>
+                            <p className="mt-1 break-words text-sm text-stone-500">{formatCalendarLabel(selectedView, range, locale)}</p>
                         </div>
-                        <div className="grid w-full grid-cols-4 gap-1 rounded-xl bg-stone-100 p-1 sm:w-auto">
+                        <div className="grid w-full min-w-0 grid-cols-4 gap-1 rounded-xl bg-stone-100 p-1 sm:w-auto">
                             {views.map((view) => (
                                 <button aria-pressed={selectedView === view} className={selectedView === view ? activeViewClass : viewClass} key={view} onClick={() => setSelectedView(view)} type="button">
                                     {copy.views[view]}
@@ -302,7 +313,7 @@ export default function PublicSchedulePage() {
                     />
                 </div>
 
-                <aside className="space-y-4">
+                <aside className="min-w-0 space-y-4">
                     <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
                         <h2 className="text-base font-semibold text-stone-950">{copy.individualServiceTitle}</h2>
                         <p className="mt-1 text-sm leading-5 text-stone-500">{selected?.bookingMode === "INDIVIDUAL_APPOINTMENT" ? copy.selectedServiceHint : copy.individualServiceHint}</p>
@@ -402,21 +413,21 @@ export default function PublicSchedulePage() {
 }
 
 const compactInputClass = "w-full rounded-lg border border-stone-300 bg-white px-2.5 py-2 text-sm text-stone-900 outline-none transition-colors focus:border-stone-800";
-const viewClass = "rounded-lg px-3 py-2 text-sm font-medium text-stone-600 transition-colors hover:bg-white";
-const activeViewClass = "rounded-lg bg-stone-900 px-3 py-2 text-sm font-medium text-white shadow-sm";
-const secondaryButtonClass = "rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-100";
-const compactButtonClass = "rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100";
-const compactDangerButtonClass = "rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100";
+const viewClass = "min-w-0 rounded-lg px-2 py-2 text-sm font-medium text-stone-600 transition-colors hover:bg-white sm:px-3";
+const activeViewClass = "min-w-0 rounded-lg bg-stone-900 px-2 py-2 text-sm font-medium text-white shadow-sm sm:px-3";
+const secondaryButtonClass = "max-w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-100";
+const compactButtonClass = "max-w-full rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100";
+const compactDangerButtonClass = "max-w-full rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100";
 
 function ServiceChoiceCard({copy, locale, onChoose, selected, service}: {copy: Copy; locale: string; onChoose: () => void; selected: boolean; service: PublicService}) {
     return (
-        <button className={selected ? "w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white"} onClick={onChoose} type="button">
-            <span className="flex items-start justify-between gap-3">
+        <button className={selected ? "w-full max-w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white"} onClick={onChoose} type="button">
+            <span className="flex min-w-0 flex-wrap items-start justify-between gap-3">
                 <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold">{service.title}</span>
-                    <span className={selected ? "mt-1 block text-xs text-stone-200" : "mt-1 block text-xs text-stone-500"}>{copy.minutes(service.durationMinutes)} · {formatAmount(service.basePrice, locale)}</span>
+                    <span className="block break-words text-sm font-semibold">{service.title}</span>
+                    <span className={selected ? "mt-1 block break-words text-xs text-stone-200" : "mt-1 block break-words text-xs text-stone-500"}>{copy.minutes(service.durationMinutes)} · {formatAmount(service.basePrice, locale)}</span>
                 </span>
-                <span className={selected ? "rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-900" : "rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-700"}>{selected ? copy.selected : copy.select}</span>
+                <span className={selected ? "shrink-0 rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-900" : "shrink-0 rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-700"}>{selected ? copy.selected : copy.select}</span>
             </span>
         </button>
     );
@@ -424,24 +435,24 @@ function ServiceChoiceCard({copy, locale, onChoose, selected, service}: {copy: C
 
 function CompactSlotRow({copy, locale, onChoose, service, slot}: {copy: Copy; locale: string; onChoose: () => void; service: PublicService; slot: PublicScheduleAvailabilityBlock}) {
     return (
-        <button className="block w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white" onClick={onChoose} type="button">
-            <span className="flex items-start justify-between gap-3">
-                <span>
-                    <span className="block text-sm font-semibold text-stone-950">{formatDate(slot.startsAt, locale)} · {formatTime(slot.startsAt, locale)}</span>
-                    <span className="mt-1 block text-xs text-stone-500">{slot.specialistName} · {slot.officeName ?? copy.withoutOffice}</span>
+        <button className="block w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white" onClick={onChoose} type="button">
+            <span className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+                <span className="min-w-0">
+                    <span className="block break-words text-sm font-semibold text-stone-950">{formatDate(slot.startsAt, locale)} · {formatTime(slot.startsAt, locale)}</span>
+                    <span className="mt-1 block break-words text-xs text-stone-500">{slot.specialistName} · {slot.officeName ?? copy.withoutOffice}</span>
                 </span>
-                <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">{copy.select}</span>
+                <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">{copy.select}</span>
             </span>
-            <span className="mt-2 block text-xs text-stone-600">{service.title} · {copy.minutes(service.durationMinutes)} · {formatAmount(service.basePrice, locale)}</span>
+            <span className="mt-2 block break-words text-xs text-stone-600">{service.title} · {copy.minutes(service.durationMinutes)} · {formatAmount(service.basePrice, locale)}</span>
         </button>
     );
 }
 
 function CompactEventRow({copy, event, locale, onChoose}: {copy: Copy; event: PublicFixedEvent; locale: string; onChoose: () => void}) {
     return (
-        <button className="block w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white" onClick={onChoose} type="button">
-            <span className="block text-sm font-semibold text-stone-950">{event.title}</span>
-            <span className="mt-1 block text-xs text-stone-500">{formatDateTimeRange(event.startsAt, event.endsAt, locale)}</span>
+        <button className="block w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white" onClick={onChoose} type="button">
+            <span className="block break-words text-sm font-semibold text-stone-950">{event.title}</span>
+            <span className="mt-1 block break-words text-xs text-stone-500">{formatDateTimeRange(event.startsAt, event.endsAt, locale)}</span>
             <span className="mt-2 flex flex-wrap gap-1.5 text-xs">
                 <span className={event.full ? "rounded-full bg-red-50 px-2 py-1 text-red-700" : "rounded-full bg-emerald-50 px-2 py-1 text-emerald-700"}>{event.enrolled ? copy.enrolled : event.full ? copy.full : copy.remaining(event.remainingPlaces)}</span>
                 <span className="rounded-full bg-white px-2 py-1 text-stone-700">{formatAmount(event.price, locale)}</span>
@@ -455,18 +466,18 @@ function EventDetailsModal({copy, event, isSaving, locale, onCancelEnrollment, o
     const canEnroll = !event.enrolled && !event.full && new Date(event.startsAt).getTime() > Date.now();
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
-            <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
-                <div className="flex items-start justify-between gap-4">
-                    <div>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6">
+            <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5">
+                <div className="flex min-w-0 flex-wrap items-start justify-between gap-3 sm:gap-4">
+                    <div className="min-w-0">
                         <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{copy.fixedEvent}</p>
-                        <h2 className="mt-1 text-xl font-semibold text-stone-950">{event.title}</h2>
+                        <h2 className="mt-1 break-words text-xl font-semibold text-stone-950">{event.title}</h2>
                     </div>
                     <span className={event.enrolled ? "rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800" : event.full ? "rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700" : "rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-semibold text-stone-700"}>
                         {event.enrolled ? copy.enrolled : event.full ? copy.full : copy.remaining(event.remainingPlaces)}
                     </span>
                 </div>
-                {event.description ? <p className="mt-3 text-sm leading-6 text-stone-600">{event.description}</p> : null}
+                {event.description ? <p className="mt-3 break-words text-sm leading-6 text-stone-600">{event.description}</p> : null}
                 <dl className="mt-5 space-y-3 text-sm">
                     <InfoRow label={copy.specialist} value={event.specialistName} />
                     <InfoRow label={copy.office} value={event.officeName ?? copy.withoutOffice} />
@@ -500,7 +511,7 @@ function PublicScheduleCalendar({copy, currentDate, events, locale, myBookings, 
     }
 
     return (
-        <div className="p-4 sm:p-6">
+        <div className="min-w-0 p-3 sm:p-6">
             <AtaraksiaCalendar
                 culture={locale === "ua" ? "uk" : locale}
                 date={currentDate}
@@ -530,9 +541,9 @@ function ConfirmationModal({copy, isSaving, locale, onClose, onConfirm, pending,
     const capacity = pending.type === "event" ? copy.remaining(pending.event.remainingPlaces) : null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
-            <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
-                <h2 className="text-xl font-semibold text-stone-950">{pending.type === "individual" ? copy.confirmAppointment : copy.confirmEvent}</h2>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6">
+            <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5">
+                <h2 className="break-words text-xl font-semibold text-stone-950">{pending.type === "individual" ? copy.confirmAppointment : copy.confirmEvent}</h2>
                 <dl className="mt-5 space-y-3 text-sm">
                     <InfoRow label={copy.service} value={title} />
                     <InfoRow label={copy.specialist} value={specialist} />
@@ -541,9 +552,9 @@ function ConfirmationModal({copy, isSaving, locale, onClose, onConfirm, pending,
                     <InfoRow label={copy.price} value={formatAmount(price, locale)} />
                     {capacity ? <InfoRow label={copy.places} value={capacity} /> : null}
                 </dl>
-                <label className="mt-5 flex gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
+                <label className="mt-5 flex min-w-0 gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
                     <input checked={reminderOptIn} className="mt-0.5 h-4 w-4 accent-stone-900" onChange={(event) => setReminderOptIn(event.target.checked)} type="checkbox" />
-                    <span><strong className="block font-medium text-stone-900">{copy.reminder}</strong><span className="mt-0.5 block text-xs leading-5 text-stone-500">{copy.reminderHint}</span></span>
+                    <span className="min-w-0"><strong className="block break-words font-medium text-stone-900">{copy.reminder}</strong><span className="mt-0.5 block break-words text-xs leading-5 text-stone-500">{copy.reminderHint}</span></span>
                 </label>
                 <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <button className={secondaryButtonClass} disabled={isSaving} onClick={onClose} type="button">{copy.cancel}</button>
@@ -556,15 +567,15 @@ function ConfirmationModal({copy, isSaving, locale, onClose, onConfirm, pending,
 
 function ServiceChoiceModal({copy, locale, onClose, onSelect, services, slot}: {copy: Copy; locale: string; onClose: () => void; onSelect: (service: PublicService) => void; services: PublicService[]; slot: PublicScheduleAvailabilityBlock}) {
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
-            <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl">
-                <h2 className="text-xl font-semibold text-stone-950">{copy.chooseServiceForTime}</h2>
-                <p className="mt-2 text-sm leading-6 text-stone-500">{formatDateTimeRange(slot.startsAt, slot.endsAt, locale)} · {slot.specialistName} · {slot.officeName ?? copy.withoutOffice}</p>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6">
+            <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5">
+                <h2 className="break-words text-xl font-semibold text-stone-950">{copy.chooseServiceForTime}</h2>
+                <p className="mt-2 break-words text-sm leading-6 text-stone-500">{formatDateTimeRange(slot.startsAt, slot.endsAt, locale)} · {slot.specialistName} · {slot.officeName ?? copy.withoutOffice}</p>
                 <div className="mt-5 space-y-2">
                     {services.map((service) => (
-                        <button className="block w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white" key={service.id} onClick={() => onSelect(service)} type="button">
-                            <span className="block text-sm font-semibold text-stone-950">{service.title}</span>
-                            <span className="mt-1 block text-xs text-stone-500">{copy.minutes(service.durationMinutes)} · {formatAmount(service.basePrice, locale)}</span>
+                        <button className="block w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white" key={service.id} onClick={() => onSelect(service)} type="button">
+                            <span className="block break-words text-sm font-semibold text-stone-950">{service.title}</span>
+                            <span className="mt-1 block break-words text-xs text-stone-500">{copy.minutes(service.durationMinutes)} · {formatAmount(service.basePrice, locale)}</span>
                         </button>
                     ))}
                 </div>
@@ -577,11 +588,11 @@ function ServiceChoiceModal({copy, locale, onClose, onSelect, services, slot}: {
 }
 
 function SelectField({children, label}: {children: ReactNode; label: string}) {
-    return <label><span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-stone-500">{label}</span>{children}</label>;
+    return <label className="min-w-0"><span className="mb-1.5 block break-words text-xs font-semibold uppercase tracking-wide text-stone-500">{label}</span>{children}</label>;
 }
 
 function InfoRow({label, value}: {label: string; value: string}) {
-    return <div className="grid grid-cols-[110px_minmax(0,1fr)] gap-3"><dt className="text-stone-500">{label}</dt><dd className="font-medium text-stone-900">{value}</dd></div>;
+    return <div className="grid min-w-0 grid-cols-1 gap-1 sm:grid-cols-[110px_minmax(0,1fr)] sm:gap-3"><dt className="break-words text-stone-500">{label}</dt><dd className="break-words font-medium text-stone-900">{value}</dd></div>;
 }
 
 function buildRange(days: number) {
@@ -736,6 +747,9 @@ function labels(locale: Locale) {
         full: ua ? "Місць немає" : "Full",
         filtersTitle: ua ? "Фільтри календаря" : "Calendar filters",
         filtersHint: ua ? "За замовчуванням показуємо все публічне. Фільтри не замінюють перевірку backend під час запису." : "By default, all public schedule data is shown. Filters never replace backend validation.",
+        showFilters: ua ? "Показати фільтри" : "Show filters",
+        hideFilters: ua ? "Сховати фільтри" : "Hide filters",
+        noActiveFilters: ua ? "Усі публічні записи" : "All public entries",
         resetFilters: ua ? "Скинути фільтри" : "Reset filters",
         saveFilters: ua ? "Зберегти фільтри" : "Save filters",
         updateSaved: ua ? "Оновити збережені" : "Update saved",

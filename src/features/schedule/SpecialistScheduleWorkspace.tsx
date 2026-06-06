@@ -153,11 +153,11 @@ export default function SpecialistScheduleWorkspace() {
         <section className="grid w-full min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-6 2xl:grid-cols-[minmax(0,1fr)_340px]">
             <div className="min-w-0 space-y-5">
                 <header className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
-                    <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="flex min-w-0 flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0">
                             <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{t("eyebrow")}</p>
-                            <h1 className="mt-2 text-2xl font-semibold text-stone-950 sm:text-3xl">{t("title")}</h1>
-                            <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">{t("description")}</p>
+                            <h1 className="mt-2 break-words text-2xl font-semibold text-stone-950 sm:text-3xl">{t("title")}</h1>
+                            <p className="mt-2 max-w-3xl break-words text-sm leading-6 text-stone-600">{t("description")}</p>
                         </div>
                         <button className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-stone-700 lg:w-auto" onClick={() => document.getElementById("availability-form")?.scrollIntoView({behavior: "smooth"})} type="button">
                             {t("actions.create")}
@@ -172,22 +172,22 @@ export default function SpecialistScheduleWorkspace() {
                 </header>
 
                 <section className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-                    <div className="flex flex-col gap-3 border-b border-stone-200 bg-stone-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
+                    <div className="flex min-w-0 flex-col gap-3 border-b border-stone-200 bg-stone-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
                             <h2 className="text-base font-semibold text-stone-950">{t("calendar.title")}</h2>
-                            <p className="mt-1 text-sm text-stone-500">{formatCalendarTitle(selectedView, currentDate, locale)}</p>
+                            <p className="mt-1 break-words text-sm text-stone-500">{formatCalendarTitle(selectedView, currentDate, locale)}</p>
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="w-fit rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800" title={t("calendar.source")}>{isFetching ? t("calendar.loading") : t("calendar.connected")}</span>
                         </div>
                     </div>
-                    <div className="flex flex-col gap-3 border-b border-stone-200 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="flex items-center gap-1">
+                    <div className="flex min-w-0 flex-col gap-3 border-b border-stone-200 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex flex-wrap items-center gap-1">
                             <button className={controlButtonClass} onClick={() => setCurrentDate((date) => navigateDate(date, selectedView, -1))} type="button">←</button>
                             <button className={controlButtonClass} onClick={() => setCurrentDate(new Date())} type="button">{t("controls.today")}</button>
                             <button className={controlButtonClass} onClick={() => setCurrentDate((date) => navigateDate(date, selectedView, 1))} type="button">→</button>
                         </div>
-                        <div className="grid grid-cols-2 gap-1 rounded-lg bg-stone-100 p-1 sm:flex">
+                        <div className="grid w-full min-w-0 grid-cols-2 gap-1 rounded-lg bg-stone-100 p-1 sm:flex sm:w-auto">
                             {views.map((view) => (
                                 <button aria-pressed={view === selectedView} className={view === selectedView ? activeViewClass : viewClass} key={view} onClick={() => setSelectedView(view)} type="button">
                                     {t(`views.${view}`)}
@@ -204,7 +204,7 @@ export default function SpecialistScheduleWorkspace() {
 
                     {isError ? <p className="m-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("calendar.loadError")}</p> : null}
 
-                    <div className="p-4">
+                    <div className="min-w-0 p-3 sm:p-4">
                         <CalendarSurface bookings={bookings} blocks={blocks} currentDate={currentDate} events={events} locale={locale} onNavigate={setCurrentDate} selectedView={selectedView} t={t} />
                     </div>
                     <p className="border-t border-stone-100 px-4 py-3 text-xs leading-5 text-stone-500">{t("calendar.source")}</p>
@@ -239,8 +239,8 @@ export default function SpecialistScheduleWorkspace() {
             <aside className="min-w-0 space-y-5">
                 <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm 2xl:sticky 2xl:top-4" id="availability-form">
                     <div className="border-b border-stone-100 pb-3">
-                        <div className="flex items-start justify-between gap-3">
-                            <h2 className="text-base font-semibold text-stone-950">{editingBlock ? scheduleCopy(locale).editAvailability : form.status === "AVAILABLE" ? t("form.availableTitle") : t("form.blockedTitle")}</h2>
+                        <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+                            <h2 className="min-w-0 break-words text-base font-semibold text-stone-950">{editingBlock ? scheduleCopy(locale).editAvailability : form.status === "AVAILABLE" ? t("form.availableTitle") : t("form.blockedTitle")}</h2>
                             {editingBlock ? <button className="rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100" onClick={cancelAvailabilityEdit} type="button">{scheduleCopy(locale).cancelEdit}</button> : null}
                         </div>
                         <p className="mt-1 text-xs leading-5 text-stone-500">{t("form.hint")}</p>
@@ -376,9 +376,9 @@ export default function SpecialistScheduleWorkspace() {
 
 type T = ReturnType<typeof useTranslations<"admin.specialist.page">>;
 
-const controlButtonClass = "rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-white";
-const viewClass = "rounded-md px-3 py-2 text-sm font-medium text-stone-600 transition-colors hover:bg-white";
-const activeViewClass = "rounded-md bg-stone-900 px-3 py-2 text-sm font-medium text-white shadow-sm";
+const controlButtonClass = "max-w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-white";
+const viewClass = "min-w-0 rounded-md px-3 py-2 text-sm font-medium text-stone-600 transition-colors hover:bg-white";
+const activeViewClass = "min-w-0 rounded-md bg-stone-900 px-3 py-2 text-sm font-medium text-white shadow-sm";
 
 function CalendarSurface({bookings, blocks, currentDate, events, locale, onNavigate, selectedView, t}: {bookings: SpecialistBooking[]; blocks: SpecialistAvailabilityBlock[]; currentDate: Date; events: SpecialistFixedEvent[]; locale: string; onNavigate: (date: Date) => void; selectedView: CalendarView; t: T}) {
     if (selectedView === "list") {
@@ -436,19 +436,19 @@ function ScheduleBlockList({
     const copy = scheduleCopy(locale);
 
     return (
-        <div className={viewOnly ? "rounded-lg border border-stone-200 bg-white p-3" : ""}>
-            <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-semibold text-stone-900">{title ?? t("blocks.title")}</h3>
+        <div className={viewOnly ? "min-w-0 rounded-lg border border-stone-200 bg-white p-3" : "min-w-0"}>
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+                <h3 className="min-w-0 break-words text-sm font-semibold text-stone-900">{title ?? t("blocks.title")}</h3>
                 <span className="text-xs text-stone-500">{blocks.length}</span>
             </div>
-            {subtitle ? <p className="mt-1 text-xs leading-5 text-stone-500">{subtitle}</p> : null}
+            {subtitle ? <p className="mt-1 break-words text-xs leading-5 text-stone-500">{subtitle}</p> : null}
             <div className="mt-3 space-y-2">
                 {blocks.map((block) => (
                     <div className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between" key={block.id}>
                         <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex min-w-0 flex-wrap items-center gap-2">
                                 <StatusBadge booked={block.booked} status={block.status} t={t} />
-                                <span className="text-sm font-medium text-stone-900">
+                                <span className="break-words text-sm font-medium text-stone-900">
                                     {formatDateTime(block.startsAt, locale)} - {formatDateTime(block.endsAt, locale)}
                                 </span>
                             </div>
@@ -458,11 +458,11 @@ function ScheduleBlockList({
                                 </p>
                             ) : null}
                             {block.status === "AVAILABLE" ? (
-                                <p className="mt-1 text-xs text-stone-500">{copy.availabilityCutHint}</p>
+                                <p className="mt-1 break-words text-xs text-stone-500">{copy.availabilityCutHint}</p>
                             ) : (
-                                <p className="mt-1 text-xs text-amber-700">{copy.blockCutHint}</p>
+                                <p className="mt-1 break-words text-xs text-amber-700">{copy.blockCutHint}</p>
                             )}
-                            {block.booked ? <p className="mt-1 text-xs text-amber-700">{copy.bookedBlockLocked}</p> : null}
+                            {block.booked ? <p className="mt-1 break-words text-xs text-amber-700">{copy.bookedBlockLocked}</p> : null}
                         </div>
                         {!viewOnly ? (
                             <div className="flex flex-wrap gap-2">
@@ -502,7 +502,7 @@ function StatusBadge({booked = false, status, t}: {booked?: boolean; status: Sch
         : "border-amber-200 bg-amber-50 text-amber-800";
 
     return (
-        <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${className}`}>
+        <span className={`max-w-full break-words rounded-full border px-2.5 py-1 text-xs font-medium ${className}`}>
             {booked ? t("statuses.booked") : status === "AVAILABLE" ? t("statuses.available") : t("statuses.blocked")}
         </span>
     );
@@ -510,8 +510,8 @@ function StatusBadge({booked = false, status, t}: {booked?: boolean; status: Sch
 
 function Field({children, help, label}: {children: ReactNode; help?: string; label: string}) {
     return (
-        <label className="block">
-            <span className="mb-1 flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-stone-500">{label}{help ? <span className="cursor-help text-stone-400" title={help}>ⓘ</span> : null}</span>
+        <label className="block min-w-0">
+            <span className="mb-1 flex min-w-0 flex-wrap items-center gap-1 break-words text-xs font-medium uppercase tracking-wide text-stone-500">{label}{help ? <span className="cursor-help text-stone-400" title={help}>ⓘ</span> : null}</span>
             {children}
         </label>
     );
@@ -520,8 +520,8 @@ function Field({children, help, label}: {children: ReactNode; help?: string; lab
 function PreparedPanel({body, empty, title}: {body: string; empty: string; title: string}) {
     return (
         <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3"><h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">{title}</h2><span className="rounded-full bg-stone-100 px-2 py-1 text-xs text-stone-500">0</span></div>
-            <p className="mt-2 text-xs leading-5 text-stone-500">{body}</p>
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3"><h2 className="min-w-0 break-words text-sm font-semibold uppercase tracking-wide text-stone-500">{title}</h2><span className="rounded-full bg-stone-100 px-2 py-1 text-xs text-stone-500">0</span></div>
+            <p className="mt-2 break-words text-xs leading-5 text-stone-500">{body}</p>
             <p className="mt-3 rounded-lg border border-dashed border-stone-200 bg-stone-50 px-3 py-4 text-center text-sm text-stone-500">{empty}</p>
         </section>
     );
@@ -585,11 +585,11 @@ function FixedEventForm({
 
     return (
         <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">{editingEvent ? copy.editEvent : copy.eventsTitle}</h2>
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+                <h2 className="min-w-0 break-words text-sm font-semibold uppercase tracking-wide text-stone-500">{editingEvent ? copy.editEvent : copy.eventsTitle}</h2>
                 {editingEvent ? <button className="rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100" onClick={onCancelEdit} type="button">{copy.cancelEdit}</button> : null}
             </div>
-            <p className="mt-2 text-xs leading-5 text-stone-500">{copy.eventFormHint}</p>
+            <p className="mt-2 break-words text-xs leading-5 text-stone-500">{copy.eventFormHint}</p>
             <div className="mt-4 space-y-3">
                 <Field label={copy.eventService}>
                     <select className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" disabled={servicesFetching} onChange={(event) => setServiceId(event.target.value)} value={serviceId}>
@@ -617,8 +617,8 @@ function FixedEventForm({
                 <Field label={copy.note}>
                     <textarea className="min-h-20 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" maxLength={1000} onChange={(event) => setNote(event.target.value)} value={note} />
                 </Field>
-                <label className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-700">
-                    <span>{copy.active}</span>
+                <label className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-700">
+                    <span className="min-w-0 break-words">{copy.active}</span>
                     <input checked={active} onChange={(event) => setActive(event.target.checked)} type="checkbox" />
                 </label>
                 <button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={isLoading || !serviceId || capacity < 1} onClick={submit} type="button">
@@ -632,22 +632,22 @@ function FixedEventForm({
 function EventsPanel({copy, events, isError, isFetching, locale, onDeactivate, onEdit}: {copy: ReturnType<typeof scheduleCopy>; events: SpecialistFixedEvent[]; isError: boolean; isFetching: boolean; locale: string; onDeactivate: (event: SpecialistFixedEvent) => void; onEdit: (event: SpecialistFixedEvent) => void}) {
     return (
         <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">{copy.eventsTitle}</h2>
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+                <h2 className="min-w-0 break-words text-sm font-semibold uppercase tracking-wide text-stone-500">{copy.eventsTitle}</h2>
                 <span className="rounded-full bg-stone-100 px-2 py-1 text-xs text-stone-500">{events.length}</span>
             </div>
-            <p className="mt-2 text-xs leading-5 text-stone-500">{copy.eventsBody}</p>
+            <p className="mt-2 break-words text-xs leading-5 text-stone-500">{copy.eventsBody}</p>
             {isFetching ? <p className="mt-3 text-sm text-stone-500">{copy.loading}</p> : null}
             {isError ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{copy.eventsError}</p> : null}
             <div className="mt-3 space-y-2">
                 {events.slice(0, 6).map((event) => (
                     <article className="rounded-lg border border-stone-200 bg-stone-50 p-3" key={event.id}>
-                        <div className="flex items-start justify-between gap-2">
+                        <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
                             <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold text-stone-900">{event.serviceTitle}</p>
-                                <p className="mt-0.5 truncate text-xs text-stone-500">{event.officeName ?? copy.noOffice}</p>
+                                <p className="break-words text-sm font-semibold text-stone-900">{event.serviceTitle}</p>
+                                <p className="mt-0.5 break-words text-xs text-stone-500">{event.officeName ?? copy.noOffice}</p>
                             </div>
-                            <span className={event.active ? "rounded-full border border-stone-200 bg-white px-2 py-1 text-[10px] font-semibold text-stone-600" : "rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-700"}>{event.active ? `${event.enrolledCount}/${event.capacity}` : copy.inactive}</span>
+                            <span className={event.active ? "shrink-0 rounded-full border border-stone-200 bg-white px-2 py-1 text-[10px] font-semibold text-stone-600" : "shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-700"}>{event.active ? `${event.enrolledCount}/${event.capacity}` : copy.inactive}</span>
                         </div>
                         <p className="mt-2 text-xs font-medium text-stone-700">{formatDateTime(event.startsAt, locale)} - {formatDateTime(event.endsAt, locale)}</p>
                         <div className="mt-3 flex flex-wrap gap-2">
@@ -665,27 +665,27 @@ function EventsPanel({copy, events, isError, isFetching, locale, onDeactivate, o
 function EventEnrollmentsPanel({copy, enrollments, isError, isFetching, locale}: {copy: ReturnType<typeof scheduleCopy>; enrollments: SpecialistFixedEventEnrollment[]; isError: boolean; isFetching: boolean; locale: string}) {
     return (
         <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">{copy.eventEnrollmentsTitle}</h2>
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+                <h2 className="min-w-0 break-words text-sm font-semibold uppercase tracking-wide text-stone-500">{copy.eventEnrollmentsTitle}</h2>
                 <span className="rounded-full bg-stone-100 px-2 py-1 text-xs text-stone-500">{enrollments.length}</span>
             </div>
-            <p className="mt-2 text-xs leading-5 text-stone-500">{copy.eventEnrollmentsBody}</p>
+            <p className="mt-2 break-words text-xs leading-5 text-stone-500">{copy.eventEnrollmentsBody}</p>
             {isFetching ? <p className="mt-3 text-sm text-stone-500">{copy.loading}</p> : null}
             {isError ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{copy.eventEnrollmentsError}</p> : null}
             <div className="mt-3 space-y-2">
                 {enrollments.slice(0, 8).map((enrollment) => (
                     <article className="rounded-lg border border-stone-200 bg-stone-50 p-3" key={enrollment.id}>
-                        <div className="flex items-start justify-between gap-2">
+                        <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
                             <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold text-stone-900">{enrollment.clientName}</p>
-                                <p className="mt-0.5 truncate text-xs text-stone-500">{enrollment.clientContact || copy.noClientContact}</p>
+                                <p className="break-words text-sm font-semibold text-stone-900">{enrollment.clientName}</p>
+                                <p className="mt-0.5 break-words text-xs text-stone-500">{enrollment.clientContact || copy.noClientContact}</p>
                             </div>
-                            <span className={enrollment.status === "ACTIVE" ? "rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-800" : "rounded-full border border-stone-200 bg-white px-2 py-1 text-[10px] font-semibold text-stone-500"}>
+                            <span className={enrollment.status === "ACTIVE" ? "shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-800" : "shrink-0 rounded-full border border-stone-200 bg-white px-2 py-1 text-[10px] font-semibold text-stone-500"}>
                                 {enrollment.status === "ACTIVE" ? copy.enrollmentActive : copy.enrollmentCancelled}
                             </span>
                         </div>
-                        <p className="mt-2 truncate text-xs font-medium text-stone-700">{enrollment.eventTitle}</p>
-                        <p className="mt-1 text-xs text-stone-500">{formatDateTime(enrollment.eventStartsAt, locale)} - {formatTime(enrollment.eventEndsAt, locale)}</p>
+                        <p className="mt-2 break-words text-xs font-medium text-stone-700">{enrollment.eventTitle}</p>
+                        <p className="mt-1 break-words text-xs text-stone-500">{formatDateTime(enrollment.eventStartsAt, locale)} - {formatTime(enrollment.eventEndsAt, locale)}</p>
                         {enrollment.reminderOptIn ? <p className="mt-2 text-xs text-stone-500">{copy.reminderRequested}</p> : null}
                     </article>
                 ))}
@@ -751,9 +751,9 @@ function ManualBookingForm({
 
     return (
         <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">{t("manualBooking.title")}</h2>
-            <p className="mt-2 text-xs leading-5 text-stone-500">{t("manualBooking.body")}</p>
-            <p className="mt-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-xs leading-5 text-stone-600">{copy.manualSlotCutHint}</p>
+            <h2 className="break-words text-sm font-semibold uppercase tracking-wide text-stone-500">{t("manualBooking.title")}</h2>
+            <p className="mt-2 break-words text-xs leading-5 text-stone-500">{t("manualBooking.body")}</p>
+            <p className="mt-2 break-words rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-xs leading-5 text-stone-600">{copy.manualSlotCutHint}</p>
             <div className="mt-4 space-y-3">
                 <Field label={t("manualBooking.client")}>
                     <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => setClientIdentifier(event.target.value)} placeholder={t("manualBooking.clientPlaceholder")} value={clientIdentifier} />
@@ -779,9 +779,9 @@ function ManualBookingForm({
                         {manualSlots.map((slot) => <option key={slot.key} value={slot.key}>{formatDateTime(slot.startsAt, locale)} - {formatTime(slot.endsAt, locale)} · {slot.block.officeName ?? t("form.noOffice")}</option>)}
                     </select>
                 </Field>
-                <label className="flex items-start gap-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-stone-700">
+                <label className="flex min-w-0 items-start gap-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-stone-700">
                     <input checked={reminderOptIn} className="mt-0.5" onChange={(event) => setReminderOptIn(event.target.checked)} type="checkbox" />
-                    <span><strong className="block font-medium text-stone-900">{t("manualBooking.reminder")}</strong><span className="mt-1 block text-xs leading-5 text-stone-500">{t("manualBooking.reminderHint")}</span></span>
+                    <span className="min-w-0"><strong className="block break-words font-medium text-stone-900">{t("manualBooking.reminder")}</strong><span className="mt-1 block break-words text-xs leading-5 text-stone-500">{t("manualBooking.reminderHint")}</span></span>
                 </label>
                 <button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={disabled} onClick={submit} type="button">
                     {isLoading ? t("manualBooking.saving") : t("manualBooking.action")}
@@ -794,11 +794,11 @@ function ManualBookingForm({
 function BookingsPanel({bookings, isError, isFetching, locale, t}: {bookings: SpecialistBooking[]; isError: boolean; isFetching: boolean; locale: string; t: T}) {
     return (
         <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">{t("bookings.title")}</h2>
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+                <h2 className="min-w-0 break-words text-sm font-semibold uppercase tracking-wide text-stone-500">{t("bookings.title")}</h2>
                 <span className="rounded-full bg-stone-100 px-2 py-1 text-xs text-stone-500">{bookings.length}</span>
             </div>
-            <p className="mt-2 text-xs leading-5 text-stone-500">{t("bookings.body")}</p>
+            <p className="mt-2 break-words text-xs leading-5 text-stone-500">{t("bookings.body")}</p>
             {isFetching ? <p className="mt-3 text-sm text-stone-500">{t("bookings.loading")}</p> : null}
             {isError ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("bookings.loadError")}</p> : null}
             {!isFetching && !isError && bookings.length === 0 ? <p className="mt-3 rounded-lg border border-dashed border-stone-200 bg-stone-50 px-3 py-4 text-center text-sm text-stone-500">{t("bookings.empty")}</p> : null}
@@ -806,15 +806,15 @@ function BookingsPanel({bookings, isError, isFetching, locale, t}: {bookings: Sp
                 <div className="mt-3 space-y-2">
                     {bookings.slice(0, 6).map((booking) => (
                         <article className="rounded-lg border border-stone-200 bg-stone-50 p-3" key={booking.id}>
-                            <div className="flex items-start justify-between gap-2">
+                            <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
                                 <div className="min-w-0">
-                                    <p className="truncate text-sm font-semibold text-stone-900">{booking.clientName}</p>
-                                    <p className="mt-0.5 truncate text-xs text-stone-500">{booking.serviceTitleUa}</p>
+                                    <p className="break-words text-sm font-semibold text-stone-900">{booking.clientName}</p>
+                                    <p className="mt-0.5 break-words text-xs text-stone-500">{booking.serviceTitleUa}</p>
                                 </div>
                                 <BookingStatusBadge status={booking.status} t={t} />
                             </div>
-                            <p className="mt-2 text-xs font-medium text-stone-700">{formatDateTime(booking.startsAt, locale)}</p>
-                            <p className="mt-1 truncate text-xs text-stone-500">{[booking.officeName, booking.clientContact].filter(Boolean).join(" · ")}</p>
+                            <p className="mt-2 break-words text-xs font-medium text-stone-700">{formatDateTime(booking.startsAt, locale)}</p>
+                            <p className="mt-1 break-words text-xs text-stone-500">{[booking.officeName, booking.clientContact].filter(Boolean).join(" · ")}</p>
                         </article>
                     ))}
                 </div>
@@ -827,19 +827,19 @@ function BookingStatusBadge({status, t}: {status: SpecialistBooking["status"]; t
     const className = status === "CONFIRMED"
         ? "border-emerald-200 bg-emerald-50 text-emerald-800"
         : "border-amber-200 bg-amber-50 text-amber-800";
-    return <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${className}`}>{t(`bookings.statuses.${status}`)}</span>;
+    return <span className={`max-w-full break-words rounded-full border px-2 py-1 text-[10px] font-semibold sm:shrink-0 ${className}`}>{t(`bookings.statuses.${status}`)}</span>;
 }
 
 function StatCard({label, tone = "neutral", value}: {label: string; tone?: "neutral" | "success" | "warning"; value: number}) {
     const valueClass = tone === "success" ? "text-emerald-800" : tone === "warning" ? "text-amber-800" : "text-stone-950";
-    return <div className="flex min-h-24 flex-col justify-center rounded-xl border border-stone-200 bg-stone-50 px-4 py-4"><p className={`text-2xl font-semibold ${valueClass}`}>{value}</p><p className="mt-2 text-xs font-medium text-stone-500">{label}</p></div>;
+    return <div className="flex min-h-24 min-w-0 flex-col justify-center rounded-xl border border-stone-200 bg-stone-50 px-4 py-4"><p className={`break-words text-2xl font-semibold ${valueClass}`}>{value}</p><p className="mt-2 break-words text-xs font-medium text-stone-500">{label}</p></div>;
 }
 
 function LegendItem({className, label}: {className: string; label: string}) {
     return (
-        <span className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs font-medium text-stone-600">
+        <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs font-medium text-stone-600">
             <span className={`h-2.5 w-2.5 rounded-full border ${className}`} aria-hidden="true" />
-            {label}
+            <span className="min-w-0 break-words">{label}</span>
         </span>
     );
 }

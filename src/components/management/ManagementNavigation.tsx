@@ -16,7 +16,7 @@ type Props = {
     showFinance: boolean;
 };
 
-const baseClassName = "rounded-lg px-3 py-2 text-sm font-medium transition-colors";
+const baseClassName = "shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors";
 const defaultClassName = `${baseClassName} border border-stone-200 bg-white text-stone-700 hover:bg-stone-100`;
 const activeClassName = `${baseClassName} bg-stone-900 text-white hover:bg-stone-700`;
 
@@ -31,7 +31,7 @@ export default function ManagementNavigation({locale, showNews, showUsers, showO
     const financeHref = withLocale("/admin/finance", locale);
 
     return (
-        <nav className="flex flex-wrap content-start gap-2 md:flex-col" aria-label={t("label")}>
+        <nav className="flex max-w-full gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0" aria-label={t("label")}>
             {showNews ? (
                 <Link
                     aria-current={pathname === newsHref ? "page" : undefined}

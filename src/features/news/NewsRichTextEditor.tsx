@@ -193,7 +193,7 @@ export default function NewsRichTextEditor({value, ariaLabel, labels, imageInser
             </div>
             <EditorContent
                 aria-label={ariaLabel}
-                className="[&_.ProseMirror]:min-h-[18rem] [&_.ProseMirror]:px-4 [&_.ProseMirror]:py-3 [&_.ProseMirror]:text-base [&_.ProseMirror]:leading-7 [&_.ProseMirror]:outline-none [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h3]:my-3 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_blockquote]:border-l-4 [&_.ProseMirror_blockquote]:border-stone-300 [&_.ProseMirror_blockquote]:pl-3 [&_.ProseMirror_blockquote]:text-stone-600 [&_.ProseMirror_a]:break-words [&_.ProseMirror_a]:text-stone-900 [&_.ProseMirror_a]:underline [&_.ProseMirror_a]:underline-offset-2 [&_.ProseMirror_code]:rounded [&_.ProseMirror_code]:bg-stone-100 [&_.ProseMirror_code]:px-1 [&_.ProseMirror_hr]:my-4 [&_.ProseMirror_hr]:border-stone-300 [&_.ProseMirror_img]:my-4 [&_.ProseMirror_img]:max-h-96 [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:rounded-lg [&_.ProseMirror_img]:object-contain"
+                className="[&_.ProseMirror]:min-h-[18rem] [&_.ProseMirror]:break-words [&_.ProseMirror]:px-3 [&_.ProseMirror]:py-3 [&_.ProseMirror]:text-sm [&_.ProseMirror]:leading-7 [&_.ProseMirror]:outline-none sm:[&_.ProseMirror]:px-4 sm:[&_.ProseMirror]:text-base [&_.ProseMirror_p]:my-2 [&_.ProseMirror_h2]:my-3 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h3]:my-3 [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-5 sm:[&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-5 sm:[&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_blockquote]:border-l-4 [&_.ProseMirror_blockquote]:border-stone-300 [&_.ProseMirror_blockquote]:pl-3 [&_.ProseMirror_blockquote]:text-stone-600 [&_.ProseMirror_a]:break-words [&_.ProseMirror_a]:text-stone-900 [&_.ProseMirror_a]:underline [&_.ProseMirror_a]:underline-offset-2 [&_.ProseMirror_code]:rounded [&_.ProseMirror_code]:bg-stone-100 [&_.ProseMirror_code]:px-1 [&_.ProseMirror_hr]:my-4 [&_.ProseMirror_hr]:border-stone-300 [&_.ProseMirror_img]:my-4 [&_.ProseMirror_img]:max-h-96 [&_.ProseMirror_img]:max-w-full [&_.ProseMirror_img]:rounded-lg [&_.ProseMirror_img]:object-contain"
                 editor={editor}
             />
         </div>
@@ -201,7 +201,7 @@ export default function NewsRichTextEditor({value, ariaLabel, labels, imageInser
 }
 
 function ToolbarGroup({children}: {children: ReactNode}) {
-    return <span className="inline-flex gap-1 border-r border-stone-200 pr-1.5 last:border-r-0 last:pr-0">{children}</span>;
+    return <span className="inline-flex min-w-0 flex-wrap gap-1 border-r border-stone-200 pr-1.5 last:border-r-0 last:pr-0">{children}</span>;
 }
 
 function ToolbarButton({active, children, disabled = false, label, onClick}: {
@@ -215,7 +215,7 @@ function ToolbarButton({active, children, disabled = false, label, onClick}: {
         <button
             aria-label={label}
             aria-pressed={active}
-            className={`min-w-9 rounded px-2 py-1 text-sm transition ${
+            className={`min-w-9 max-w-full rounded px-2 py-1 text-sm transition ${
                 active ? "bg-stone-900 text-white" : "bg-white text-stone-800 hover:bg-stone-200"
             } disabled:cursor-not-allowed disabled:opacity-40`}
             disabled={disabled}

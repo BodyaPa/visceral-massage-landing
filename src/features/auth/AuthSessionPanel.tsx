@@ -33,10 +33,6 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
         : "";
 
     useEffect(() => {
-        if (variant !== "menu") {
-            return;
-        }
-
         function closeOnOutsideClick(event: MouseEvent) {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
                 setMenuOpen(false);
@@ -56,7 +52,7 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
             document.removeEventListener("mousedown", closeOnOutsideClick);
             document.removeEventListener("keydown", closeOnEscape);
         };
-    }, [variant]);
+    }, []);
 
     async function handleLogout() {
         setSubmitting(true);
@@ -86,27 +82,8 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
         );
     }
 
-    if (variant === "management" || variant === "account") {
-        const identityClassName = variant === "account" ? styles.accountIdentity : styles.managementIdentity;
-        const logoutClassName = variant === "account" ? styles.accountLogout : styles.managementLogout;
-
-        return (
-            <div className={`${identityClassName} ${tone === "light" ? styles.accountMenuLight : ""}`}>
-                <span className={styles.accountText}>{displayName}</span>
-                <button
-                    className={logoutClassName}
-                    disabled={submitting}
-                    onClick={handleLogout}
-                    type="button"
-                >
-                    {submitting ? t("loggingOut") : t("logout")}
-                </button>
-            </div>
-        );
-    }
-
     return (
-        <div className={`${styles.accountMenu} ${tone === "light" ? styles.accountMenuLight : ""}`} ref={menuRef}>
+        <div className={`${styles.accountMenu} ${variant === "management" ? styles.managementAccountMenu : ""} ${variant === "account" ? styles.personalAccountMenu : ""} ${tone === "light" ? styles.accountMenuLight : ""}`} ref={menuRef}>
             <button
                 aria-expanded={menuOpen}
                 aria-haspopup="menu"

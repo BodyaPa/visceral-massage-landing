@@ -29,7 +29,8 @@ export default function AtaraksiaCalendar({culture, date, events, onNavigate, on
     const heightClass = view === Views.AGENDA ? "h-[440px] sm:h-[520px]" : "h-[520px] sm:h-[620px]";
 
     return (
-        <div className={`ataraksia-calendar min-w-0 ${heightClass}`}>
+        <div className="ataraksia-calendar-scroll">
+            <div className={`ataraksia-calendar min-w-[720px] md:min-w-0 ${heightClass}`}>
             <Calendar<AtaraksiaCalendarEvent>
                 culture={culture}
                 date={date}
@@ -47,6 +48,7 @@ export default function AtaraksiaCalendar({culture, date, events, onNavigate, on
                 view={view}
                 views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
             />
+            </div>
         </div>
     );
 }

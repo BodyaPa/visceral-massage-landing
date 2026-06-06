@@ -25,23 +25,23 @@ export default async function AdminLayout({children, params}: Props) {
     const t = await getTranslations({locale, namespace: "admin"});
 
     return (
-        <main className="fixed inset-0 z-[5] overflow-y-auto p-3 sm:p-5">
-            <section className="management-workspace mx-auto flex min-h-[calc(100vh-1.5rem)] w-full max-w-[1680px] flex-col rounded-2xl border border-stone-200/80 bg-stone-50/95 shadow-2xl backdrop-blur-sm sm:min-h-[calc(100vh-2.5rem)]">
-                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 px-4 py-4 sm:px-6">
+        <main className="fixed inset-0 z-[5] overflow-y-auto overflow-x-clip p-2 sm:p-5">
+            <section className="management-workspace mx-auto flex min-h-[calc(100vh-1rem)] w-full max-w-[1680px] flex-col rounded-2xl border border-stone-200/80 bg-stone-50/95 shadow-2xl backdrop-blur-sm sm:min-h-[calc(100vh-2.5rem)]">
+                <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-stone-200 px-3 py-3 sm:gap-4 sm:px-6 sm:py-4">
                     <Link
-                        className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100"
+                        className="shrink-0 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100"
                         href={withLocale("/", locale)}
                     >
                         {t("navigation.home")}
                     </Link>
-                    <div className="flex items-center gap-4">
+                    <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 sm:gap-4">
                         <Suspense fallback={null}>
                             <LanguageSwitcher requiresSession tone="light" />
                         </Suspense>
                         <AuthSessionPanel loading={false} tone="light" user={user} variant="management" />
                     </div>
                 </div>
-                <div className="management-layout grid w-full flex-1 grid-cols-1 content-start items-start gap-5 p-4 sm:p-6 lg:grid-cols-[180px_minmax(0,1fr)] lg:gap-6 xl:grid-cols-[190px_minmax(0,1fr)] xl:px-8 xl:py-7">
+                <div className="management-layout grid w-full flex-1 grid-cols-1 content-start items-start gap-4 p-3 sm:p-6 lg:grid-cols-[180px_minmax(0,1fr)] lg:gap-6 xl:grid-cols-[190px_minmax(0,1fr)] xl:px-8 xl:py-7">
                     <ManagementNavigation
                         locale={locale}
                         showNews={hasRole(user, "SMM")}

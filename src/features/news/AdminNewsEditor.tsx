@@ -393,8 +393,8 @@ export default function AdminNewsEditor() {
     }
 
     return (
-        <div className="space-y-4">
-            <div className={`grid min-w-0 items-start gap-4 ${selectedItem ? "xl:grid-cols-[260px_minmax(0,1fr)] 2xl:grid-cols-[280px_minmax(0,1fr)_260px]" : "max-w-[1020px] xl:grid-cols-[280px_minmax(0,720px)]"}`}>
+        <div className="w-full min-w-0 max-w-full space-y-4 overflow-x-clip">
+            <div className={`grid min-w-0 max-w-full items-start gap-4 ${selectedItem ? "xl:grid-cols-[260px_minmax(0,1fr)] 2xl:grid-cols-[280px_minmax(0,1fr)_260px]" : "max-w-[1020px] xl:grid-cols-[280px_minmax(0,720px)]"}`}>
                 <NewsSidebar
                     busy={isCreating}
                     filter={statusFilter}
@@ -487,17 +487,17 @@ function ActionBar({archived, busy, dirty, item, onArchive, onDeleteDraft, onPub
     viewMode: ViewMode;
 }) {
     return (
-        <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
+        <header className="sticky top-0 z-10 flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur sm:px-4">
             <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium uppercase tracking-wide text-stone-500">{t("workspace")}</p>
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <h1 className="max-w-full truncate text-lg font-semibold text-stone-900">{item?.titleUa?.trim() || item?.titleEn?.trim() || t("untitled")}</h1>
+                    <h1 className="max-w-full break-words text-lg font-semibold text-stone-900">{item?.titleUa?.trim() || item?.titleEn?.trim() || t("untitled")}</h1>
                     {item ? <StatusBadge status={item.status} t={t} /> : null}
                     {dirty ? <span className="text-xs text-stone-500">{t("unsaved")}</span> : null}
                 </div>
             </div>
             {item ? (
-                <div className="flex flex-wrap justify-end gap-2">
+                <div className="flex min-w-0 flex-wrap justify-end gap-2">
                     {!archived ? (
                         <>
                             <ActionButton disabled={busy} onClick={onSave} primary>
@@ -551,10 +551,10 @@ function NewsSidebar({busy, filter, isLoading, news, onCreate, onFilter, onSearc
                 type="search"
                 value={search}
             />
-            <div className="flex flex-wrap gap-1">
+            <div className="flex min-w-0 flex-wrap gap-1">
                 {filters.map((item) => (
                     <button
-                        className={`rounded-md px-2 py-1 text-xs font-medium ${item === filter ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"}`}
+                        className={`max-w-full break-words rounded-md px-2 py-1 text-xs font-medium ${item === filter ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"}`}
                         key={item}
                         onClick={() => onFilter(item)}
                         type="button"
@@ -573,7 +573,7 @@ function NewsSidebar({busy, filter, isLoading, news, onCreate, onFilter, onSearc
                         onClick={() => onSelect(item)}
                         type="button"
                     >
-                        <p className="line-clamp-2 overflow-hidden text-sm font-medium text-stone-900">{item.titleUa?.trim() || item.titleEn?.trim() || t("untitled")}</p>
+                        <p className="line-clamp-2 overflow-hidden break-words text-sm font-medium text-stone-900">{item.titleUa?.trim() || item.titleEn?.trim() || t("untitled")}</p>
                         <div className="mt-2 flex flex-wrap items-center gap-1">
                             <StatusBadge status={item.status} t={t} />
                             <LanguageBadge complete={Boolean(item.titleUa?.trim() && item.contentUa?.trim())} locale="UA" t={t} />
@@ -608,10 +608,10 @@ function ContentEditor({activeTab, draft, imageInsertion, onImageInserted, onSel
                 <LanguageTab active={activeTab === "ua"} complete={state.uaComplete} label={t("ukrainian")} onSelect={() => onSelectTab("ua")} />
                 <LanguageTab active={activeTab === "en"} complete={state.enComplete} label={t("english")} onSelect={() => onSelectTab("en")} />
             </div>
-            <label className="block space-y-1.5 text-sm font-medium text-stone-700">
-                <span>{t(activeTab === "ua" ? "titleUa" : "titleEn")}</span>
+            <label className="block min-w-0 space-y-1.5 text-sm font-medium text-stone-700">
+                <span className="break-words">{t(activeTab === "ua" ? "titleUa" : "titleEn")}</span>
                 <input
-                    className="w-full rounded-lg border border-stone-200 px-4 py-3 text-xl font-medium outline-none focus:border-stone-400"
+                    className="w-full rounded-lg border border-stone-200 px-3 py-3 text-lg font-medium outline-none focus:border-stone-400 sm:px-4 sm:text-xl"
                     maxLength={255}
                     onChange={(event) => onSetField(titleField, event.target.value)}
                     type="text"
@@ -619,7 +619,7 @@ function ContentEditor({activeTab, draft, imageInsertion, onImageInserted, onSel
                 />
             </label>
             <div className="space-y-1.5 text-sm font-medium text-stone-700">
-                <span>{t(activeTab === "ua" ? "contentUa" : "contentEn")}</span>
+                <span className="break-words">{t(activeTab === "ua" ? "contentUa" : "contentEn")}</span>
                 <NewsRichTextEditor
                     ariaLabel={t(activeTab === "ua" ? "contentUa" : "contentEn")}
                     imageInsertion={imageInsertion}
@@ -659,9 +659,9 @@ function PreviewPanel({activeTab, draft, item, onSelectTab, state, t}: {
                     <img alt="" className={item.coverDisplayMode === "FIT" ? "max-h-72 max-w-full rounded-lg object-contain" : "h-full w-full object-cover"} src={createAdminMediaUrl(item.coverMediaId)} />
                 </div>
             ) : null}
-            <h2 className="text-3xl font-semibold text-stone-900">{title || t("untitled")}</h2>
+            <h2 className="break-words text-2xl font-semibold text-stone-900 sm:text-3xl">{title || t("untitled")}</h2>
             {content ? (
-                <div className="prose max-w-none text-stone-800">
+                <div className="prose max-w-none break-words text-stone-800">
                     <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         urlTransform={(url) => defaultUrlTransform(resolveAdminMediaUrl(url))}
@@ -796,18 +796,18 @@ function StatusBadge({status, t}: {status: NewsStatus; t: T}) {
         : status === "ARCHIVED"
             ? "bg-stone-200 text-stone-600"
             : "bg-amber-50 text-amber-700";
-    return <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${style}`}>{t(`statuses.${status.toLowerCase()}`)}</span>;
+    return <span className={`max-w-full break-words rounded-full px-2 py-0.5 text-xs font-medium sm:shrink-0 ${style}`}>{t(`statuses.${status.toLowerCase()}`)}</span>;
 }
 
 function LanguageBadge({complete, locale, t}: {complete: boolean; locale: string; t: T}) {
-    return <span className={`shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] ${complete ? "bg-stone-100 text-stone-600" : "bg-amber-50 text-amber-700"}`}>{complete ? locale : t("missingLanguage", {locale})}</span>;
+    return <span className={`max-w-full break-words rounded px-1.5 py-0.5 text-[11px] sm:shrink-0 ${complete ? "bg-stone-100 text-stone-600" : "bg-amber-50 text-amber-700"}`}>{complete ? locale : t("missingLanguage", {locale})}</span>;
 }
 
 function LanguageStatus({complete, label, t}: {complete: boolean; label: string; t: T}) {
     return (
         <div className="flex min-w-0 items-center justify-between gap-2 rounded-md bg-stone-50 px-2.5 py-2 text-sm">
-            <span>{label}</span>
-            <span className={`truncate text-right ${complete ? "text-emerald-700" : "text-amber-700"}`}>{complete ? t("complete") : t("incomplete")}</span>
+            <span className="min-w-0 break-words">{label}</span>
+            <span className={`min-w-0 break-words text-right ${complete ? "text-emerald-700" : "text-amber-700"}`}>{complete ? t("complete") : t("incomplete")}</span>
         </div>
     );
 }
@@ -821,7 +821,7 @@ function LanguageTab({active, complete, label, onSelect}: {active: boolean; comp
             role="tab"
             type="button"
         >
-            {label}
+            <span className="min-w-0 break-words">{label}</span>
             <span className={`h-2 w-2 rounded-full ${complete ? "bg-emerald-400" : "bg-amber-400"}`} aria-hidden="true" />
         </button>
     );
@@ -839,7 +839,7 @@ function ActionButton({children, danger = false, disabled = false, onClick, prim
         : danger
             ? "border-red-200 bg-white text-red-700 hover:bg-red-50"
             : "border-stone-200 bg-stone-50 text-stone-700 hover:bg-stone-100";
-    return <button className={`rounded-lg border px-3 py-2 text-sm font-medium transition disabled:opacity-50 ${style}`} disabled={disabled} onClick={onClick} type="button">{children}</button>;
+    return <button className={`max-w-full break-words rounded-lg border px-3 py-2 text-sm font-medium transition disabled:opacity-50 ${style}`} disabled={disabled} onClick={onClick} type="button">{children}</button>;
 }
 
 function SmallButton({children, danger = false, disabled = false, onClick}: {
@@ -850,7 +850,7 @@ function SmallButton({children, danger = false, disabled = false, onClick}: {
 }) {
     return (
         <button
-            className={`rounded border px-2 py-1 text-[11px] disabled:opacity-45 ${danger ? "border-red-200 text-red-700 hover:bg-red-50" : "border-stone-200 text-stone-600 hover:bg-stone-50"}`}
+            className={`max-w-full break-words rounded border px-2 py-1 text-[11px] disabled:opacity-45 ${danger ? "border-red-200 text-red-700 hover:bg-red-50" : "border-stone-200 text-stone-600 hover:bg-stone-50"}`}
             disabled={disabled}
             onClick={onClick}
             type="button"
@@ -869,7 +869,7 @@ function ModeButton({active, children, disabled, onClick}: {
     return (
         <button
             aria-pressed={active}
-            className={`rounded-md border px-2.5 py-1.5 text-xs transition disabled:opacity-50 ${active ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white text-stone-700 hover:bg-stone-50"}`}
+            className={`max-w-full break-words rounded-md border px-2.5 py-1.5 text-xs transition disabled:opacity-50 ${active ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white text-stone-700 hover:bg-stone-50"}`}
             disabled={disabled}
             onClick={onClick}
             type="button"
@@ -880,7 +880,7 @@ function ModeButton({active, children, disabled, onClick}: {
 }
 
 function InfoRow({label, value}: {label: string; value: string}) {
-    return <div className="flex min-w-0 justify-between gap-2 text-xs text-stone-500"><span className="shrink-0">{label}</span><span className="min-w-0 truncate text-right">{value}</span></div>;
+    return <div className="flex min-w-0 flex-wrap justify-between gap-2 text-xs text-stone-500"><span className="break-words">{label}</span><span className="min-w-0 break-words text-right">{value}</span></div>;
 }
 
 function formatDate(value: string) {

@@ -95,13 +95,13 @@ export default function OfficesManagement() {
     }
 
     return (
-        <section className="grid w-full items-start gap-5 xl:grid-cols-[minmax(360px,520px)_minmax(0,640px)]">
+        <section className="grid w-full min-w-0 max-w-full items-start gap-5 xl:grid-cols-[minmax(360px,520px)_minmax(0,640px)]">
             <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
                 <div className="mb-4 flex flex-col gap-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                            <h1 className="text-2xl font-semibold text-stone-950">{t("title")}</h1>
-                            <p className="mt-1 text-sm text-stone-600">{t("subtitle")}</p>
+                        <div className="min-w-0">
+                            <h1 className="break-words text-2xl font-semibold text-stone-950">{t("title")}</h1>
+                            <p className="mt-1 break-words text-sm text-stone-600">{t("subtitle")}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-600">
@@ -161,7 +161,7 @@ export default function OfficesManagement() {
                                     <span className="flex min-w-0 flex-col gap-2">
                                         <span className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                                             <span className="min-w-0">
-                                                <span className="block truncate text-sm font-semibold">{office.name}</span>
+                                                <span className="block break-words text-sm font-semibold">{office.name}</span>
                                                 <span className={`mt-1 block break-words text-xs ${selected ? "text-stone-200" : "text-stone-600"}`}>
                                                     {office.address}
                                                 </span>
@@ -189,11 +189,11 @@ export default function OfficesManagement() {
 
             <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex flex-col gap-2 border-b border-stone-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
+                    <div className="min-w-0">
                         <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
                             {selectedOffice ? `ID ${selectedOffice.id}` : t("newOffice")}
                         </p>
-                        <h2 className="mt-1 text-xl font-semibold text-stone-950">
+                        <h2 className="mt-1 break-words text-xl font-semibold text-stone-950">
                             {selectedOffice ? t("editTitle") : t("createTitle")}
                         </h2>
                     </div>
@@ -237,10 +237,10 @@ export default function OfficesManagement() {
                             value={form.locationDetails ?? ""}
                         />
                     </Field>
-                    <label className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                    <label className={`flex min-w-0 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition-colors ${
                         form.active ? "border-stone-300 bg-stone-100 text-stone-950" : "border-stone-200 bg-stone-50 text-stone-700"
                     }`}>
-                        <span>{t("active")}</span>
+                        <span className="min-w-0 break-words">{t("active")}</span>
                         <input
                             checked={form.active}
                             onChange={(event) => updateField("active", event.target.checked)}
@@ -264,14 +264,14 @@ export default function OfficesManagement() {
 function StatusBadge({active = false, enabled, label}: {active?: boolean; enabled: boolean; label: string}) {
     if (enabled) {
         return (
-            <span className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-emerald-50 text-emerald-800"}`}>
+            <span className={`w-fit max-w-full break-words rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-emerald-50 text-emerald-800"}`}>
                 {label}
             </span>
         );
     }
 
     return (
-        <span className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-stone-100 text-stone-600"}`}>
+        <span className={`w-fit max-w-full break-words rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-stone-100 text-stone-600"}`}>
             {label}
         </span>
     );
@@ -279,8 +279,8 @@ function StatusBadge({active = false, enabled, label}: {active?: boolean; enable
 
 function Field({children, label}: {children: React.ReactNode; label: string}) {
     return (
-        <label className="block text-sm font-medium text-stone-800">
-            <span className="mb-1 block">{label}</span>
+        <label className="block min-w-0 text-sm font-medium text-stone-800">
+            <span className="mb-1 block break-words">{label}</span>
             {children}
         </label>
     );

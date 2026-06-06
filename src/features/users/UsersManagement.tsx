@@ -64,13 +64,13 @@ export default function UsersManagement() {
     }
 
     return (
-        <section className="grid w-full items-start gap-5 xl:grid-cols-[minmax(420px,580px)_minmax(0,1fr)]">
+        <section className="grid w-full min-w-0 max-w-full items-start gap-5 xl:grid-cols-[minmax(420px,580px)_minmax(0,1fr)]">
             <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
                 <div className="mb-4 flex flex-col gap-3">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                            <h1 className="text-2xl font-semibold text-stone-950">{t("title")}</h1>
-                            <p className="mt-1 text-sm text-stone-600">{t("subtitle")}</p>
+                        <div className="min-w-0">
+                            <h1 className="break-words text-2xl font-semibold text-stone-950">{t("title")}</h1>
+                            <p className="mt-1 break-words text-sm text-stone-600">{t("subtitle")}</p>
                         </div>
                         <span className="w-fit rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-600">
                             {users.length}
@@ -135,7 +135,7 @@ export default function UsersManagement() {
                                     <span className="flex min-w-0 flex-col gap-2">
                                         <span className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                                             <span className="min-w-0">
-                                                <span className="block truncate text-sm font-semibold">{name}</span>
+                                                <span className="block break-words text-sm font-semibold">{name}</span>
                                                 <span className={`mt-1 block break-words text-xs ${active ? "text-stone-200" : "text-stone-600"}`}>
                                                     {user.email ?? user.phone ?? t("noContact")}
                                                 </span>
@@ -156,7 +156,7 @@ export default function UsersManagement() {
                 </div>
             </div>
 
-            <div className="min-w-0 max-w-3xl rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="min-w-0 max-w-full rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:max-w-3xl sm:p-5">
                 {selectedUser ? (
                     <div className="space-y-5">
                         <div className="flex flex-col gap-3 border-b border-stone-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
@@ -181,21 +181,21 @@ export default function UsersManagement() {
 
                         <fieldset className="space-y-3">
                             <legend className="text-sm font-semibold text-stone-900">{t("assignedRoles")}</legend>
-                            <label className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-500">
-                                <span>{t("roles.USER")}</span>
+                            <label className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-500">
+                                <span className="min-w-0 break-words">{t("roles.USER")}</span>
                                 <input checked disabled readOnly type="checkbox" />
                             </label>
                             <div className="grid gap-2 sm:grid-cols-2">
                                 {manageableRoles.map((roleName) => (
                                     <label
-                                        className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                                        className={`flex min-w-0 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition-colors ${
                                             hasRole.has(roleName)
                                                 ? "border-stone-400 bg-stone-100 text-stone-950"
                                                 : "border-stone-200 bg-white text-stone-900 hover:bg-stone-50"
                                         }`}
                                         key={roleName}
                                     >
-                                        <span>{t(`roles.${roleName}`)}</span>
+                                        <span className="min-w-0 break-words">{t(`roles.${roleName}`)}</span>
                                         <input
                                             checked={hasRole.has(roleName)}
                                             onChange={() => toggleRole(roleName)}
@@ -225,7 +225,7 @@ export default function UsersManagement() {
 
 function RoleBadge({active = false, label}: {active?: boolean; label: string}) {
     return (
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-stone-100 text-stone-700"}`}>
+        <span className={`max-w-full break-words rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-stone-100 text-stone-700"}`}>
             {label}
         </span>
     );
@@ -234,14 +234,14 @@ function RoleBadge({active = false, label}: {active?: boolean; label: string}) {
 function StatusBadge({active = false, enabled, label}: {active?: boolean; enabled: boolean; label: string}) {
     if (enabled) {
         return (
-            <span className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-emerald-50 text-emerald-800"}`}>
+            <span className={`w-fit max-w-full break-words rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-emerald-50 text-emerald-800"}`}>
                 {label}
             </span>
         );
     }
 
     return (
-        <span className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-stone-100 text-stone-600"}`}>
+        <span className={`w-fit max-w-full break-words rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-stone-100 text-stone-600"}`}>
             {label}
         </span>
     );
@@ -249,8 +249,8 @@ function StatusBadge({active = false, enabled, label}: {active?: boolean; enable
 
 function Info({label, value}: {label: string; value: string}) {
     return (
-        <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
-            <span className="block text-xs font-medium uppercase tracking-wide text-stone-500">{label}</span>
+        <div className="min-w-0 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
+            <span className="block break-words text-xs font-medium uppercase tracking-wide text-stone-500">{label}</span>
             <span className="mt-1 block break-words">{value}</span>
         </div>
     );

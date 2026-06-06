@@ -4,7 +4,7 @@ import {useEffect, useMemo, useState, type ReactNode} from "react";
 import {useLocale} from "next-intl";
 import type {Locale} from "@/i18n";
 import {useToast} from "@/components/ui/toast/ToastProvider";
-import {useCreateBookingMutation} from "@/features/bookings/bookings.api";
+import {useCreateBookingMutation, useListMyBookingsQuery} from "@/features/bookings/bookings.api";
 import {useListPublicOfficesQuery} from "@/features/offices/offices.api";
 import {
     useCancelFixedEventEnrollmentMutation,
@@ -15,6 +15,7 @@ import {
 } from "@/features/schedule/schedule.api";
 import AtaraksiaCalendar, {toCalendarView, type AtaraksiaCalendarEvent} from "@/features/schedule/AtaraksiaCalendar";
 import {useListServicesQuery} from "@/features/services/services.api";
+import type {Booking} from "@/types/bookings";
 import type {PublicFixedEvent, PublicScheduleAvailabilityBlock, PublicScheduleUnavailableBlock} from "@/types/schedule";
 import type {PublicService} from "@/types/services";
 
@@ -77,6 +78,10 @@ export default function PublicSchedulePage() {
         officeId: filters.officeId,
         specialistId: filters.specialistId
     });
+    const {data: myBookingsData, isFetching: myBookingsFetching} = useListMyBookingsQuery(
+        {page: 0, size: 100},
+        {skip: filters.status !== "mine"}
+    );
     const [createBooking, {isLoading: bookingLoading}] = useCreateBookingMutation();
     const [enrollEvent, {isLoading: enrollmentLoading}] = useEnrollFixedEventMutation();
     const [cancelEventEnrollment, {isLoading: cancelEnrollmentLoading}] = useCancelFixedEventEnrollmentMutation();
@@ -91,6 +96,7 @@ export default function PublicSchedulePage() {
         ? []
         : unavailableData.filter((item) => !visibleEventUnavailableIds.has(item.id));
     const filteredSlots = filters.mode === "events" || filters.status === "unavailable" || filters.status === "events" || filters.status === "mine" ? [] : slotsData;
+    const myBookings = filters.status === "mine" ? filterMyBookings(myBookingsData?.content ?? [], range) : [];
     const nearestSlots = selected?.bookingMode === "INDIVIDUAL_APPOINTMENT" ? filteredSlots.slice(0, 5) : [];
     const specialists = uniqueSpecialists([...slotsData, ...eventsData, ...unavailableData]);
     const isSaving = bookingLoading || enrollmentLoading || cancelEnrollmentLoading;
@@ -269,6 +275,7 @@ export default function PublicSchedulePage() {
                         onChooseSlot={chooseSlot}
                         onChooseUnavailable={() => toast.error(copy.unavailableClick)}
                         onNavigate={setCurrentDate}
+                        myBookings={myBookings}
                         slots={filteredSlots}
                         unavailable={filteredUnavailable}
                         view={selectedView}
@@ -294,7 +301,7 @@ export default function PublicSchedulePage() {
                     <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
                         <div className="flex items-center justify-between gap-3">
                             <h2 className="text-base font-semibold text-stone-950">{copy.nearestSlots}</h2>
-                            <span className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-500">{slotsFetching || eventsFetching ? copy.loading : copy.slotCount(nearestSlots.length)}</span>
+                            <span className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-500">{slotsFetching || eventsFetching || myBookingsFetching ? copy.loading : copy.slotCount(nearestSlots.length)}</span>
                         </div>
                         {selected?.bookingMode !== "INDIVIDUAL_APPOINTMENT" ? <p className="mt-3 text-sm leading-6 text-stone-500">{copy.selectServicePrompt}</p> : null}
                         {selected?.bookingMode === "INDIVIDUAL_APPOINTMENT" && nearestSlots.length > 0 ? (
@@ -457,13 +464,14 @@ function EventDetailsModal({copy, event, isSaving, locale, onCancelEnrollment, o
     );
 }
 
-function PublicScheduleCalendar({copy, currentDate, events, locale, onChooseEvent, onChooseSlot, onChooseUnavailable, onNavigate, slots, unavailable, view}: {copy: Copy; currentDate: Date; events: PublicFixedEvent[]; locale: string; onChooseEvent: (event: PublicFixedEvent) => void; onChooseSlot: (slot: PublicScheduleAvailabilityBlock) => void; onChooseUnavailable: () => void; onNavigate: (date: Date) => void; slots: PublicScheduleAvailabilityBlock[]; unavailable: PublicScheduleUnavailableBlock[]; view: CalendarView}) {
+function PublicScheduleCalendar({copy, currentDate, events, locale, myBookings, onChooseEvent, onChooseSlot, onChooseUnavailable, onNavigate, slots, unavailable, view}: {copy: Copy; currentDate: Date; events: PublicFixedEvent[]; locale: string; myBookings: Booking[]; onChooseEvent: (event: PublicFixedEvent) => void; onChooseSlot: (slot: PublicScheduleAvailabilityBlock) => void; onChooseUnavailable: () => void; onNavigate: (date: Date) => void; slots: PublicScheduleAvailabilityBlock[]; unavailable: PublicScheduleUnavailableBlock[]; view: CalendarView}) {
     const slotByEventId = new Map(slots.map((slot) => [slotKey(slot), slot]));
     const fixedEventByEventId = new Map(events.map((event) => [`event-${event.id}`, event]));
     const unavailableIds = new Set(unavailable.map((item) => item.id));
     const calendarEvents: AtaraksiaCalendarEvent[] = [
         ...slots.map((slot) => ({id: slotKey(slot), title: `${copy.available} · ${slot.specialistName}`, start: new Date(slot.startsAt), end: new Date(slot.endsAt), tone: "available" as const})),
         ...unavailable.map((item) => ({id: item.id, title: item.status === "OCCUPIED" ? copy.occupied : copy.unavailable, start: new Date(item.startsAt), end: new Date(item.endsAt), tone: "blocked" as const})),
+        ...myBookings.map((booking) => ({id: `my-booking-${booking.id}`, title: `${booking.serviceTitleUa} · ${booking.specialistName}`, start: new Date(booking.startsAt), end: new Date(booking.endsAt), tone: "booking" as const})),
         ...events.map((event) => ({id: `event-${event.id}`, title: event.enrolled ? `${event.title} · ${copy.enrolled}` : event.full ? `${event.title} · ${copy.full}` : `${event.title} · ${copy.remaining(event.remainingPlaces)}`, start: new Date(event.startsAt), end: new Date(event.endsAt), tone: "booking" as const}))
     ];
 
@@ -578,6 +586,15 @@ function filterEvents(events: PublicFixedEvent[], filters: FilterState) {
     if (filters.status === "mine") return events.filter((event) => event.enrolled);
     if (filters.status === "events") return events.filter((event) => !event.full);
     return events;
+}
+
+function filterMyBookings(bookings: Booking[], range: {from: string; to: string}) {
+    const from = new Date(range.from).getTime();
+    const to = new Date(range.to).getTime();
+    return bookings.filter((booking) => {
+        const startsAt = new Date(booking.startsAt).getTime();
+        return booking.status !== "CANCELLED" && startsAt >= from && startsAt <= to;
+    });
 }
 
 function uniqueSpecialists(items: Array<{specialistId: number; specialistName: string}>) {

@@ -30,8 +30,9 @@ export default function FinanceBookingsManagement() {
     const [selectedBooking, setSelectedBooking] = useState<FinanceBooking | null>(null);
     const {data: officesData} = useListPublicOfficesQuery({size: 100});
     const activeOffices = useMemo(() => officesData?.content ?? [], [officesData?.content]);
+    const bookingStatusFilter = tab === "pending" ? "AWAITING_PAYMENT_CONFIRMATION" : status;
     const {data, isFetching, isError} = useListFinanceBookingsQuery({
-        status: "",
+        status: bookingStatusFilter,
         officeId: officeId ? Number(officeId) : undefined,
         from: toStartOfDayIso(from),
         to: toNextDayIso(to)
@@ -51,12 +52,7 @@ export default function FinanceBookingsManagement() {
     const [confirmPayment, {isLoading: isConfirming}] = useConfirmPaymentMutation();
     const allBookings = useMemo(() => data?.content ?? [], [data?.content]);
     const expenses = useMemo(() => expensesData?.content ?? [], [expensesData?.content]);
-    const financeScope = allBookings;
-    const bookings = financeScope.filter((booking) => {
-        if (tab === "pending" && booking.status !== "AWAITING_PAYMENT_CONFIRMATION") return false;
-        if (status && booking.status !== status) return false;
-        return true;
-    });
+    const bookings = allBookings;
     const pendingCount = summary?.pendingCount ?? 0;
     const confirmedCount = summary?.confirmedCount ?? 0;
     const income = summary?.income ?? 0;
@@ -84,7 +80,7 @@ export default function FinanceBookingsManagement() {
                     </div>
                     <div className="grid w-full gap-3 sm:grid-cols-2 xl:max-w-3xl xl:grid-cols-4">
                         <Filter label={t("filters.status")}>
-                            <select className={inputClass} onChange={(event) => setStatus(event.target.value as BookingStatus | "")} value={status}>
+                            <select className={inputClass} disabled={tab === "pending"} onChange={(event) => setStatus(event.target.value as BookingStatus | "")} value={bookingStatusFilter}>
                                 {statuses.map((item) => <option key={item || "all"} value={item}>{item ? t(`statuses.${item}`) : t("statuses.all")}</option>)}
                             </select>
                         </Filter>

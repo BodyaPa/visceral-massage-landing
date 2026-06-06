@@ -23,7 +23,7 @@ export interface FinanceBooking {
     clientContact: string | null;
     serviceId: number;
     serviceTitleUa: string;
-    basePrice: number;
+    bookedPrice: number;
     specialistId: number;
     specialistName: string;
     officeId: number | null;

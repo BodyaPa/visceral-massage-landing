@@ -86,8 +86,8 @@
     "rolesSection": "Roles",
     "rolesHint": "Roles are shown for reference only. Role management is available in a separate section for users with permission.",
     "securitySection": "Access and security",
-    "securityText": "Password changes and account recovery will be available after the corresponding backend flow is added.",
-    "securityAction": "Password change unavailable",
+    "securityText": "Account recovery is available from the login page through an email code. Password changes inside the account will be added separately.",
+    "securityAction": "Recover access",
     "deleteSection": "Account deletion",
     "deleteText": "Account deletion requires a separate retention policy for bookings, payments, and business history.",
     "deleteAction": "Deletion unavailable",
@@ -552,7 +552,9 @@
       "lastName": "Last name",
       "phone": "Phone number",
       "email": "Email",
-      "password": "Password"
+      "password": "Password",
+      "newPassword": "New password",
+      "recoveryCode": "Recovery code"
     },
     "submitting": "Please wait...",
     "login": {
@@ -562,6 +564,7 @@
       "submit": "Login",
       "success": "You have signed in successfully.",
       "error": "Incorrect phone number, email, or password.",
+      "forgotPassword": "Forgot password?",
       "alternative": "Do not have an account yet?",
       "alternativeLink": "Register"
     },
@@ -585,6 +588,20 @@
       "existingAccount": "An account with these contact details already exists. Try signing in.",
       "error": "Unable to register. Check your name, contact details, and password.",
       "alternative": "Already have an account?",
+      "alternativeLink": "Login"
+    },
+    "recovery": {
+      "title": "Account recovery",
+      "subtitle": "Enter your account email. If it exists, we will send a recovery code.",
+      "submit": "Send code",
+      "confirmSubmit": "Change password",
+      "requestSuccess": "If an account with this email exists, a recovery code has been sent.",
+      "confirmSuccess": "Password updated. Sign in with the new password.",
+      "requestError": "Unable to send the recovery code.",
+      "confirmError": "Unable to change the password. Check the code and the new password.",
+      "emailRequired": "Enter an email address to recover access.",
+      "genericHint": "We do not show whether an account exists for this email. That is intentional.",
+      "alternative": "Remembered the password?",
       "alternativeLink": "Login"
     }
   }

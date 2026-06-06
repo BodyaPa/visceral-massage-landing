@@ -95,13 +95,12 @@ export default async function AccountPage({params}: Props) {
                                     <section className="rounded-xl border border-stone-200 bg-stone-50 p-4">
                                         <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">{t("securitySection")}</h2>
                                         <p className="mt-2 text-sm text-stone-700">{t("securityText")}</p>
-                                        <button
-                                            className="mt-3 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-400"
-                                            disabled
-                                            type="button"
+                                        <Link
+                                            className="mt-3 inline-flex rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100"
+                                            href={withLocale("/auth?mode=recovery", locale)}
                                         >
                                             {t("securityAction")}
-                                        </button>
+                                        </Link>
                                     </section>
                                 </aside>
                             </section>

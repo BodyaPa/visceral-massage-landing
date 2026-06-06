@@ -24,28 +24,27 @@ export default function FinanceBookingsManagement() {
     const toast = useToast();
     const [tab, setTab] = useState<FinanceTab>("pending");
     const [status, setStatus] = useState<BookingStatus | "">("");
-    const [office, setOffice] = useState("");
+    const [officeId, setOfficeId] = useState("");
     const [from, setFrom] = useState("");
     const [to, setTo] = useState("");
     const [selectedBooking, setSelectedBooking] = useState<FinanceBooking | null>(null);
     const {data: officesData} = useListPublicOfficesQuery({size: 100});
     const activeOffices = useMemo(() => officesData?.content ?? [], [officesData?.content]);
-    const selectedOffice = activeOffices.find((item) => item.name === office);
     const {data, isFetching, isError} = useListFinanceBookingsQuery({
         status: "",
-        officeId: selectedOffice?.id,
+        officeId: officeId ? Number(officeId) : undefined,
         from: toStartOfDayIso(from),
         to: toNextDayIso(to)
     });
     const {data: summary, isError: summaryError} = useGetFinanceSummaryQuery({
-        officeId: selectedOffice?.id,
+        officeId: officeId ? Number(officeId) : undefined,
         from: toStartOfDayIso(from),
         to: toNextDayIso(to),
         expenseFrom: from || undefined,
         expenseTo: to || undefined
     });
     const {data: expensesData, isFetching: expensesFetching, isError: expensesError} = useListFinanceExpensesQuery({
-        officeId: selectedOffice?.id,
+        officeId: officeId ? Number(officeId) : undefined,
         from: from || undefined,
         to: to || undefined
     });
@@ -90,9 +89,9 @@ export default function FinanceBookingsManagement() {
                             </select>
                         </Filter>
                         <Filter label={t("filters.office")}>
-                            <select className={inputClass} onChange={(event) => setOffice(event.target.value)} value={office}>
+                            <select className={inputClass} onChange={(event) => setOfficeId(event.target.value)} value={officeId}>
                                 <option value="">{t("filters.allOffices")}</option>
-                                {activeOffices.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}
+                                {activeOffices.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                             </select>
                         </Filter>
                         <Filter label={t("filters.from")}><input className={inputClass} onChange={(event) => setFrom(event.target.value)} type="date" value={from} /></Filter>
@@ -163,11 +162,11 @@ function BookingSection({bookings, confirming, isFetching, locale, onConfirm, on
 }
 
 function BookingRow({booking, confirming, locale, onConfirm, onSelect, t}: {booking: FinanceBooking; confirming: boolean; locale: string; onConfirm: (id: number) => void; onSelect: (booking: FinanceBooking) => void; t: T}) {
-    return <tr className="border-t border-stone-100 align-top transition-colors hover:bg-stone-50"><td className="px-3 py-3"><button className="text-left font-medium text-stone-950 hover:underline" onClick={() => onSelect(booking)} type="button">{booking.clientName}</button><p className="mt-1 text-xs text-stone-500">{booking.clientContact ?? t("unknownContact")}</p></td><td className="px-3 py-3 text-stone-700">{booking.serviceTitleUa}</td><td className="px-3 py-3 text-stone-700">{booking.specialistName}</td><td className="px-3 py-3 text-stone-700">{formatDateTime(booking.startsAt, locale)}</td><td className="px-3 py-3 text-stone-700">{booking.officeName ?? t("withoutOffice")}</td><td className="px-3 py-3 text-right font-medium text-stone-950">{formatAmount(booking.basePrice, locale)}</td><td className="px-3 py-3"><StatusBadge status={booking.status} t={t} /></td><td className="px-3 py-3"><ActionButton booking={booking} confirming={confirming} onConfirm={onConfirm} t={t} /></td></tr>;
+    return <tr className="border-t border-stone-100 align-top transition-colors hover:bg-stone-50"><td className="px-3 py-3"><button className="text-left font-medium text-stone-950 hover:underline" onClick={() => onSelect(booking)} type="button">{booking.clientName}</button><p className="mt-1 text-xs text-stone-500">{booking.clientContact ?? t("unknownContact")}</p></td><td className="px-3 py-3 text-stone-700">{booking.serviceTitleUa}</td><td className="px-3 py-3 text-stone-700">{booking.specialistName}</td><td className="px-3 py-3 text-stone-700">{formatDateTime(booking.startsAt, locale)}</td><td className="px-3 py-3 text-stone-700">{booking.officeName ?? t("withoutOffice")}</td><td className="px-3 py-3 text-right font-medium text-stone-950">{formatAmount(booking.bookedPrice, locale)}</td><td className="px-3 py-3"><StatusBadge status={booking.status} t={t} /></td><td className="px-3 py-3"><ActionButton booking={booking} confirming={confirming} onConfirm={onConfirm} t={t} /></td></tr>;
 }
 
 function BookingCard({booking, confirming, locale, onConfirm, onSelect, t}: {booking: FinanceBooking; confirming: boolean; locale: string; onConfirm: (id: number) => void; onSelect: (booking: FinanceBooking) => void; t: T}) {
-    return <article className="rounded-xl border border-stone-200 bg-white p-4"><div className="flex items-start justify-between gap-3"><div><button className="text-left font-semibold text-stone-950 hover:underline" onClick={() => onSelect(booking)} type="button">{booking.clientName}</button><p className="mt-1 text-xs text-stone-500">{booking.serviceTitleUa} · {booking.specialistName}</p></div><StatusBadge status={booking.status} t={t} /></div><div className="mt-3 grid grid-cols-2 gap-3 border-t border-stone-100 pt-3 text-xs text-stone-500"><span>{formatDateTime(booking.startsAt, locale)}</span><span className="text-right">{booking.officeName ?? t("withoutOffice")}</span><strong className="text-sm text-stone-950">{formatAmount(booking.basePrice, locale)}</strong><div className="text-right"><ActionButton booking={booking} confirming={confirming} onConfirm={onConfirm} t={t} /></div></div></article>;
+    return <article className="rounded-xl border border-stone-200 bg-white p-4"><div className="flex items-start justify-between gap-3"><div><button className="text-left font-semibold text-stone-950 hover:underline" onClick={() => onSelect(booking)} type="button">{booking.clientName}</button><p className="mt-1 text-xs text-stone-500">{booking.serviceTitleUa} · {booking.specialistName}</p></div><StatusBadge status={booking.status} t={t} /></div><div className="mt-3 grid grid-cols-2 gap-3 border-t border-stone-100 pt-3 text-xs text-stone-500"><span>{formatDateTime(booking.startsAt, locale)}</span><span className="text-right">{booking.officeName ?? t("withoutOffice")}</span><strong className="text-sm text-stone-950">{formatAmount(booking.bookedPrice, locale)}</strong><div className="text-right"><ActionButton booking={booking} confirming={confirming} onConfirm={onConfirm} t={t} /></div></div></article>;
 }
 
 function ActionButton({booking, confirming, onConfirm, t}: {booking: FinanceBooking; confirming: boolean; onConfirm: (id: number) => void; t: T}) {
@@ -224,7 +223,7 @@ function EmptyState({body, title}: {body: string; title: string}) {
 }
 
 function BookingDetails({booking, confirming, locale, onClose, onConfirm, t}: {booking: FinanceBooking; confirming: boolean; locale: string; onClose: () => void; onConfirm: (id: number) => void; t: T}) {
-    return <div className="fixed inset-0 z-50 flex justify-end bg-stone-950/30" onClick={onClose} role="presentation"><aside className="h-full w-full max-w-md overflow-y-auto bg-white p-5 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between gap-3 border-b border-stone-200 pb-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{t("details.eyebrow")}</p><h2 className="mt-1 text-xl font-semibold text-stone-950">{booking.clientName}</h2></div><button aria-label={t("details.close")} className="rounded-lg border border-stone-200 px-3 py-2 text-stone-600 hover:bg-stone-100" onClick={onClose} type="button">×</button></div><dl className="mt-5 space-y-4"><Detail label={t("table.service")} value={booking.serviceTitleUa} /><Detail label={t("table.specialist")} value={booking.specialistName} /><Detail label={t("table.office")} value={booking.officeName ?? t("withoutOffice")} /><Detail label={t("table.when")} value={formatDateTime(booking.startsAt, locale)} /><Detail label={t("table.amount")} value={formatAmount(booking.basePrice, locale)} /><div><dt className="text-xs font-medium uppercase tracking-wide text-stone-500">{t("table.status")}</dt><dd className="mt-1"><StatusBadge status={booking.status} t={t} /></dd></div></dl><div className="mt-6"><ActionButton booking={booking} confirming={confirming} onConfirm={onConfirm} t={t} /></div></aside></div>;
+    return <div className="fixed inset-0 z-50 flex justify-end bg-stone-950/30" onClick={onClose} role="presentation"><aside className="h-full w-full max-w-md overflow-y-auto bg-white p-5 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between gap-3 border-b border-stone-200 pb-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{t("details.eyebrow")}</p><h2 className="mt-1 text-xl font-semibold text-stone-950">{booking.clientName}</h2></div><button aria-label={t("details.close")} className="rounded-lg border border-stone-200 px-3 py-2 text-stone-600 hover:bg-stone-100" onClick={onClose} type="button">×</button></div><dl className="mt-5 space-y-4"><Detail label={t("table.service")} value={booking.serviceTitleUa} /><Detail label={t("table.specialist")} value={booking.specialistName} /><Detail label={t("table.office")} value={booking.officeName ?? t("withoutOffice")} /><Detail label={t("table.when")} value={formatDateTime(booking.startsAt, locale)} /><Detail label={t("table.amount")} value={formatAmount(booking.bookedPrice, locale)} /><div><dt className="text-xs font-medium uppercase tracking-wide text-stone-500">{t("table.status")}</dt><dd className="mt-1"><StatusBadge status={booking.status} t={t} /></dd></div></dl><div className="mt-6"><ActionButton booking={booking} confirming={confirming} onConfirm={onConfirm} t={t} /></div></aside></div>;
 }
 
 function Detail({label, value}: {label: string; value: string}) {

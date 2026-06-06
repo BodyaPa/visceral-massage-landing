@@ -7,9 +7,9 @@ import {useLocale, useTranslations} from "next-intl";
 import type {Locale} from "@/i18n";
 import {withLocale} from "@/shared/lib/locale/withLocale";
 import {useToast} from "@/components/ui/toast/ToastProvider";
-import {AuthRequestError, login, register} from "./auth.client";
+import {AuthRequestError, confirmPasswordRecovery, login, register, requestPasswordRecovery} from "./auth.client";
 
-type Mode = "login" | "register";
+type Mode = "login" | "register" | "recovery";
 
 type Props = {
     initialMode?: Mode;
@@ -24,11 +24,14 @@ export default function AuthForm({initialMode = "login"}: Props) {
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [password, setPassword] = useState("");
+    const [recoveryEmail, setRecoveryEmail] = useState("");
+    const [recoveryRequested, setRecoveryRequested] = useState(false);
 
     function selectMode(nextMode: Mode) {
         setMode(nextMode);
         setError(null);
         setPassword("");
+        setRecoveryRequested(false);
         router.replace(withLocale(`/auth?mode=${nextMode}`, locale), {scroll: false});
     }
 
@@ -39,6 +42,11 @@ export default function AuthForm({initialMode = "login"}: Props) {
         const formData = new FormData(event.currentTarget);
         const phone = String(formData.get("phone") ?? "").trim();
         const email = String(formData.get("email") ?? "").trim();
+
+        if (mode === "recovery") {
+            await handleRecoverySubmit(formData);
+            return;
+        }
 
         if (mode === "register" && !phone && !email) {
             const message = t("register.contactRequired");
@@ -89,6 +97,47 @@ export default function AuthForm({initialMode = "login"}: Props) {
         }
     }
 
+    async function handleRecoverySubmit(formData: FormData) {
+        const email = String(formData.get("recoveryEmail") ?? recoveryEmail).trim();
+        const code = String(formData.get("code") ?? "").trim();
+
+        if (!email) {
+            const message = t("recovery.emailRequired");
+            setError(message);
+            toast.error(message);
+            return;
+        }
+
+        if (recoveryRequested && !passwordIsValid) {
+            const message = t("register.passwordError");
+            setError(message);
+            toast.error(message);
+            return;
+        }
+
+        setSubmitting(true);
+
+        try {
+            if (!recoveryRequested) {
+                await requestPasswordRecovery({email});
+                setRecoveryEmail(email);
+                setRecoveryRequested(true);
+                toast.success(t("recovery.requestSuccess"));
+                return;
+            }
+
+            await confirmPasswordRecovery({email, code, newPassword: password});
+            toast.success(t("recovery.confirmSuccess"));
+            selectMode("login");
+        } catch {
+            const message = recoveryRequested ? t("recovery.confirmError") : t("recovery.requestError");
+            setError(message);
+            toast.error(message);
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
     const passwordChecks = {
         length: password.length >= 12,
         upper: /\p{Lu}/u.test(password),
@@ -116,7 +165,39 @@ export default function AuthForm({initialMode = "login"}: Props) {
                 <p className="text-sm text-stone-600">{t(`${mode}.subtitle`)}</p>
             </div>
 
-            {mode === "login" ? (
+            {mode === "recovery" ? (
+                <>
+                    <label className="block space-y-2 text-sm font-medium text-stone-800">
+                        <span>{t("fields.email")}</span>
+                        <input
+                            required
+                            name="recoveryEmail"
+                            type="email"
+                            maxLength={254}
+                            autoComplete="email"
+                            value={recoveryEmail}
+                            onChange={(event) => setRecoveryEmail(event.target.value)}
+                            className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal"
+                            disabled={recoveryRequested}
+                        />
+                    </label>
+                    {recoveryRequested ? (
+                        <>
+                            <label className="block space-y-2 text-sm font-medium text-stone-800">
+                                <span>{t("fields.recoveryCode")}</span>
+                                <input required name="code" type="text" inputMode="numeric" pattern="\\d{6}" maxLength={6} autoComplete="one-time-code" className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal" />
+                            </label>
+                            <label className="block space-y-2 text-sm font-medium text-stone-800">
+                                <span>{t("fields.newPassword")}</span>
+                                <input required name="password" type="password" value={password} minLength={12} maxLength={128} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal" />
+                            </label>
+                            <PasswordChecklist passwordChecks={passwordChecks} t={t} />
+                        </>
+                    ) : (
+                        <p className="rounded-xl bg-stone-100 p-3 text-xs leading-5 text-stone-600">{t("recovery.genericHint")}</p>
+                    )}
+                </>
+            ) : mode === "login" ? (
                 <label className="block space-y-2 text-sm font-medium text-stone-800">
                     <span>{t("fields.identifier")}</span>
                     <input
@@ -156,33 +237,24 @@ export default function AuthForm({initialMode = "login"}: Props) {
                 </>
             )}
 
-            <label className="block space-y-2 text-sm font-medium text-stone-800">
-                <span>{t("fields.password")}</span>
-                <input
-                    required
-                    name="password"
-                    type="password"
-                    value={password}
-                    minLength={mode === "register" ? 12 : undefined}
-                    maxLength={128}
-                    onChange={(event) => setPassword(event.target.value)}
-                    autoComplete={mode === "login" ? "current-password" : "new-password"}
-                    className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal"
-                />
-            </label>
-
-            {mode === "register" ? (
-                <div className="rounded-xl bg-stone-100 p-3 text-xs text-stone-700" aria-live="polite">
-                    <p className="font-medium">{t("register.passwordTitle")}</p>
-                    <div className="mt-2 grid gap-1 sm:grid-cols-2">
-                        {Object.entries(passwordChecks).map(([requirement, valid]) => (
-                            <span className={valid ? "text-emerald-700" : "text-stone-600"} key={requirement}>
-                                {valid ? "✓ " : "• "}{t(`register.password.${requirement}`)}
-                            </span>
-                        ))}
-                    </div>
-                </div>
+            {mode !== "recovery" ? (
+                <label className="block space-y-2 text-sm font-medium text-stone-800">
+                    <span>{t("fields.password")}</span>
+                    <input
+                        required
+                        name="password"
+                        type="password"
+                        value={password}
+                        minLength={mode === "register" ? 12 : undefined}
+                        maxLength={128}
+                        onChange={(event) => setPassword(event.target.value)}
+                        autoComplete={mode === "login" ? "current-password" : "new-password"}
+                        className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal"
+                    />
+                </label>
             ) : null}
+
+            {mode === "register" ? <PasswordChecklist passwordChecks={passwordChecks} t={t} /> : null}
 
             {error ? <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p> : null}
 
@@ -191,19 +263,48 @@ export default function AuthForm({initialMode = "login"}: Props) {
                 disabled={submitting}
                 className="w-full rounded-md bg-stone-900 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
-                {submitting ? t("submitting") : t(`${mode}.submit`)}
+                {submitting ? t("submitting") : mode === "recovery" && recoveryRequested ? t("recovery.confirmSubmit") : t(`${mode}.submit`)}
             </button>
 
-            <p className="text-center text-sm text-stone-600">
-                {t(`${mode}.alternative`)}{" "}
-                <button
-                    className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-2 hover:decoration-stone-900"
-                    type="button"
-                    onClick={() => selectMode(mode === "login" ? "register" : "login")}
-                >
-                    {t(`${mode}.alternativeLink`)}
-                </button>
-            </p>
+            {mode === "login" ? (
+                <div className="space-y-2 text-center text-sm text-stone-600">
+                    <p>
+                        {t("login.alternative")}{" "}
+                        <button className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-2 hover:decoration-stone-900" type="button" onClick={() => selectMode("register")}>
+                            {t("login.alternativeLink")}
+                        </button>
+                    </p>
+                    <button className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-2 hover:decoration-stone-900" type="button" onClick={() => selectMode("recovery")}>
+                        {t("login.forgotPassword")}
+                    </button>
+                </div>
+            ) : (
+                <p className="text-center text-sm text-stone-600">
+                    {t(`${mode}.alternative`)}{" "}
+                    <button
+                        className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-2 hover:decoration-stone-900"
+                        type="button"
+                        onClick={() => selectMode("login")}
+                    >
+                        {t(`${mode}.alternativeLink`)}
+                    </button>
+                </p>
+            )}
         </form>
+    );
+}
+
+function PasswordChecklist({passwordChecks, t}: {passwordChecks: Record<string, boolean>; t: ReturnType<typeof useTranslations<"auth">>}) {
+    return (
+        <div className="rounded-xl bg-stone-100 p-3 text-xs text-stone-700" aria-live="polite">
+            <p className="font-medium">{t("register.passwordTitle")}</p>
+            <div className="mt-2 grid gap-1 sm:grid-cols-2">
+                {Object.entries(passwordChecks).map(([requirement, valid]) => (
+                    <span className={valid ? "text-emerald-700" : "text-stone-600"} key={requirement}>
+                        {valid ? "✓ " : "• "}{t(`register.password.${requirement}`)}
+                    </span>
+                ))}
+            </div>
+        </div>
     );
 }

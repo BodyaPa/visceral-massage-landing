@@ -25,6 +25,16 @@ type RegisterRequest = {
     password: string;
 };
 
+type PasswordRecoveryRequest = {
+    email: string;
+};
+
+type PasswordRecoveryConfirmRequest = {
+    email: string;
+    code: string;
+    newPassword: string;
+};
+
 export class AuthRequestError extends Error {
     constructor(readonly serverMessage: string | null) {
         super("Authentication request failed.");
@@ -77,6 +87,14 @@ export function login(request: LoginRequest) {
 
 export function register(request: RegisterRequest) {
     return postAuth<AuthenticatedUser>("register", request);
+}
+
+export function requestPasswordRecovery(request: PasswordRecoveryRequest) {
+    return postAuth<void>("password-recovery/request", request);
+}
+
+export function confirmPasswordRecovery(request: PasswordRecoveryConfirmRequest) {
+    return postAuth<void>("password-recovery/confirm", request);
 }
 
 export function logout() {

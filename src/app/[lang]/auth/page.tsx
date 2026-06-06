@@ -26,7 +26,7 @@ export async function generateMetadata({params}: Props): Promise<Metadata> {
 
 export default async function AuthPage({searchParams}: Props) {
     const {mode} = await searchParams;
-    const initialMode = mode === "register" ? "register" : "login";
+    const initialMode = mode === "register" || mode === "recovery" ? mode : "login";
 
     return (
         <main className="fixed inset-0 z-[5] overflow-y-auto p-4 sm:p-6">

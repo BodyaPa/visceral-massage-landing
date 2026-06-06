@@ -28,6 +28,7 @@ type StatusFilter = "all" | "available" | "unavailable" | "events" | "mine";
 type PendingBooking =
     | {type: "individual"; service: PublicService; slot: PublicScheduleAvailabilityBlock}
     | {type: "event"; event: PublicFixedEvent};
+type PaymentPrompt = Pick<Booking, "externalPaymentUrl" | "id" | "serviceTitleUa" | "startsAt">;
 
 type FilterState = {
     officeId: number | "";
@@ -50,6 +51,7 @@ export default function PublicSchedulePage() {
     const [selectedEventDetails, setSelectedEventDetails] = useState<PublicFixedEvent | null>(null);
     const [slotForServiceChoice, setSlotForServiceChoice] = useState<PublicScheduleAvailabilityBlock | null>(null);
     const [savedFilters, setSavedFilters] = useState<FilterState | null>(null);
+    const [paymentPrompt, setPaymentPrompt] = useState<PaymentPrompt | null>(null);
     const range = useMemo(() => buildRange(filters.period), [filters.period]);
 
     const {data: officesData} = useListPublicOfficesQuery({size: 100});
@@ -117,6 +119,7 @@ export default function PublicSchedulePage() {
 
     function updateFilter<K extends keyof FilterState>(field: K, value: FilterState[K]) {
         setFilters((current) => ({...current, [field]: value}));
+        setPaymentPrompt(null);
     }
 
     function chooseIndividualService(service: PublicService) {
@@ -161,10 +164,12 @@ export default function PublicSchedulePage() {
                     reminderOptIn
                 }).unwrap();
                 toast.success(booking.externalPaymentUrl ? copy.bookingCreatedWithPayment : copy.bookingCreated);
+                setPaymentPrompt(booking.externalPaymentUrl ? booking : null);
                 void refetchSlots();
             } else {
                 await enrollEvent({id: pendingBooking.event.id, lang: locale, reminderOptIn}).unwrap();
                 toast.success(copy.eventEnrolled);
+                setPaymentPrompt(null);
                 void refetchEvents();
             }
             setPendingBooking(null);
@@ -249,6 +254,21 @@ export default function PublicSchedulePage() {
                     {savedFilters ? <button className={compactDangerButtonClass} onClick={deleteSavedFilters} type="button">{copy.deleteSaved}</button> : null}
                 </div>
             </section>
+
+            {paymentPrompt?.externalPaymentUrl ? (
+                <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                            <h2 className="text-base font-semibold text-emerald-950">{copy.paymentTitle}</h2>
+                            <p className="mt-1 text-sm leading-6 text-emerald-900">{copy.paymentBody(paymentPrompt.serviceTitleUa, formatDateTime(paymentPrompt.startsAt, locale))}</p>
+                        </div>
+                        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                            <a className="rounded-lg bg-emerald-900 px-4 py-2 text-center text-sm font-semibold text-white transition-colors hover:bg-emerald-800" href={paymentPrompt.externalPaymentUrl} rel="noreferrer" target="_blank">{copy.paymentAction}</a>
+                            <button className="rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-900 transition-colors hover:bg-emerald-100" onClick={() => setPaymentPrompt(null)} type="button">{copy.dismissPayment}</button>
+                        </div>
+                    </div>
+                </section>
+            ) : null}
 
             <section className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
                 <div className="min-w-0 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
@@ -673,6 +693,10 @@ function formatTime(value: string, locale: string) {
     return new Intl.DateTimeFormat(toLanguageTag(locale), {hour: "2-digit", minute: "2-digit"}).format(new Date(value));
 }
 
+function formatDateTime(value: string, locale: string) {
+    return `${new Intl.DateTimeFormat(toLanguageTag(locale), {day: "numeric", month: "long", weekday: "short"}).format(new Date(value))}, ${formatTime(value, locale)}`;
+}
+
 function formatDateTimeRange(start: string, end: string, locale: string) {
     return `${new Intl.DateTimeFormat(toLanguageTag(locale), {day: "numeric", month: "long", weekday: "short"}).format(new Date(start))}, ${formatTime(start, locale)}–${formatTime(end, locale)}`;
 }
@@ -774,6 +798,10 @@ function labels(locale: Locale) {
         saving: ua ? "Збереження..." : "Saving...",
         bookingCreated: ua ? "Бронювання створено. Очікує підтвердження оплати." : "Booking created. Payment confirmation is pending.",
         bookingCreatedWithPayment: ua ? "Бронювання створено. Перейдіть до оплати за посиланням послуги." : "Booking created. Use the service payment link to continue.",
+        paymentTitle: ua ? "Запис створено, оплата очікує підтвердження" : "Booking created, payment awaits confirmation",
+        paymentBody: (service: string, startsAt: string) => ua ? `${service}, ${startsAt}. Після оплати фінансовий менеджер підтвердить запис вручну.` : `${service}, ${startsAt}. After payment, a finance manager will confirm the booking manually.`,
+        paymentAction: ua ? "Перейти до оплати" : "Go to payment",
+        dismissPayment: ua ? "Приховати" : "Dismiss",
         eventEnrolled: ua ? "Ви записані на подію." : "You are enrolled in the event.",
         eventCancelled: ua ? "Участь у події скасовано." : "Event enrollment cancelled.",
         cancelEventError: ua ? "Не вдалося скасувати участь у події." : "Unable to cancel event enrollment.",

@@ -21,12 +21,12 @@ export interface FinanceBooking {
     userId: number;
     clientName: string;
     clientContact: string | null;
+    specialistId: number;
+    specialistName: string;
     serviceId: number;
     serviceTitleUa: string;
     externalPaymentUrl: string | null;
     bookedPrice: number;
-    specialistId: number;
-    specialistName: string;
     officeId: number | null;
     officeName: string | null;
     startsAt: string;
@@ -50,6 +50,8 @@ export interface SpecialistBooking {
     clientId: number;
     clientName: string;
     clientContact: string | null;
+    specialistId: number;
+    specialistName: string;
     serviceId: number;
     serviceTitleUa: string;
     officeId: number | null;
@@ -88,5 +90,6 @@ export type BookingInput = {
 };
 
 export type ManualBookingInput = BookingInput & {
+    specialistId?: number | null;
     clientIdentifier: string;
 };

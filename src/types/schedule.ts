@@ -1,10 +1,17 @@
 export type ScheduleBlockStatus = "AVAILABLE" | "BLOCKED";
+export type ScheduleBlockType = "OPEN_RANGE" | "APPOINTMENT_SLOT" | "BLOCK";
 
 export interface SpecialistAvailabilityBlock {
     id: number;
+    specialistId: number;
+    specialistName: string;
     officeId: number | null;
     officeName: string | null;
     status: ScheduleBlockStatus;
+    itemType: ScheduleBlockType;
+    serviceId: number | null;
+    serviceTitle: string | null;
+    capacity: number | null;
     booked: boolean;
     startsAt: string;
     endsAt: string;
@@ -56,6 +63,8 @@ export interface PublicFixedEvent {
 
 export interface SpecialistFixedEvent {
     id: number;
+    specialistId: number;
+    specialistName: string;
     serviceId: number;
     serviceTitle: string;
     officeId: number | null;
@@ -86,7 +95,25 @@ export interface SpecialistFixedEventEnrollment {
     updatedAt: string;
 }
 
+export interface DayPlanCopyConflict {
+    targetDate: string;
+    itemType: string;
+    startsAt: string;
+    endsAt: string;
+    reason: string;
+}
+
+export interface DayPlanCopyResponse {
+    specialistId: number;
+    sourceDate: string;
+    targetDates: string[];
+    copiedAvailabilityCount: number;
+    copiedEventCount: number;
+    conflicts: DayPlanCopyConflict[];
+}
+
 export type SpecialistFixedEventInput = {
+    specialistId?: number | null;
     serviceId: number;
     officeId?: number | null;
     startsAt: string;
@@ -96,9 +123,21 @@ export type SpecialistFixedEventInput = {
     active: boolean;
 };
 
+export type DayPlanCopyInput = {
+    specialistId?: number | null;
+    sourceDate: string;
+    targetDates: string[];
+    includeAvailability: boolean;
+    includeFixedEvents: boolean;
+};
+
 export type SpecialistAvailabilityInput = {
+    specialistId?: number | null;
     officeId?: number | null;
     status: ScheduleBlockStatus;
+    itemType?: ScheduleBlockType;
+    serviceId?: number | null;
+    capacity?: number | null;
     startsAt: string;
     endsAt: string;
     notes?: string | null;

@@ -4,10 +4,12 @@ import type {
     PublicFixedEvent,
     PublicScheduleAvailabilityBlock,
     PublicScheduleUnavailableBlock,
-    SpecialistFixedEvent,
-    SpecialistFixedEventEnrollment,
-    SpecialistFixedEventInput,
-    SpecialistAvailabilityBlock,
+	    SpecialistFixedEvent,
+	    SpecialistFixedEventEnrollment,
+	    SpecialistFixedEventInput,
+	    DayPlanCopyInput,
+	    DayPlanCopyResponse,
+	    SpecialistAvailabilityBlock,
     SpecialistAvailabilityInput
 } from "@/types/schedule";
 import type {Locale} from "@/i18n";
@@ -15,6 +17,7 @@ import type {Locale} from "@/i18n";
 type ListAvailabilityArgs = {
     from: string;
     to: string;
+    specialistId?: number | "";
 };
 
 type ListPublicAvailabilityArgs = ListAvailabilityArgs & {
@@ -90,8 +93,9 @@ export const scheduleApi = createApi({
             ]
         }),
         listAvailability: build.query<SpecialistAvailabilityBlock[], ListAvailabilityArgs>({
-            query: ({from, to}) => {
+            query: ({from, to, specialistId}) => {
                 const params = new URLSearchParams({from, to});
+                if (specialistId !== "" && specialistId !== undefined) params.set("specialistId", String(specialistId));
                 return `/admin/schedule/availability?${params.toString()}`;
             },
             providesTags: (result) =>
@@ -103,15 +107,17 @@ export const scheduleApi = createApi({
                     : [{type: "ScheduleAvailability" as const, id: "LIST"}]
         }),
         listSpecialistEvents: build.query<SpecialistFixedEvent[], ListAvailabilityArgs>({
-            query: ({from, to}) => {
+            query: ({from, to, specialistId}) => {
                 const params = new URLSearchParams({from, to});
+                if (specialistId !== "" && specialistId !== undefined) params.set("specialistId", String(specialistId));
                 return `/admin/schedule/events?${params.toString()}`;
             },
             providesTags: [{type: "ScheduleAvailability", id: "SPECIALIST_EVENTS"}]
         }),
         listSpecialistEventEnrollments: build.query<SpecialistFixedEventEnrollment[], ListAvailabilityArgs>({
-            query: ({from, to}) => {
+            query: ({from, to, specialistId}) => {
                 const params = new URLSearchParams({from, to});
+                if (specialistId !== "" && specialistId !== undefined) params.set("specialistId", String(specialistId));
                 return `/admin/schedule/events/enrollments?${params.toString()}`;
             },
             providesTags: [{type: "ScheduleAvailability", id: "SPECIALIST_EVENT_ENROLLMENTS"}]
@@ -123,14 +129,22 @@ export const scheduleApi = createApi({
                 {type: "ScheduleAvailability", id: "EVENTS"}
             ]
         }),
-        updateSpecialistEvent: build.mutation<SpecialistFixedEvent, {id: number; body: SpecialistFixedEventInput}>({
+	        updateSpecialistEvent: build.mutation<SpecialistFixedEvent, {id: number; body: SpecialistFixedEventInput}>({
             query: ({id, body}) => ({url: `/admin/schedule/events/${id}`, method: "PUT", body}),
             invalidatesTags: [
                 {type: "ScheduleAvailability", id: "SPECIALIST_EVENTS"},
                 {type: "ScheduleAvailability", id: "EVENTS"}
-            ]
-        }),
-        createAvailability: build.mutation<SpecialistAvailabilityBlock, SpecialistAvailabilityInput>({
+	            ]
+	        }),
+	        copyDayPlan: build.mutation<DayPlanCopyResponse, DayPlanCopyInput>({
+	            query: (body) => ({url: "/admin/schedule/day-copy", method: "POST", body}),
+	            invalidatesTags: [
+	                {type: "ScheduleAvailability", id: "LIST"},
+	                {type: "ScheduleAvailability", id: "SPECIALIST_EVENTS"},
+	                {type: "ScheduleAvailability", id: "EVENTS"}
+	            ]
+	        }),
+	        createAvailability: build.mutation<SpecialistAvailabilityBlock, SpecialistAvailabilityInput>({
             query: (body) => ({url: "/admin/schedule/availability", method: "POST", body}),
             invalidatesTags: [{type: "ScheduleAvailability", id: "LIST"}]
         }),
@@ -152,7 +166,8 @@ export const scheduleApi = createApi({
 });
 
 export const {
-    useCreateAvailabilityMutation,
+	    useCreateAvailabilityMutation,
+	    useCopyDayPlanMutation,
     useCancelFixedEventEnrollmentMutation,
     useCreateSpecialistEventMutation,
     useDeleteAvailabilityMutation,

@@ -80,9 +80,10 @@ export const bookingsApi = createApi({
             },
             providesTags: [{type: "FinanceSummary", id: "CURRENT"}]
         }),
-        listSpecialistBookings: build.query<SpecialistBooking[], {from: string; to: string}>({
-            query: ({from, to}) => {
+        listSpecialistBookings: build.query<SpecialistBooking[], {from: string; to: string; specialistId?: number | ""}>({
+            query: ({from, to, specialistId}) => {
                 const params = new URLSearchParams({from, to});
+                if (specialistId !== "" && specialistId !== undefined) params.set("specialistId", String(specialistId));
                 return `/admin/schedule/bookings?${params.toString()}`;
             },
             providesTags: [{type: "Bookings", id: "LIST"}]

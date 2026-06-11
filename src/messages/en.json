@@ -417,12 +417,15 @@
           "CANCELLED": "Cancelled"
         },
         "filters": {"status": "Status", "office": "Office", "allOffices": "All offices", "from": "From", "to": "To"},
-        "summary": {"pending": "Awaiting confirmation", "confirmed": "Confirmed in period", "income": "Income in period", "expenses": "Expenses in period", "result": "Estimated result"},
+        "summary": {"pending": "Awaiting confirmation", "confirmed": "Confirmed in period", "income": "Gross income", "specialistEarnings": "Specialist payouts", "businessIncome": "Business share", "expenses": "Expenses in period", "result": "Estimated result"},
         "tabs": {"label": "Finance sections", "pending": "Awaiting payment", "transactions": "Transactions", "expenses": "Expenses", "reports": "Reports / tax"},
         "pending": {"title": "Awaiting manual confirmation", "subtitle": "Verify payment outside the system before confirming.", "emptyTitle": "Everything is reviewed", "empty": "There are no bookings awaiting manual confirmation."},
         "transactions": {"title": "Transactions and bookings", "subtitle": "Available financial records matching the current filters.", "emptyTitle": "No records found", "empty": "Change the filters or period to review other records."},
         "expenses": {"title": "Expenses", "subtitle": "Operating expenses matching the selected filters.", "emptyTitle": "No expenses yet", "empty": "Add the first expense or change the filters.", "hint": "Enter the actual operating expense details.", "action": "Add expense", "amount": "Amount", "category": "Category", "description": "Short description", "date": "Date", "office": "Office", "loading": "Loading expenses...", "loadError": "Unable to load expenses.", "saving": "Saving...", "created": "Expense added.", "createError": "Unable to add expense."},
-        "reports": {"title": "Reports and tax", "subtitle": "Current period summary and export preparation.", "income": "Income", "expenses": "Expenses", "taxable": "Taxable amount", "estimatedTax": "Estimated tax", "exportTitle": "Export report", "exportHint": "Export will use the date period selected above.", "disabledHint": "Available after report generation is connected.", "pdf": "Export PDF", "excel": "Export Excel"},
+        "reports": {"title": "Reports and tax", "subtitle": "Current period summary and export preparation.", "income": "Gross income", "specialistEarnings": "Specialist payouts", "businessIncome": "Business share", "expenses": "Expenses", "taxable": "Estimated base after expenses", "estimatedTax": "Estimated tax ({value})", "exportTitle": "Export report", "exportHint": "Export will use the date period selected above.", "disabledHint": "Available after report generation is connected.", "pdf": "Export PDF", "excel": "Export Excel"},
+        "calculation": {"title": "Transparent calculation", "subtitle": "Current formula for the selected filters and period.", "gross": "Gross income", "specialist": "Minus specialist payouts", "business": "Business share", "expenses": "Minus expenses", "taxable": "Tax base", "tax": "Minus estimated tax ({value})", "result": "Estimated result"},
+        "taxSettings": {"title": "Tax percentage", "subtitle": "Quarterly percentage for estimated tax calculation.", "percent": "Quarterly tax, %", "current": "Current value: {value}", "loading": "Loading settings...", "loadError": "Unable to load tax settings.", "save": "Save tax", "saving": "Saving...", "saved": "Tax percentage updated.", "saveError": "Unable to update tax percentage.", "hint": "Tax is calculated from the base after specialist payouts and expenses."},
+        "settings": {"title": "Specialist percentages", "subtitle": "Specialist share settings for finance calculations.", "specialist": "Specialist", "sharePercent": "Share, %", "current": "Current value: {value}", "loading": "Loading specialists...", "loadError": "Unable to load specialist settings.", "empty": "There are no active specialists yet.", "save": "Save percentage", "saving": "Saving...", "saved": "Specialist percentage updated.", "saveError": "Unable to update specialist percentage.", "hint": "The new percentage applies to finance lists and summaries after refresh.", "unnamedSpecialist": "Unnamed specialist"},
         "details": {"eyebrow": "Transaction details", "close": "Close details", "paymentLink": "Payment link"},
         "table": {
           "client": "Client",
@@ -431,6 +434,8 @@
           "when": "Time",
           "office": "Office",
           "amount": "Amount",
+          "businessShare": "Business share",
+          "specialistShare": "Specialist share",
           "status": "Status",
           "action": "Action"
         }

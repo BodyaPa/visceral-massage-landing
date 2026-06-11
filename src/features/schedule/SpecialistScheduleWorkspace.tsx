@@ -4,7 +4,7 @@ import {useEffect, useMemo, useState} from "react";
 import type {ReactNode} from "react";
 import {useLocale, useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
-import {useCreateManualBookingMutation, useListSpecialistBookingsQuery} from "@/features/bookings/bookings.api";
+import {useCreateManualBookingMutation, useGetSpecialistFinanceOverviewQuery, useListSpecialistBookingsQuery} from "@/features/bookings/bookings.api";
 import {useListPublicOfficesQuery} from "@/features/offices/offices.api";
 import {useListServicesQuery} from "@/features/services/services.api";
 import {useListUsersQuery} from "@/features/users/users.api";
@@ -24,7 +24,7 @@ import AtaraksiaCalendar, {
     type AtaraksiaCalendarEvent
 } from "@/features/schedule/AtaraksiaCalendar";
 import type {DayPlanCopyConflict, DayPlanCopyInput, DayPlanCopyResponse, ScheduleBlockStatus, ScheduleBlockType, SpecialistAvailabilityBlock, SpecialistFixedEvent, SpecialistFixedEventEnrollment, SpecialistFixedEventInput} from "@/types/schedule";
-import type {SpecialistBooking} from "@/types/bookings";
+import type {SpecialistBooking, SpecialistFinanceOverview} from "@/types/bookings";
 import type {PublicService} from "@/types/services";
 import type {AdminUser} from "@/types/users";
 import type {Locale} from "@/i18n";
@@ -73,6 +73,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const {data: events = [], isFetching: eventsFetching, isError: eventsError, refetch: refetchEvents} = useListSpecialistEventsQuery(scheduleQuery);
     const {data: eventEnrollments = [], isFetching: eventEnrollmentsFetching, isError: eventEnrollmentsError} = useListSpecialistEventEnrollmentsQuery(scheduleQuery);
     const {data: bookings = [], isFetching: bookingsFetching, isError: bookingsError} = useListSpecialistBookingsQuery(scheduleQuery);
+    const {data: financeOverview, isFetching: financeOverviewFetching, isError: financeOverviewError} = useGetSpecialistFinanceOverviewQuery(range);
     const {data: specialistsData, isFetching: specialistsFetching, isError: specialistsError} = useListUsersQuery(
         {role: "SPECIALIST", enabled: true, size: 100},
         {skip: !canManageAllSpecialists}
@@ -303,6 +304,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
             </div>
 
             <aside className="min-w-0 space-y-5">
+                <SpecialistFinanceOverviewPanel copy={scheduleCopy(locale)} isError={financeOverviewError} isFetching={financeOverviewFetching} locale={locale} overview={financeOverview} />
                 <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm 2xl:sticky 2xl:top-4" id="availability-form">
                     <div className="border-b border-stone-100 pb-3">
                         <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
@@ -1066,6 +1068,36 @@ function BookingStatusBadge({status, t}: {status: SpecialistBooking["status"]; t
     return <span className={`max-w-full break-words rounded-full border px-2 py-1 text-[10px] font-semibold sm:shrink-0 ${className}`}>{t(`bookings.statuses.${status}`)}</span>;
 }
 
+function SpecialistFinanceOverviewPanel({copy, isError, isFetching, locale, overview}: {copy: ReturnType<typeof scheduleCopy>; isError: boolean; isFetching: boolean; locale: string; overview?: SpecialistFinanceOverview}) {
+    return (
+        <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+            <div className="border-b border-stone-100 pb-3">
+                <h2 className="break-words text-base font-semibold text-stone-950">{copy.financeTitle}</h2>
+                <p className="mt-1 break-words text-xs leading-5 text-stone-500">{copy.financeBody}</p>
+            </div>
+            {isError ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{copy.financeError}</p> : null}
+            {!isError && isFetching ? <p className="mt-3 text-xs text-stone-500">{copy.loading}</p> : null}
+            {overview ? (
+                <div className="mt-4 grid gap-3">
+                    <FinanceMetric label={copy.financeEarnings} value={formatAmount(overview.specialistEarnings, locale)} />
+                    <FinanceMetric label={copy.financePendingEarnings} value={formatAmount(overview.pendingSpecialistEarnings, locale)} />
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                        <FinanceMetric label={copy.financeCompleted} value={String(overview.completedCount)} />
+                        <FinanceMetric label={copy.financePending} value={String(overview.pendingCount)} />
+                        <FinanceMetric label={copy.financeWorked} value={formatMinutes(overview.workedMinutes, copy)} />
+                        <FinanceMetric label={copy.financeSharePercent} value={formatPercent(overview.specialistSharePercent, locale)} />
+                    </div>
+                    <p className="break-words text-xs leading-5 text-stone-500">{copy.financeHint}</p>
+                </div>
+            ) : null}
+        </section>
+    );
+}
+
+function FinanceMetric({label, value}: {label: string; value: string}) {
+    return <div className="min-w-0 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3"><p className="break-words text-base font-semibold text-stone-950">{value}</p><p className="mt-1 break-words text-xs font-medium text-stone-500">{label}</p></div>;
+}
+
 function StatCard({label, tone = "neutral", value}: {label: string; tone?: "neutral" | "success" | "warning"; value: number}) {
     const valueClass = tone === "success" ? "text-emerald-800" : tone === "warning" ? "text-amber-800" : "text-stone-950";
     return <div className="flex min-h-24 min-w-0 flex-col justify-center rounded-xl border border-stone-200 bg-stone-50 px-4 py-4"><p className={`break-words text-2xl font-semibold ${valueClass}`}>{value}</p><p className="mt-2 break-words text-xs font-medium text-stone-500">{label}</p></div>;
@@ -1182,7 +1214,19 @@ function scheduleCopy(locale: string) {
         blockCutHint: ua ? "Цей час буде недоступний у публічному календарі." : "This time will be unavailable in the public calendar.",
         manualSlotCutHint: ua ? "Слоти нижче рахуються з availability windows; бронювання, події та блокування прибирають зайнятий час зі списку." : "Slots below are calculated from availability windows; bookings, events and blocks remove occupied time from the list.",
         bookedBlockLocked: ua ? "Є історія бронювань: видалення заблоковане, час/тип/офіс краще не змінювати." : "Booking history exists: deletion is locked, and time/type/office should not be changed.",
-        bookedBlockEditHint: ua ? "У цьому блоці є історія бронювань. Можна оновити нотатку, але backend не дозволить змінити час, тип або офіс." : "This block has booking history. You can update the note, but the backend will reject time, type or office changes."
+        bookedBlockEditHint: ua ? "У цьому блоці є історія бронювань. Можна оновити нотатку, але backend не дозволить змінити час, тип або офіс." : "This block has booking history. You can update the note, but the backend will reject time, type or office changes.",
+        financeTitle: ua ? "Мої фінанси" : "My finance",
+        financeBody: ua ? "Власний огляд підтверджених і очікуваних виплат за поточний період календаря." : "Own confirmed and pending payout overview for the current calendar range.",
+        financeError: ua ? "Не вдалося завантажити фінансовий огляд." : "Unable to load finance overview.",
+        financeEarnings: ua ? "Підтверджені виплати" : "Confirmed earnings",
+        financePendingEarnings: ua ? "Очікувані виплати" : "Pending earnings",
+        financeCompleted: ua ? "Завершені записи" : "Completed bookings",
+        financePending: ua ? "Очікують оплати" : "Awaiting payment",
+        financeWorked: ua ? "Відпрацьовано" : "Worked time",
+        financeSharePercent: ua ? "Мій відсоток" : "My percentage",
+        financeHint: ua ? "Суми рахуються за підтвердженими бронюваннями та налаштованим фінансовим відсотком спеціаліста." : "Amounts use confirmed bookings and the configured specialist finance percentage.",
+        hoursShort: ua ? "год" : "h",
+        minutesShort: ua ? "хв" : "min"
     };
 }
 
@@ -1318,6 +1362,22 @@ function formatTime(value: string, locale: string) {
         hour: "2-digit",
         minute: "2-digit"
     }).format(new Date(value));
+}
+
+function formatAmount(value: number, locale: string) {
+    return new Intl.NumberFormat(locale === "ua" ? "uk-UA" : "en-US", {currency: "UAH", style: "currency"}).format(value);
+}
+
+function formatPercent(value: number, locale: string) {
+    return new Intl.NumberFormat(locale === "ua" ? "uk-UA" : "en-US", {maximumFractionDigits: 2, style: "percent"}).format(value / 100);
+}
+
+function formatMinutes(value: number, copy: ReturnType<typeof scheduleCopy>) {
+    const hours = Math.floor(value / 60);
+    const minutes = value % 60;
+    if (hours === 0) return `${minutes} ${copy.minutesShort}`;
+    if (minutes === 0) return `${hours} ${copy.hoursShort}`;
+    return `${hours} ${copy.hoursShort} ${minutes} ${copy.minutesShort}`;
 }
 
 function formatCalendarTitle(view: CalendarView, currentDate: Date, locale: string) {

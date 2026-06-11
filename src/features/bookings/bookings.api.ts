@@ -7,9 +7,14 @@ import type {
     FinanceBooking,
     FinanceExpense,
     FinanceExpenseInput,
+    FinanceSettings,
+    FinanceSettingsInput,
+    FinanceSpecialistSettings,
+    FinanceSpecialistSettingsInput,
     FinanceSummary,
     ManualBookingInput,
-    SpecialistBooking
+    SpecialistBooking,
+    SpecialistFinanceOverview
 } from "@/types/bookings";
 import type {PageResponse} from "@/types/news";
 
@@ -30,6 +35,11 @@ type FinanceSummaryArgs = {
     expenseTo?: string;
 };
 
+type SpecialistFinanceOverviewArgs = {
+    from?: string;
+    to?: string;
+};
+
 function listFinanceBookingsPath({status, officeId, from, to, page = 0, size = 100}: ListFinanceBookingsArgs) {
     const params = new URLSearchParams({
         page: String(page),
@@ -48,7 +58,7 @@ function listFinanceBookingsPath({status, officeId, from, to, page = 0, size = 1
 export const bookingsApi = createApi({
     reducerPath: "bookingsApi",
     baseQuery,
-    tagTypes: ["Bookings", "Expenses", "FinanceSummary"],
+    tagTypes: ["Bookings", "Expenses", "FinanceSettings", "FinanceSummary"],
     endpoints: (build) => ({
         listMyBookings: build.query<PageResponse<Booking>, {page?: number; size?: number} | void>({
             query: (args) => {
@@ -80,6 +90,40 @@ export const bookingsApi = createApi({
             },
             providesTags: [{type: "FinanceSummary", id: "CURRENT"}]
         }),
+        getFinanceSettings: build.query<FinanceSettings, void>({
+            query: () => "/admin/finance/settings",
+            providesTags: [{type: "FinanceSettings", id: "GLOBAL"}]
+        }),
+        updateFinanceSettings: build.mutation<FinanceSettings, FinanceSettingsInput>({
+            query: (body) => ({url: "/admin/finance/settings", method: "PUT", body}),
+            invalidatesTags: [
+                {type: "FinanceSettings", id: "GLOBAL"},
+                {type: "FinanceSummary", id: "CURRENT"}
+            ]
+        }),
+        listSpecialistFinanceSettings: build.query<FinanceSpecialistSettings[], void>({
+            query: () => "/admin/finance/specialists",
+            providesTags: (result) =>
+                result
+                    ? [
+                        ...result.map((settings) => ({type: "FinanceSettings" as const, id: settings.specialistId})),
+                        {type: "FinanceSettings" as const, id: "LIST"}
+                    ]
+                    : [{type: "FinanceSettings" as const, id: "LIST"}]
+        }),
+        updateSpecialistFinanceSettings: build.mutation<FinanceSpecialistSettings, {specialistId: number} & FinanceSpecialistSettingsInput>({
+            query: ({specialistId, ...body}) => ({
+                url: `/admin/finance/specialists/${specialistId}/settings`,
+                method: "PUT",
+                body
+            }),
+            invalidatesTags: (result, error, {specialistId}) => [
+                {type: "FinanceSettings", id: specialistId},
+                {type: "FinanceSettings", id: "LIST"},
+                {type: "Bookings", id: "LIST"},
+                {type: "FinanceSummary", id: "CURRENT"}
+            ]
+        }),
         listSpecialistBookings: build.query<SpecialistBooking[], {from: string; to: string; specialistId?: number | ""}>({
             query: ({from, to, specialistId}) => {
                 const params = new URLSearchParams({from, to});
@@ -88,9 +132,21 @@ export const bookingsApi = createApi({
             },
             providesTags: [{type: "Bookings", id: "LIST"}]
         }),
+        getSpecialistFinanceOverview: build.query<SpecialistFinanceOverview, SpecialistFinanceOverviewArgs>({
+            query: ({from, to}) => {
+                const params = new URLSearchParams();
+                if (from) params.set("from", from);
+                if (to) params.set("to", to);
+                return `/specialist/finance/overview?${params.toString()}`;
+            },
+            providesTags: [{type: "FinanceSummary", id: "SPECIALIST_OVERVIEW"}]
+        }),
         createManualBooking: build.mutation<SpecialistBooking, ManualBookingInput>({
             query: (body) => ({url: "/admin/schedule/bookings", method: "POST", body}),
-            invalidatesTags: [{type: "Bookings", id: "LIST"}]
+            invalidatesTags: [
+                {type: "Bookings", id: "LIST"},
+                {type: "FinanceSummary", id: "SPECIALIST_OVERVIEW"}
+            ]
         }),
         listFinanceExpenses: build.query<PageResponse<FinanceExpense>, {officeId?: number; from?: string; to?: string}>({
             query: ({officeId, from, to}) => {
@@ -114,7 +170,8 @@ export const bookingsApi = createApi({
             invalidatesTags: (result, error, id) => [
                 {type: "Bookings", id},
                 {type: "Bookings", id: "LIST"},
-                {type: "FinanceSummary", id: "CURRENT"}
+                {type: "FinanceSummary", id: "CURRENT"},
+                {type: "FinanceSummary", id: "SPECIALIST_OVERVIEW"}
             ]
         }),
         cancelBooking: build.mutation<Booking, number>({
@@ -137,9 +194,14 @@ export const {
     useCreateFinanceExpenseMutation,
     useCreateManualBookingMutation,
     useGetFinanceSummaryQuery,
+    useGetFinanceSettingsQuery,
+    useGetSpecialistFinanceOverviewQuery,
     useListFinanceBookingsQuery,
     useListFinanceExpensesQuery,
     useListMyBookingsQuery,
     useListSpecialistBookingsQuery,
+    useListSpecialistFinanceSettingsQuery,
+    useUpdateFinanceSettingsMutation,
+    useUpdateSpecialistFinanceSettingsMutation,
     useCreateBookingMutation
 } = bookingsApi;

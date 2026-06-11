@@ -27,6 +27,9 @@ export interface FinanceBooking {
     serviceTitleUa: string;
     externalPaymentUrl: string | null;
     bookedPrice: number;
+    specialistSharePercent: number;
+    specialistShare: number;
+    businessShare: number;
     officeId: number | null;
     officeName: string | null;
     startsAt: string;
@@ -40,8 +43,40 @@ export interface FinanceSummary {
     pendingCount: number;
     confirmedCount: number;
     income: number;
+    specialistEarnings: number;
+    businessIncome: number;
     expenses: number;
+    taxableIncome: number;
+    quarterlyTaxPercent: number;
+    estimatedTax: number;
     result: number;
+}
+
+export interface FinanceSettings {
+    quarterlyTaxPercent: number;
+    updatedByUserId: number | null;
+    createdAt: string | null;
+    updatedAt: string | null;
+}
+
+export interface FinanceSpecialistSettings {
+    specialistId: number;
+    specialistName: string;
+    specialistSharePercent: number;
+    updatedByUserId: number | null;
+    createdAt: string | null;
+    updatedAt: string | null;
+}
+
+export interface SpecialistFinanceOverview {
+    completedCount: number;
+    pendingCount: number;
+    workedMinutes: number;
+    grossIncome: number;
+    specialistEarnings: number;
+    pendingGrossIncome: number;
+    pendingSpecialistEarnings: number;
+    specialistSharePercent: number;
 }
 
 export interface SpecialistBooking {
@@ -80,6 +115,14 @@ export type FinanceExpenseInput = {
     description: string;
     expenseDate: string;
     officeId: number | null;
+};
+
+export type FinanceSpecialistSettingsInput = {
+    specialistSharePercent: number;
+};
+
+export type FinanceSettingsInput = {
+    quarterlyTaxPercent: number;
 };
 
 export type BookingInput = {

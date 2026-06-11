@@ -1,17 +1,21 @@
 "use client";
 
 import {useLocale, useTranslations} from "next-intl";
-import {useMemo, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {
     useConfirmPaymentMutation,
     useCreateFinanceExpenseMutation,
+    useGetFinanceSettingsQuery,
     useGetFinanceSummaryQuery,
     useListFinanceBookingsQuery,
-    useListFinanceExpensesQuery
+    useListFinanceExpensesQuery,
+    useListSpecialistFinanceSettingsQuery,
+    useUpdateFinanceSettingsMutation,
+    useUpdateSpecialistFinanceSettingsMutation
 } from "@/features/bookings/bookings.api";
 import {useListPublicOfficesQuery} from "@/features/offices/offices.api";
-import type {BookingStatus, FinanceBooking, FinanceExpense} from "@/types/bookings";
+import type {BookingStatus, FinanceBooking, FinanceExpense, FinanceSpecialistSettings} from "@/types/bookings";
 import type {Office} from "@/types/offices";
 
 const statuses: Array<BookingStatus | ""> = ["", "AWAITING_PAYMENT_CONFIRMATION", "CONFIRMED", "CANCELLED"];
@@ -56,7 +60,12 @@ export default function FinanceBookingsManagement() {
     const pendingCount = summary?.pendingCount ?? 0;
     const confirmedCount = summary?.confirmedCount ?? 0;
     const income = summary?.income ?? 0;
+    const specialistEarnings = summary?.specialistEarnings ?? 0;
+    const businessIncome = summary?.businessIncome ?? income;
     const expenseTotal = summary?.expenses ?? 0;
+    const taxableIncome = summary?.taxableIncome ?? Math.max(businessIncome - expenseTotal, 0);
+    const estimatedTax = summary?.estimatedTax ?? 0;
+    const quarterlyTaxPercent = summary?.quarterlyTaxPercent ?? 0;
     const result = summary?.result ?? 0;
 
     async function confirm(bookingId: number) {
@@ -94,10 +103,12 @@ export default function FinanceBookingsManagement() {
                         <Filter label={t("filters.to")}><input className={inputClass} onChange={(event) => setTo(event.target.value)} type="date" value={to} /></Filter>
                     </div>
                 </div>
-                <div className="mt-6 grid auto-rows-fr gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                <div className="mt-6 grid auto-rows-fr gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                     <SummaryCard label={t("summary.pending")} tone="warning" value={String(pendingCount)} />
                     <SummaryCard label={t("summary.confirmed")} tone="success" value={String(confirmedCount)} />
                     <SummaryCard label={t("summary.income")} value={formatAmount(income, locale)} />
+                    <SummaryCard label={t("summary.specialistEarnings")} value={formatAmount(specialistEarnings, locale)} />
+                    <SummaryCard label={t("summary.businessIncome")} value={formatAmount(businessIncome, locale)} />
                     <SummaryCard label={t("summary.expenses")} value={formatAmount(expenseTotal, locale)} />
                     <SummaryCard label={t("summary.result")} value={formatAmount(result, locale)} />
                 </div>
@@ -114,7 +125,7 @@ export default function FinanceBookingsManagement() {
                     <BookingSection bookings={bookings} confirming={isConfirming} isFetching={isFetching} locale={locale} onConfirm={confirm} onSelect={setSelectedBooking} tab={tab} t={t} />
                 ) : null}
                 {tab === "expenses" ? <ExpensesSection expenses={expenses} isError={expensesError} isFetching={expensesFetching} locale={locale} offices={activeOffices} t={t} /> : null}
-                {tab === "reports" ? <ReportsSection expenses={expenseTotal} income={income} locale={locale} t={t} /> : null}
+                {tab === "reports" ? <ReportsSection businessIncome={businessIncome} estimatedTax={estimatedTax} expenses={expenseTotal} income={income} locale={locale} quarterlyTaxPercent={quarterlyTaxPercent} specialistEarnings={specialistEarnings} taxableIncome={taxableIncome} t={t} /> : null}
             </section>
 
             {selectedBooking ? <BookingDetails booking={selectedBooking} confirming={isConfirming} locale={locale} onClose={() => setSelectedBooking(null)} onConfirm={confirm} t={t} /> : null}
@@ -158,11 +169,15 @@ function BookingSection({bookings, confirming, isFetching, locale, onConfirm, on
 }
 
 function BookingRow({booking, confirming, locale, onConfirm, onSelect, t}: {booking: FinanceBooking; confirming: boolean; locale: string; onConfirm: (id: number) => void; onSelect: (booking: FinanceBooking) => void; t: T}) {
-    return <tr className="border-t border-stone-100 align-top transition-colors hover:bg-stone-50"><td className="px-3 py-3"><button className="text-left font-medium text-stone-950 hover:underline" onClick={() => onSelect(booking)} type="button">{booking.clientName}</button><p className="mt-1 text-xs text-stone-500">{booking.clientContact ?? t("unknownContact")}</p></td><td className="px-3 py-3 text-stone-700">{booking.serviceTitleUa}</td><td className="px-3 py-3 text-stone-700">{booking.specialistName}</td><td className="px-3 py-3 text-stone-700">{formatDateTime(booking.startsAt, locale)}</td><td className="px-3 py-3 text-stone-700">{booking.officeName ?? t("withoutOffice")}</td><td className="px-3 py-3 text-right font-medium text-stone-950">{formatAmount(booking.bookedPrice, locale)}</td><td className="px-3 py-3"><StatusBadge status={booking.status} t={t} /></td><td className="px-3 py-3"><ActionButton booking={booking} confirming={confirming} onConfirm={onConfirm} t={t} /></td></tr>;
+    return <tr className="border-t border-stone-100 align-top transition-colors hover:bg-stone-50"><td className="px-3 py-3"><button className="text-left font-medium text-stone-950 hover:underline" onClick={() => onSelect(booking)} type="button">{booking.clientName}</button><p className="mt-1 text-xs text-stone-500">{booking.clientContact ?? t("unknownContact")}</p></td><td className="px-3 py-3 text-stone-700">{booking.serviceTitleUa}</td><td className="px-3 py-3 text-stone-700">{booking.specialistName}</td><td className="px-3 py-3 text-stone-700">{formatDateTime(booking.startsAt, locale)}</td><td className="px-3 py-3 text-stone-700">{booking.officeName ?? t("withoutOffice")}</td><td className="px-3 py-3 text-right"><MoneyBreakdown booking={booking} locale={locale} t={t} /></td><td className="px-3 py-3"><StatusBadge status={booking.status} t={t} /></td><td className="px-3 py-3"><ActionButton booking={booking} confirming={confirming} onConfirm={onConfirm} t={t} /></td></tr>;
 }
 
 function BookingCard({booking, confirming, locale, onConfirm, onSelect, t}: {booking: FinanceBooking; confirming: boolean; locale: string; onConfirm: (id: number) => void; onSelect: (booking: FinanceBooking) => void; t: T}) {
-    return <article className="max-w-full rounded-xl border border-stone-200 bg-white p-4"><div className="flex min-w-0 flex-wrap items-start justify-between gap-3"><div className="min-w-0"><button className="break-words text-left font-semibold text-stone-950 hover:underline" onClick={() => onSelect(booking)} type="button">{booking.clientName}</button><p className="mt-1 break-words text-xs text-stone-500">{booking.serviceTitleUa} · {booking.specialistName}</p></div><StatusBadge status={booking.status} t={t} /></div><div className="mt-3 grid min-w-0 grid-cols-1 gap-3 border-t border-stone-100 pt-3 text-xs text-stone-500 sm:grid-cols-2"><span className="break-words">{formatDateTime(booking.startsAt, locale)}</span><span className="break-words sm:text-right">{booking.officeName ?? t("withoutOffice")}</span><strong className="break-words text-sm text-stone-950">{formatAmount(booking.bookedPrice, locale)}</strong><div className="sm:text-right"><ActionButton booking={booking} confirming={confirming} onConfirm={onConfirm} t={t} /></div></div></article>;
+    return <article className="max-w-full rounded-xl border border-stone-200 bg-white p-4"><div className="flex min-w-0 flex-wrap items-start justify-between gap-3"><div className="min-w-0"><button className="break-words text-left font-semibold text-stone-950 hover:underline" onClick={() => onSelect(booking)} type="button">{booking.clientName}</button><p className="mt-1 break-words text-xs text-stone-500">{booking.serviceTitleUa} · {booking.specialistName}</p></div><StatusBadge status={booking.status} t={t} /></div><div className="mt-3 grid min-w-0 grid-cols-1 gap-3 border-t border-stone-100 pt-3 text-xs text-stone-500 sm:grid-cols-2"><span className="break-words">{formatDateTime(booking.startsAt, locale)}</span><span className="break-words sm:text-right">{booking.officeName ?? t("withoutOffice")}</span><MoneyBreakdown booking={booking} locale={locale} t={t} /><div className="sm:text-right"><ActionButton booking={booking} confirming={confirming} onConfirm={onConfirm} t={t} /></div></div></article>;
+}
+
+function MoneyBreakdown({booking, locale, t}: {booking: FinanceBooking; locale: string; t: T}) {
+    return <div className="min-w-0"><strong className="break-words text-sm text-stone-950">{formatAmount(booking.bookedPrice, locale)}</strong><p className="mt-1 break-words text-xs text-stone-500">{t("table.businessShare")}: {formatAmount(booking.businessShare, locale)}</p><p className="mt-0.5 break-words text-xs text-stone-500">{t("table.specialistShare")}: {formatAmount(booking.specialistShare, locale)} · {formatPercent(booking.specialistSharePercent, locale)}</p></div>;
 }
 
 function ActionButton({booking, confirming, onConfirm, t}: {booking: FinanceBooking; confirming: boolean; onConfirm: (id: number) => void; t: T}) {
@@ -208,8 +223,93 @@ function ExpenseForm({offices, t}: {offices: Office[]; t: T}) {
     return <aside className="min-w-0 rounded-xl border border-stone-200 bg-stone-50 p-4"><p className="break-words text-xs leading-5 text-stone-500">{t("expenses.hint")}</p><div className="mt-4 space-y-3"><Filter label={t("expenses.amount")}><input className={inputClass} min="0.01" onChange={(event) => setAmount(event.target.value)} step="0.01" type="number" value={amount} /></Filter><Filter label={t("expenses.category")}><input className={inputClass} maxLength={80} onChange={(event) => setCategory(event.target.value)} value={category} /></Filter><Filter label={t("expenses.description")}><textarea className="min-h-20 w-full resize-y rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-800" maxLength={500} onChange={(event) => setDescription(event.target.value)} value={description} /></Filter><Filter label={t("expenses.date")}><input className={inputClass} onChange={(event) => setExpenseDate(event.target.value)} type="date" value={expenseDate} /></Filter><Filter label={t("expenses.office")}><select className={inputClass} onChange={(event) => setOfficeId(event.target.value)} value={officeId}><option value="">{t("withoutOffice")}</option>{offices.map((office) => <option key={office.id} value={office.id}>{office.name}</option>)}</select></Filter><button className="w-full rounded-lg bg-stone-900 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={disabled} onClick={submit} type="button">{isLoading ? t("expenses.saving") : t("expenses.action")}</button></div></aside>;
 }
 
-function ReportsSection({expenses, income, locale, t}: {expenses: number; income: number; locale: string; t: T}) {
-    return <div className="grid min-w-0 gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_320px]"><div className="min-w-0"><h2 className="break-words text-base font-semibold text-stone-950">{t("reports.title")}</h2><p className="mt-1 break-words text-sm text-stone-500">{t("reports.subtitle")}</p><div className="mt-4 grid gap-3 sm:grid-cols-2"><SummaryCard label={t("reports.income")} value={formatAmount(income, locale)} /><SummaryCard label={t("reports.expenses")} value={formatAmount(expenses, locale)} /><SummaryCard label={t("reports.taxable")} value={formatAmount(Math.max(income - expenses, 0), locale)} /><SummaryCard label={t("reports.estimatedTax")} muted value={formatAmount(0, locale)} /></div></div><div className="min-w-0 rounded-xl border border-stone-200 bg-stone-50 p-4"><h3 className="break-words text-sm font-semibold text-stone-900">{t("reports.exportTitle")}</h3><p className="mt-1 break-words text-xs leading-5 text-stone-500">{t("reports.exportHint")}</p><div className="mt-4 grid gap-2"><button className={disabledButtonClass} disabled title={t("reports.disabledHint")} type="button">{t("reports.pdf")}</button><button className={disabledButtonClass} disabled title={t("reports.disabledHint")} type="button">{t("reports.excel")}</button></div></div></div>;
+function ReportsSection({businessIncome, estimatedTax, expenses, income, locale, quarterlyTaxPercent, specialistEarnings, taxableIncome, t}: {businessIncome: number; estimatedTax: number; expenses: number; income: number; locale: string; quarterlyTaxPercent: number; specialistEarnings: number; taxableIncome: number; t: T}) {
+    return <div className="grid min-w-0 gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_320px]"><div className="min-w-0"><h2 className="break-words text-base font-semibold text-stone-950">{t("reports.title")}</h2><p className="mt-1 break-words text-sm text-stone-500">{t("reports.subtitle")}</p><div className="mt-4 grid gap-3 sm:grid-cols-2"><SummaryCard label={t("reports.income")} value={formatAmount(income, locale)} /><SummaryCard label={t("reports.specialistEarnings")} value={formatAmount(specialistEarnings, locale)} /><SummaryCard label={t("reports.businessIncome")} value={formatAmount(businessIncome, locale)} /><SummaryCard label={t("reports.expenses")} value={formatAmount(expenses, locale)} /><SummaryCard label={t("reports.taxable")} value={formatAmount(taxableIncome, locale)} /><SummaryCard label={t("reports.estimatedTax", {value: formatPercent(quarterlyTaxPercent, locale)})} value={formatAmount(estimatedTax, locale)} /></div><CalculationBreakdown businessIncome={businessIncome} estimatedTax={estimatedTax} expenses={expenses} income={income} locale={locale} quarterlyTaxPercent={quarterlyTaxPercent} specialistEarnings={specialistEarnings} taxableIncome={taxableIncome} t={t} /></div><div className="min-w-0 space-y-4"><TaxSettingsPanel locale={locale} t={t} /><SpecialistSettingsPanel locale={locale} t={t} /><div className="min-w-0 rounded-xl border border-stone-200 bg-stone-50 p-4"><h3 className="break-words text-sm font-semibold text-stone-900">{t("reports.exportTitle")}</h3><p className="mt-1 break-words text-xs leading-5 text-stone-500">{t("reports.exportHint")}</p><div className="mt-4 grid gap-2"><button className={disabledButtonClass} disabled title={t("reports.disabledHint")} type="button">{t("reports.pdf")}</button><button className={disabledButtonClass} disabled title={t("reports.disabledHint")} type="button">{t("reports.excel")}</button></div></div></div></div>;
+}
+
+function CalculationBreakdown({businessIncome, estimatedTax, expenses, income, locale, quarterlyTaxPercent, specialistEarnings, taxableIncome, t}: {businessIncome: number; estimatedTax: number; expenses: number; income: number; locale: string; quarterlyTaxPercent: number; specialistEarnings: number; taxableIncome: number; t: T}) {
+    const rows = [
+        {label: t("calculation.gross"), value: formatAmount(income, locale)},
+        {label: t("calculation.specialist"), value: `- ${formatAmount(specialistEarnings, locale)}`},
+        {label: t("calculation.business"), value: formatAmount(businessIncome, locale)},
+        {label: t("calculation.expenses"), value: `- ${formatAmount(expenses, locale)}`},
+        {label: t("calculation.taxable"), value: formatAmount(taxableIncome, locale)},
+        {label: t("calculation.tax", {value: formatPercent(quarterlyTaxPercent, locale)}), value: `- ${formatAmount(estimatedTax, locale)}`},
+        {label: t("calculation.result"), value: formatAmount(businessIncome - expenses, locale)}
+    ];
+
+    return <section className="mt-4 min-w-0 rounded-xl border border-stone-200 bg-stone-50 p-4"><h3 className="break-words text-sm font-semibold text-stone-900">{t("calculation.title")}</h3><p className="mt-1 break-words text-xs leading-5 text-stone-500">{t("calculation.subtitle")}</p><dl className="mt-4 divide-y divide-stone-200">{rows.map((row) => <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-3 py-2 text-sm" key={row.label}><dt className="min-w-0 break-words text-stone-600">{row.label}</dt><dd className="break-words text-right font-semibold text-stone-950">{row.value}</dd></div>)}</dl></section>;
+}
+
+function TaxSettingsPanel({locale, t}: {locale: string; t: T}) {
+    const toast = useToast();
+    const {data: settings, isError, isFetching} = useGetFinanceSettingsQuery();
+    const [percent, setPercent] = useState("");
+    const [updateSettings, {isLoading}] = useUpdateFinanceSettingsMutation();
+
+    useEffect(() => {
+        if (settings) {
+            setPercent(String(settings.quarterlyTaxPercent));
+        }
+    }, [settings]);
+
+    async function save() {
+        try {
+            await updateSettings({quarterlyTaxPercent: Number(percent)}).unwrap();
+            toast.success(t("taxSettings.saved"));
+        } catch {
+            toast.error(t("taxSettings.saveError"));
+        }
+    }
+
+    const numericPercent = Number(percent);
+    const disabled = isLoading || percent === "" || Number.isNaN(numericPercent) || numericPercent < 0 || numericPercent > 100;
+
+    return <div className="min-w-0 rounded-xl border border-stone-200 bg-stone-50 p-4"><h3 className="break-words text-sm font-semibold text-stone-900">{t("taxSettings.title")}</h3><p className="mt-1 break-words text-xs leading-5 text-stone-500">{t("taxSettings.subtitle")}</p>{isError ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{t("taxSettings.loadError")}</p> : null}{!isError && isFetching ? <p className="mt-3 text-xs text-stone-500">{t("taxSettings.loading")}</p> : null}<div className="mt-4 space-y-3"><Filter label={t("taxSettings.percent")}><input className={inputClass} max="100" min="0" onChange={(event) => setPercent(event.target.value)} step="0.01" type="number" value={percent} /></Filter>{settings ? <p className="break-words text-xs text-stone-500">{t("taxSettings.current", {value: formatPercent(settings.quarterlyTaxPercent, locale)})}</p> : null}<button className="w-full rounded-lg bg-stone-900 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={disabled} onClick={save} type="button">{isLoading ? t("taxSettings.saving") : t("taxSettings.save")}</button><p className="break-words text-xs leading-5 text-stone-500">{t("taxSettings.hint")}</p></div></div>;
+}
+
+function SpecialistSettingsPanel({locale, t}: {locale: string; t: T}) {
+    const toast = useToast();
+    const {data: settings = [], isError, isFetching} = useListSpecialistFinanceSettingsQuery();
+    const [selectedId, setSelectedId] = useState("");
+    const [percent, setPercent] = useState("");
+    const [updateSettings, {isLoading}] = useUpdateSpecialistFinanceSettingsMutation();
+    const selectedSettings = selectedId ? settings.find((item) => item.specialistId === Number(selectedId)) : undefined;
+
+    useEffect(() => {
+        if (!selectedId && settings.length > 0) {
+            setSelectedId(String(settings[0].specialistId));
+        }
+    }, [selectedId, settings]);
+
+    useEffect(() => {
+        if (selectedSettings) {
+            setPercent(String(selectedSettings.specialistSharePercent));
+        }
+    }, [selectedSettings]);
+
+    async function save() {
+        if (!selectedSettings) return;
+
+        try {
+            await updateSettings({
+                specialistId: selectedSettings.specialistId,
+                specialistSharePercent: Number(percent)
+            }).unwrap();
+            toast.success(t("settings.saved"));
+        } catch {
+            toast.error(t("settings.saveError"));
+        }
+    }
+
+    const numericPercent = Number(percent);
+    const disabled = isLoading || !selectedSettings || percent === "" || Number.isNaN(numericPercent) || numericPercent < 0 || numericPercent > 100;
+
+    return <div className="min-w-0 rounded-xl border border-stone-200 bg-stone-50 p-4"><h3 className="break-words text-sm font-semibold text-stone-900">{t("settings.title")}</h3><p className="mt-1 break-words text-xs leading-5 text-stone-500">{t("settings.subtitle")}</p>{isError ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{t("settings.loadError")}</p> : null}{!isError && isFetching ? <p className="mt-3 text-xs text-stone-500">{t("settings.loading")}</p> : null}{!isError && settings.length === 0 && !isFetching ? <p className="mt-3 text-xs text-stone-500">{t("settings.empty")}</p> : null}{settings.length > 0 ? <div className="mt-4 space-y-3"><Filter label={t("settings.specialist")}><select className={inputClass} onChange={(event) => setSelectedId(event.target.value)} value={selectedId}>{settings.map((item) => <option key={item.specialistId} value={item.specialistId}>{specialistName(item, t)}</option>)}</select></Filter><Filter label={t("settings.sharePercent")}><input className={inputClass} max="100" min="0" onChange={(event) => setPercent(event.target.value)} step="0.01" type="number" value={percent} /></Filter>{selectedSettings ? <p className="break-words text-xs text-stone-500">{t("settings.current", {value: formatPercent(selectedSettings.specialistSharePercent, locale)})}</p> : null}<button className="w-full rounded-lg bg-stone-900 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={disabled} onClick={save} type="button">{isLoading ? t("settings.saving") : t("settings.save")}</button><p className="break-words text-xs leading-5 text-stone-500">{t("settings.hint")}</p></div> : null}</div>;
+}
+
+function specialistName(settings: FinanceSpecialistSettings, t: T) {
+    return settings.specialistName.trim() || t("settings.unnamedSpecialist");
 }
 
 const disabledButtonClass = "max-w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-400 disabled:cursor-not-allowed";
@@ -219,7 +319,7 @@ function EmptyState({body, title}: {body: string; title: string}) {
 }
 
 function BookingDetails({booking, confirming, locale, onClose, onConfirm, t}: {booking: FinanceBooking; confirming: boolean; locale: string; onClose: () => void; onConfirm: (id: number) => void; t: T}) {
-    return <div className="fixed inset-0 z-50 flex justify-end bg-stone-950/30" onClick={onClose} role="presentation"><aside className="h-full w-full max-w-md overflow-y-auto bg-white p-4 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()}><div className="flex min-w-0 items-start justify-between gap-3 border-b border-stone-200 pb-4"><div className="min-w-0"><p className="break-words text-xs font-semibold uppercase tracking-wide text-stone-500">{t("details.eyebrow")}</p><h2 className="mt-1 break-words text-xl font-semibold text-stone-950">{booking.clientName}</h2></div><button aria-label={t("details.close")} className="shrink-0 rounded-lg border border-stone-200 px-3 py-2 text-stone-600 hover:bg-stone-100" onClick={onClose} type="button">×</button></div><dl className="mt-5 space-y-4"><Detail label={t("table.service")} value={booking.serviceTitleUa} /><Detail label={t("table.specialist")} value={booking.specialistName} /><Detail label={t("table.office")} value={booking.officeName ?? t("withoutOffice")} /><Detail label={t("table.when")} value={formatDateTime(booking.startsAt, locale)} /><Detail label={t("table.amount")} value={formatAmount(booking.bookedPrice, locale)} />{booking.externalPaymentUrl ? <DetailLink label={t("details.paymentLink")} value={booking.externalPaymentUrl} /> : null}<div><dt className="break-words text-xs font-medium uppercase tracking-wide text-stone-500">{t("table.status")}</dt><dd className="mt-1"><StatusBadge status={booking.status} t={t} /></dd></div></dl><div className="mt-6"><ActionButton booking={booking} confirming={confirming} onConfirm={onConfirm} t={t} /></div></aside></div>;
+    return <div className="fixed inset-0 z-50 flex justify-end bg-stone-950/30" onClick={onClose} role="presentation"><aside className="h-full w-full max-w-md overflow-y-auto bg-white p-4 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()}><div className="flex min-w-0 items-start justify-between gap-3 border-b border-stone-200 pb-4"><div className="min-w-0"><p className="break-words text-xs font-semibold uppercase tracking-wide text-stone-500">{t("details.eyebrow")}</p><h2 className="mt-1 break-words text-xl font-semibold text-stone-950">{booking.clientName}</h2></div><button aria-label={t("details.close")} className="shrink-0 rounded-lg border border-stone-200 px-3 py-2 text-stone-600 hover:bg-stone-100" onClick={onClose} type="button">×</button></div><dl className="mt-5 space-y-4"><Detail label={t("table.service")} value={booking.serviceTitleUa} /><Detail label={t("table.specialist")} value={booking.specialistName} /><Detail label={t("table.office")} value={booking.officeName ?? t("withoutOffice")} /><Detail label={t("table.when")} value={formatDateTime(booking.startsAt, locale)} /><Detail label={t("table.amount")} value={formatAmount(booking.bookedPrice, locale)} /><Detail label={t("table.businessShare")} value={formatAmount(booking.businessShare, locale)} /><Detail label={t("table.specialistShare")} value={`${formatAmount(booking.specialistShare, locale)} · ${formatPercent(booking.specialistSharePercent, locale)}`} />{booking.externalPaymentUrl ? <DetailLink label={t("details.paymentLink")} value={booking.externalPaymentUrl} /> : null}<div><dt className="break-words text-xs font-medium uppercase tracking-wide text-stone-500">{t("table.status")}</dt><dd className="mt-1"><StatusBadge status={booking.status} t={t} /></dd></div></dl><div className="mt-6"><ActionButton booking={booking} confirming={confirming} onConfirm={onConfirm} t={t} /></div></aside></div>;
 }
 
 function Detail({label, value}: {label: string; value: string}) {
@@ -240,6 +340,10 @@ function formatDate(value: string, locale: string) {
 
 function formatAmount(value: number, locale: string) {
     return new Intl.NumberFormat(locale === "ua" ? "uk-UA" : "en-US", {currency: "UAH", style: "currency"}).format(value);
+}
+
+function formatPercent(value: number, locale: string) {
+    return new Intl.NumberFormat(locale === "ua" ? "uk-UA" : "en-US", {maximumFractionDigits: 2, style: "percent"}).format(value / 100);
 }
 
 function toStartOfDayIso(value: string) {

@@ -4,6 +4,7 @@ import {useMemo} from "react";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {useCancelBookingMutation, useListMyBookingsQuery} from "@/features/bookings/bookings.api";
+import {bookingServiceTitle} from "@/features/bookings/bookingTitles";
 import {useCancelFixedEventEnrollmentMutation, useListMyFixedEventEnrollmentsQuery} from "@/features/schedule/schedule.api";
 import type {Locale} from "@/i18n";
 import type {Booking} from "@/types/bookings";
@@ -96,7 +97,7 @@ function BookingCard({booking, cancelling, copy, locale, onCancel}: {booking: Bo
         <article className="rounded-lg border border-stone-200 bg-stone-50 p-3">
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-stone-950">{booking.serviceTitleUa}</p>
+                    <p className="truncate text-sm font-semibold text-stone-950">{bookingServiceTitle(booking, locale)}</p>
                     <p className="mt-1 text-xs text-stone-500">{booking.specialistName} · {booking.officeName ?? copy.noOffice}</p>
                 </div>
                 <StatusBadge copy={copy} status={booking.status} />

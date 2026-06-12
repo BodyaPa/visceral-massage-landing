@@ -5,6 +5,7 @@ import {useLocale, useTranslations} from "next-intl";
 import type {Locale} from "@/i18n";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {useCreateBookingMutation, useListMyBookingsQuery} from "@/features/bookings/bookings.api";
+import {bookingServiceTitle} from "@/features/bookings/bookingTitles";
 import {useListPublicOfficesQuery} from "@/features/offices/offices.api";
 import {
     useCancelFixedEventEnrollmentMutation,
@@ -28,7 +29,7 @@ type StatusFilter = "all" | "available" | "unavailable" | "events" | "mine";
 type PendingBooking =
     | {type: "individual"; service: PublicService; slot: PublicScheduleAvailabilityBlock}
     | {type: "event"; event: PublicFixedEvent};
-type PaymentPrompt = Pick<Booking, "externalPaymentUrl" | "id" | "serviceTitleUa" | "startsAt">;
+type PaymentPrompt = Pick<Booking, "externalPaymentUrl" | "id" | "serviceTitleUa" | "serviceTitleEn" | "startsAt">;
 
 type FilterState = {
     officeId: number | "";
@@ -272,7 +273,7 @@ export default function PublicSchedulePage() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
                             <h2 className="text-base font-semibold text-emerald-950">{copy.paymentTitle}</h2>
-                            <p className="mt-1 text-sm leading-6 text-emerald-900">{copy.paymentBody(paymentPrompt.serviceTitleUa, formatDateTime(paymentPrompt.startsAt, locale))}</p>
+                            <p className="mt-1 text-sm leading-6 text-emerald-900">{copy.paymentBody(bookingServiceTitle(paymentPrompt, locale), formatDateTime(paymentPrompt.startsAt, locale))}</p>
                         </div>
                         <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
                             <a className="rounded-lg bg-emerald-900 px-4 py-2 text-center text-sm font-semibold text-white transition-colors hover:bg-emerald-800" href={paymentPrompt.externalPaymentUrl} rel="noreferrer" target="_blank">{copy.paymentAction}</a>
@@ -503,7 +504,7 @@ function PublicScheduleCalendar({copy, currentDate, events, locale, myBookings, 
     const calendarEvents: AtaraksiaCalendarEvent[] = [
         ...slots.map((slot) => ({id: slotKey(slot), title: `${copy.available} · ${slot.specialistName}`, start: new Date(slot.startsAt), end: new Date(slot.endsAt), tone: "available" as const})),
         ...unavailable.map((item) => ({id: item.id, title: item.status === "OCCUPIED" ? copy.occupied : copy.unavailable, start: new Date(item.startsAt), end: new Date(item.endsAt), tone: "blocked" as const})),
-        ...myBookings.map((booking) => ({id: `my-booking-${booking.id}`, title: `${booking.serviceTitleUa} · ${booking.specialistName}`, start: new Date(booking.startsAt), end: new Date(booking.endsAt), tone: "booking" as const})),
+        ...myBookings.map((booking) => ({id: `my-booking-${booking.id}`, title: `${bookingServiceTitle(booking, locale)} · ${booking.specialistName}`, start: new Date(booking.startsAt), end: new Date(booking.endsAt), tone: "booking" as const})),
         ...events.map((event) => ({id: `event-${event.id}`, title: event.enrolled ? `${event.title} · ${copy.enrolled}` : event.full ? `${event.title} · ${copy.full}` : `${event.title} · ${copy.remaining(event.remainingPlaces)}`, start: new Date(event.startsAt), end: new Date(event.endsAt), tone: "booking" as const}))
     ];
 

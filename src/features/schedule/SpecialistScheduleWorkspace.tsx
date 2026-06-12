@@ -5,6 +5,7 @@ import type {ReactNode} from "react";
 import {useLocale, useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {useCreateManualBookingMutation, useGetSpecialistFinanceOverviewQuery, useListSpecialistBookingsQuery} from "@/features/bookings/bookings.api";
+import {bookingServiceTitle} from "@/features/bookings/bookingTitles";
 import {useListPublicOfficesQuery} from "@/features/offices/offices.api";
 import {useListServicesQuery} from "@/features/services/services.api";
 import {useListUsersQuery} from "@/features/users/users.api";
@@ -592,7 +593,7 @@ function CalendarSurface({
             detailByEventId.set(id, bookingCalendarDetail(booking, copy, locale, t));
             return {
                 id,
-                title: `${booking.serviceTitleUa} · ${booking.clientName}`,
+                title: `${bookingServiceTitle(booking, locale)} · ${booking.clientName}`,
                 start: new Date(booking.startsAt),
                 end: new Date(booking.endsAt),
                 tone: "booking" as const
@@ -1239,7 +1240,7 @@ function BookingsPanel({bookings, isError, isFetching, locale, t}: {bookings: Sp
                             <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
                                 <div className="min-w-0">
                                     <p className="break-words text-sm font-semibold text-stone-900">{booking.clientName}</p>
-                                    <p className="mt-0.5 break-words text-xs text-stone-500">{booking.serviceTitleUa}</p>
+                                    <p className="mt-0.5 break-words text-xs text-stone-500">{bookingServiceTitle(booking, locale)}</p>
                                 </div>
                                 <BookingStatusBadge status={booking.status} t={t} />
                             </div>
@@ -1379,7 +1380,7 @@ function blockCalendarDetail(block: SpecialistAvailabilityBlock, copy: ReturnTyp
 
 function bookingCalendarDetail(booking: SpecialistBooking, copy: ReturnType<typeof scheduleCopy>, locale: string, t: T): CalendarDetail {
     return {
-        title: `${booking.serviceTitleUa} · ${booking.clientName}`,
+        title: `${bookingServiceTitle(booking, locale)} · ${booking.clientName}`,
         tone: "booking",
         rows: [
             {label: copy.detailType, value: copy.bookingsTitle},
@@ -1388,7 +1389,7 @@ function bookingCalendarDetail(booking: SpecialistBooking, copy: ReturnType<type
             {label: copy.endsAt, value: formatDateTime(booking.endsAt, locale)},
             {label: copy.client, value: booking.clientName},
             {label: copy.clientContact, value: booking.clientContact || copy.noClientContact},
-            {label: copy.slotService, value: booking.serviceTitleUa},
+            {label: copy.slotService, value: bookingServiceTitle(booking, locale)},
             {label: copy.office, value: booking.officeName ?? copy.noOffice}
         ]
     };

@@ -6,6 +6,7 @@ export interface Booking {
     status: BookingStatus;
     serviceId: number;
     serviceTitleUa: string;
+    serviceTitleEn: string | null;
     specialistId: number;
     specialistName: string;
     officeId: number | null;
@@ -26,6 +27,7 @@ export interface FinanceBooking {
     specialistName: string;
     serviceId: number;
     serviceTitleUa: string;
+    serviceTitleEn: string | null;
     externalPaymentUrl: string | null;
     bookedPrice: number;
     specialistSharePercent: number;
@@ -97,6 +99,7 @@ export interface SpecialistBooking {
     specialistName: string;
     serviceId: number;
     serviceTitleUa: string;
+    serviceTitleEn: string | null;
     officeId: number | null;
     officeName: string | null;
     startsAt: string;

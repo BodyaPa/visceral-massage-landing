@@ -10,21 +10,22 @@ const localizer = dayjsLocalizer(dayjs);
 
 export type AtaraksiaCalendarEvent = Event & {
     id: string;
-    tone: "available" | "blocked" | "booking";
+    tone: "available" | "blocked" | "booking" | "event";
 };
+export type AtaraksiaCalendarMessages = Messages<AtaraksiaCalendarEvent>;
 
 type Props = {
     culture: string;
     date: Date;
     events: AtaraksiaCalendarEvent[];
+    messages: AtaraksiaCalendarMessages;
     onNavigate?: (date: Date) => void;
     onSelectEvent?: (event: AtaraksiaCalendarEvent) => void;
     view: View;
 };
 
-export default function AtaraksiaCalendar({culture, date, events, onNavigate, onSelectEvent, view}: Props) {
+export default function AtaraksiaCalendar({culture, date, events, messages, onNavigate, onSelectEvent, view}: Props) {
     const languageTag = culture === "uk" || culture === "ua" ? "uk-UA" : "en-US";
-    const messages = useMemo(() => calendarMessages(languageTag), [languageTag]);
     const formats = useMemo(() => calendarFormats(languageTag), [languageTag]);
     const heightClass = view === Views.AGENDA ? "h-[440px] sm:h-[520px]" : "h-[520px] sm:h-[620px]";
 
@@ -55,29 +56,6 @@ export default function AtaraksiaCalendar({culture, date, events, onNavigate, on
 
 export function toCalendarView(view: "month" | "week" | "day" | "list"): View {
     return view === "list" ? Views.AGENDA : view;
-}
-
-function calendarMessages(languageTag: string): Messages<AtaraksiaCalendarEvent> {
-    const ua = languageTag.startsWith("uk");
-
-    return {
-        agenda: ua ? "Список" : "List",
-        allDay: ua ? "Весь день" : "All day",
-        date: ua ? "Дата" : "Date",
-        day: ua ? "День" : "Day",
-        event: ua ? "Подія" : "Event",
-        month: ua ? "Місяць" : "Month",
-        next: ua ? "Далі" : "Next",
-        noEventsInRange: ua ? "Немає подій у цьому діапазоні." : "No events in this range.",
-        previous: ua ? "Назад" : "Back",
-        showMore: (count) => ua ? `+ ще ${count}` : `+ ${count} more`,
-        time: ua ? "Час" : "Time",
-        today: ua ? "Сьогодні" : "Today",
-        tomorrow: ua ? "Завтра" : "Tomorrow",
-        week: ua ? "Тиждень" : "Week",
-        work_week: ua ? "Робочий тиждень" : "Work week",
-        yesterday: ua ? "Вчора" : "Yesterday"
-    };
 }
 
 function calendarFormats(languageTag: string): Formats {

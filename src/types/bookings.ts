@@ -1,4 +1,5 @@
 export type BookingStatus = "AWAITING_PAYMENT_CONFIRMATION" | "CONFIRMED" | "CANCELLED";
+export type SpecialistPayoutStatus = "PENDING" | "PAID";
 
 export interface Booking {
     id: number;
@@ -30,6 +31,9 @@ export interface FinanceBooking {
     specialistSharePercent: number;
     specialistShare: number;
     businessShare: number;
+    specialistPayoutStatus: SpecialistPayoutStatus;
+    specialistPayoutPaidAt: string | null;
+    specialistPayoutPaidByUserId: number | null;
     officeId: number | null;
     officeName: string | null;
     startsAt: string;
@@ -71,9 +75,13 @@ export interface FinanceSpecialistSettings {
 export interface SpecialistFinanceOverview {
     completedCount: number;
     pendingCount: number;
+    payoutPendingCount: number;
+    payoutPaidCount: number;
     workedMinutes: number;
     grossIncome: number;
     specialistEarnings: number;
+    payoutPendingEarnings: number;
+    payoutPaidEarnings: number;
     pendingGrossIncome: number;
     pendingSpecialistEarnings: number;
     specialistSharePercent: number;

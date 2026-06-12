@@ -115,6 +115,12 @@ button {
   color: #fff;
 }
 
+.ataraksia-calendar .ataraksia-calendar-event-event {
+  border-color: #bae6fd;
+  background: #f0f9ff;
+  color: #075985;
+}
+
 .ataraksia-calendar .rbc-event.rbc-selected {
   box-shadow: 0 0 0 2px #fff, 0 0 0 4px #292524;
 }

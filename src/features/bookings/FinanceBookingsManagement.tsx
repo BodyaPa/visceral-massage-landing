@@ -11,10 +11,12 @@ import {
     useListFinanceBookingsQuery,
     useListFinanceExpensesQuery,
     useListSpecialistFinanceSettingsQuery,
+    useMarkSpecialistPayoutPaidMutation,
     useUpdateFinanceSettingsMutation,
     useUpdateSpecialistFinanceSettingsMutation
 } from "@/features/bookings/bookings.api";
 import {useListPublicOfficesQuery} from "@/features/offices/offices.api";
+import {API_URL} from "@/shared/constants/env";
 import type {BookingStatus, FinanceBooking, FinanceExpense, FinanceSpecialistSettings} from "@/types/bookings";
 import type {Office} from "@/types/offices";
 
@@ -54,6 +56,7 @@ export default function FinanceBookingsManagement() {
         to: to || undefined
     });
     const [confirmPayment, {isLoading: isConfirming}] = useConfirmPaymentMutation();
+    const [markPayoutPaid, {isLoading: isMarkingPayout}] = useMarkSpecialistPayoutPaidMutation();
     const allBookings = useMemo(() => data?.content ?? [], [data?.content]);
     const expenses = useMemo(() => expensesData?.content ?? [], [expensesData?.content]);
     const bookings = allBookings;
@@ -75,6 +78,16 @@ export default function FinanceBookingsManagement() {
             toast.success(t("confirmed"));
         } catch {
             toast.error(t("confirmError"));
+        }
+    }
+
+    async function markPayout(bookingId: number) {
+        try {
+            await markPayoutPaid(bookingId).unwrap();
+            setSelectedBooking(null);
+            toast.success(t("payout.markedPaid"));
+        } catch {
+            toast.error(t("payout.markError"));
         }
     }
 
@@ -122,13 +135,13 @@ export default function FinanceBookingsManagement() {
                 {isError ? <p className="m-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("loadError")}</p> : null}
                 {summaryError ? <p className="m-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("loadError")}</p> : null}
                 {tab === "pending" || tab === "transactions" ? (
-                    <BookingSection bookings={bookings} confirming={isConfirming} isFetching={isFetching} locale={locale} onConfirm={confirm} onSelect={setSelectedBooking} tab={tab} t={t} />
+                    <BookingSection bookings={bookings} confirming={isConfirming} isFetching={isFetching} locale={locale} markingPayout={isMarkingPayout} onConfirm={confirm} onMarkPayout={markPayout} onSelect={setSelectedBooking} tab={tab} t={t} />
                 ) : null}
                 {tab === "expenses" ? <ExpensesSection expenses={expenses} isError={expensesError} isFetching={expensesFetching} locale={locale} offices={activeOffices} t={t} /> : null}
-                {tab === "reports" ? <ReportsSection businessIncome={businessIncome} estimatedTax={estimatedTax} expenses={expenseTotal} income={income} locale={locale} quarterlyTaxPercent={quarterlyTaxPercent} specialistEarnings={specialistEarnings} taxableIncome={taxableIncome} t={t} /> : null}
+                {tab === "reports" ? <ReportsSection businessIncome={businessIncome} estimatedTax={estimatedTax} expenses={expenseTotal} income={income} locale={locale} officeId={officeId} quarterlyTaxPercent={quarterlyTaxPercent} specialistEarnings={specialistEarnings} status={status} taxableIncome={taxableIncome} t={t} to={to} from={from} /> : null}
             </section>
 
-            {selectedBooking ? <BookingDetails booking={selectedBooking} confirming={isConfirming} locale={locale} onClose={() => setSelectedBooking(null)} onConfirm={confirm} t={t} /> : null}
+            {selectedBooking ? <BookingDetails booking={selectedBooking} confirming={isConfirming} locale={locale} markingPayout={isMarkingPayout} onClose={() => setSelectedBooking(null)} onConfirm={confirm} onMarkPayout={markPayout} t={t} /> : null}
         </section>
     );
 }
@@ -147,20 +160,20 @@ function SummaryCard({label, muted = false, tone = "neutral", value}: {label: st
     return <div className="flex min-h-24 min-w-0 flex-col justify-center rounded-xl border border-stone-200 bg-stone-50 px-4 py-4"><p className={`break-words text-xl font-semibold ${valueClass}`}>{value}</p><p className="mt-2 break-words text-xs font-medium text-stone-500">{label}</p></div>;
 }
 
-function BookingSection({bookings, confirming, isFetching, locale, onConfirm, onSelect, tab, t}: {bookings: FinanceBooking[]; confirming: boolean; isFetching: boolean; locale: string; onConfirm: (id: number) => void; onSelect: (booking: FinanceBooking) => void; tab: "pending" | "transactions"; t: T}) {
+function BookingSection({bookings, confirming, isFetching, locale, markingPayout, onConfirm, onMarkPayout, onSelect, tab, t}: {bookings: FinanceBooking[]; confirming: boolean; isFetching: boolean; locale: string; markingPayout: boolean; onConfirm: (id: number) => void; onMarkPayout: (id: number) => void; onSelect: (booking: FinanceBooking) => void; tab: "pending" | "transactions"; t: T}) {
     return (
         <div className="p-4 sm:p-5">
             <div className="mb-4"><h2 className="text-base font-semibold text-stone-950">{t(`${tab}.title`)}</h2><p className="mt-1 text-sm text-stone-500">{t(`${tab}.subtitle`)}</p></div>
             {isFetching ? <p className="py-8 text-center text-sm text-stone-500">{t("loading")}</p> : null}
             {!isFetching && bookings.length === 0 ? <EmptyState body={t(`${tab}.empty`)} title={t(`${tab}.emptyTitle`)} /> : null}
             <div className="space-y-2 lg:hidden">
-                {bookings.map((booking) => <BookingCard booking={booking} confirming={confirming} key={booking.id} locale={locale} onConfirm={onConfirm} onSelect={onSelect} t={t} />)}
+                {bookings.map((booking) => <BookingCard booking={booking} confirming={confirming} key={booking.id} locale={locale} markingPayout={markingPayout} onConfirm={onConfirm} onMarkPayout={onMarkPayout} onSelect={onSelect} t={t} />)}
             </div>
             {bookings.length > 0 ? (
                 <div className="hidden overflow-x-auto rounded-lg border border-stone-200 lg:block">
                     <table className="w-full border-collapse bg-white text-left text-sm">
                         <thead className="bg-stone-50 text-xs uppercase tracking-wide text-stone-500"><tr><th className="px-3 py-2 font-semibold">{t("table.client")}</th><th className="px-3 py-2 font-semibold">{t("table.service")}</th><th className="px-3 py-2 font-semibold">{t("table.specialist")}</th><th className="px-3 py-2 font-semibold">{t("table.when")}</th><th className="px-3 py-2 font-semibold">{t("table.office")}</th><th className="px-3 py-2 text-right font-semibold">{t("table.amount")}</th><th className="px-3 py-2 font-semibold">{t("table.status")}</th><th className="px-3 py-2 font-semibold">{t("table.action")}</th></tr></thead>
-                        <tbody>{bookings.map((booking) => <BookingRow booking={booking} confirming={confirming} key={booking.id} locale={locale} onConfirm={onConfirm} onSelect={onSelect} t={t} />)}</tbody>
+                        <tbody>{bookings.map((booking) => <BookingRow booking={booking} confirming={confirming} key={booking.id} locale={locale} markingPayout={markingPayout} onConfirm={onConfirm} onMarkPayout={onMarkPayout} onSelect={onSelect} t={t} />)}</tbody>
                     </table>
                 </div>
             ) : null}
@@ -168,21 +181,32 @@ function BookingSection({bookings, confirming, isFetching, locale, onConfirm, on
     );
 }
 
-function BookingRow({booking, confirming, locale, onConfirm, onSelect, t}: {booking: FinanceBooking; confirming: boolean; locale: string; onConfirm: (id: number) => void; onSelect: (booking: FinanceBooking) => void; t: T}) {
-    return <tr className="border-t border-stone-100 align-top transition-colors hover:bg-stone-50"><td className="px-3 py-3"><button className="text-left font-medium text-stone-950 hover:underline" onClick={() => onSelect(booking)} type="button">{booking.clientName}</button><p className="mt-1 text-xs text-stone-500">{booking.clientContact ?? t("unknownContact")}</p></td><td className="px-3 py-3 text-stone-700">{booking.serviceTitleUa}</td><td className="px-3 py-3 text-stone-700">{booking.specialistName}</td><td className="px-3 py-3 text-stone-700">{formatDateTime(booking.startsAt, locale)}</td><td className="px-3 py-3 text-stone-700">{booking.officeName ?? t("withoutOffice")}</td><td className="px-3 py-3 text-right"><MoneyBreakdown booking={booking} locale={locale} t={t} /></td><td className="px-3 py-3"><StatusBadge status={booking.status} t={t} /></td><td className="px-3 py-3"><ActionButton booking={booking} confirming={confirming} onConfirm={onConfirm} t={t} /></td></tr>;
+function BookingRow({booking, confirming, locale, markingPayout, onConfirm, onMarkPayout, onSelect, t}: {booking: FinanceBooking; confirming: boolean; locale: string; markingPayout: boolean; onConfirm: (id: number) => void; onMarkPayout: (id: number) => void; onSelect: (booking: FinanceBooking) => void; t: T}) {
+    return <tr className="border-t border-stone-100 align-top transition-colors hover:bg-stone-50"><td className="px-3 py-3"><button className="text-left font-medium text-stone-950 hover:underline" onClick={() => onSelect(booking)} type="button">{booking.clientName}</button><p className="mt-1 text-xs text-stone-500">{booking.clientContact ?? t("unknownContact")}</p></td><td className="px-3 py-3 text-stone-700">{booking.serviceTitleUa}</td><td className="px-3 py-3 text-stone-700">{booking.specialistName}</td><td className="px-3 py-3 text-stone-700">{formatDateTime(booking.startsAt, locale)}</td><td className="px-3 py-3 text-stone-700">{booking.officeName ?? t("withoutOffice")}</td><td className="px-3 py-3 text-right"><MoneyBreakdown booking={booking} locale={locale} t={t} /></td><td className="px-3 py-3"><div className="space-y-1"><StatusBadge status={booking.status} t={t} /><PayoutBadge booking={booking} t={t} /></div></td><td className="px-3 py-3"><FinanceAction booking={booking} confirming={confirming} markingPayout={markingPayout} onConfirm={onConfirm} onMarkPayout={onMarkPayout} t={t} /></td></tr>;
 }
 
-function BookingCard({booking, confirming, locale, onConfirm, onSelect, t}: {booking: FinanceBooking; confirming: boolean; locale: string; onConfirm: (id: number) => void; onSelect: (booking: FinanceBooking) => void; t: T}) {
-    return <article className="max-w-full rounded-xl border border-stone-200 bg-white p-4"><div className="flex min-w-0 flex-wrap items-start justify-between gap-3"><div className="min-w-0"><button className="break-words text-left font-semibold text-stone-950 hover:underline" onClick={() => onSelect(booking)} type="button">{booking.clientName}</button><p className="mt-1 break-words text-xs text-stone-500">{booking.serviceTitleUa} · {booking.specialistName}</p></div><StatusBadge status={booking.status} t={t} /></div><div className="mt-3 grid min-w-0 grid-cols-1 gap-3 border-t border-stone-100 pt-3 text-xs text-stone-500 sm:grid-cols-2"><span className="break-words">{formatDateTime(booking.startsAt, locale)}</span><span className="break-words sm:text-right">{booking.officeName ?? t("withoutOffice")}</span><MoneyBreakdown booking={booking} locale={locale} t={t} /><div className="sm:text-right"><ActionButton booking={booking} confirming={confirming} onConfirm={onConfirm} t={t} /></div></div></article>;
+function BookingCard({booking, confirming, locale, markingPayout, onConfirm, onMarkPayout, onSelect, t}: {booking: FinanceBooking; confirming: boolean; locale: string; markingPayout: boolean; onConfirm: (id: number) => void; onMarkPayout: (id: number) => void; onSelect: (booking: FinanceBooking) => void; t: T}) {
+    return <article className="max-w-full rounded-xl border border-stone-200 bg-white p-4"><div className="flex min-w-0 flex-wrap items-start justify-between gap-3"><div className="min-w-0"><button className="break-words text-left font-semibold text-stone-950 hover:underline" onClick={() => onSelect(booking)} type="button">{booking.clientName}</button><p className="mt-1 break-words text-xs text-stone-500">{booking.serviceTitleUa} · {booking.specialistName}</p></div><div className="space-y-1"><StatusBadge status={booking.status} t={t} /><PayoutBadge booking={booking} t={t} /></div></div><div className="mt-3 grid min-w-0 grid-cols-1 gap-3 border-t border-stone-100 pt-3 text-xs text-stone-500 sm:grid-cols-2"><span className="break-words">{formatDateTime(booking.startsAt, locale)}</span><span className="break-words sm:text-right">{booking.officeName ?? t("withoutOffice")}</span><MoneyBreakdown booking={booking} locale={locale} t={t} /><div className="sm:text-right"><FinanceAction booking={booking} confirming={confirming} markingPayout={markingPayout} onConfirm={onConfirm} onMarkPayout={onMarkPayout} t={t} /></div></div></article>;
 }
 
 function MoneyBreakdown({booking, locale, t}: {booking: FinanceBooking; locale: string; t: T}) {
     return <div className="min-w-0"><strong className="break-words text-sm text-stone-950">{formatAmount(booking.bookedPrice, locale)}</strong><p className="mt-1 break-words text-xs text-stone-500">{t("table.businessShare")}: {formatAmount(booking.businessShare, locale)}</p><p className="mt-0.5 break-words text-xs text-stone-500">{t("table.specialistShare")}: {formatAmount(booking.specialistShare, locale)} · {formatPercent(booking.specialistSharePercent, locale)}</p></div>;
 }
 
-function ActionButton({booking, confirming, onConfirm, t}: {booking: FinanceBooking; confirming: boolean; onConfirm: (id: number) => void; t: T}) {
-    if (booking.status !== "AWAITING_PAYMENT_CONFIRMATION") return <span className="text-xs text-stone-400">—</span>;
-    return <button className="max-w-full rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-stone-700 disabled:bg-stone-300" disabled={confirming} onClick={() => onConfirm(booking.id)} type="button">{confirming ? t("confirming") : t("confirm")}</button>;
+function PayoutBadge({booking, t}: {booking: FinanceBooking; t: T}) {
+    if (booking.status !== "CONFIRMED") return null;
+    const tone = booking.specialistPayoutStatus === "PAID" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800";
+    return <span className={`inline-flex max-w-full break-words rounded-full border px-2.5 py-1 text-xs font-medium ${tone}`}>{t(`payout.statuses.${booking.specialistPayoutStatus}`)}</span>;
+}
+
+function FinanceAction({booking, confirming, markingPayout, onConfirm, onMarkPayout, t}: {booking: FinanceBooking; confirming: boolean; markingPayout: boolean; onConfirm: (id: number) => void; onMarkPayout: (id: number) => void; t: T}) {
+    if (booking.status === "AWAITING_PAYMENT_CONFIRMATION") {
+        return <button className="max-w-full rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-stone-700 disabled:bg-stone-300" disabled={confirming} onClick={() => onConfirm(booking.id)} type="button">{confirming ? t("confirming") : t("confirm")}</button>;
+    }
+    if (booking.status === "CONFIRMED" && booking.specialistPayoutStatus === "PENDING") {
+        return <button className="max-w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 transition-colors hover:bg-stone-100 disabled:text-stone-400" disabled={markingPayout} onClick={() => onMarkPayout(booking.id)} type="button">{markingPayout ? t("payout.marking") : t("payout.markPaid")}</button>;
+    }
+    return <span className="text-xs text-stone-400">—</span>;
 }
 
 function StatusBadge({status, t}: {status: BookingStatus; t: T}) {
@@ -223,8 +247,10 @@ function ExpenseForm({offices, t}: {offices: Office[]; t: T}) {
     return <aside className="min-w-0 rounded-xl border border-stone-200 bg-stone-50 p-4"><p className="break-words text-xs leading-5 text-stone-500">{t("expenses.hint")}</p><div className="mt-4 space-y-3"><Filter label={t("expenses.amount")}><input className={inputClass} min="0.01" onChange={(event) => setAmount(event.target.value)} step="0.01" type="number" value={amount} /></Filter><Filter label={t("expenses.category")}><input className={inputClass} maxLength={80} onChange={(event) => setCategory(event.target.value)} value={category} /></Filter><Filter label={t("expenses.description")}><textarea className="min-h-20 w-full resize-y rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-800" maxLength={500} onChange={(event) => setDescription(event.target.value)} value={description} /></Filter><Filter label={t("expenses.date")}><input className={inputClass} onChange={(event) => setExpenseDate(event.target.value)} type="date" value={expenseDate} /></Filter><Filter label={t("expenses.office")}><select className={inputClass} onChange={(event) => setOfficeId(event.target.value)} value={officeId}><option value="">{t("withoutOffice")}</option>{offices.map((office) => <option key={office.id} value={office.id}>{office.name}</option>)}</select></Filter><button className="w-full rounded-lg bg-stone-900 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={disabled} onClick={submit} type="button">{isLoading ? t("expenses.saving") : t("expenses.action")}</button></div></aside>;
 }
 
-function ReportsSection({businessIncome, estimatedTax, expenses, income, locale, quarterlyTaxPercent, specialistEarnings, taxableIncome, t}: {businessIncome: number; estimatedTax: number; expenses: number; income: number; locale: string; quarterlyTaxPercent: number; specialistEarnings: number; taxableIncome: number; t: T}) {
-    return <div className="grid min-w-0 gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_320px]"><div className="min-w-0"><h2 className="break-words text-base font-semibold text-stone-950">{t("reports.title")}</h2><p className="mt-1 break-words text-sm text-stone-500">{t("reports.subtitle")}</p><div className="mt-4 grid gap-3 sm:grid-cols-2"><SummaryCard label={t("reports.income")} value={formatAmount(income, locale)} /><SummaryCard label={t("reports.specialistEarnings")} value={formatAmount(specialistEarnings, locale)} /><SummaryCard label={t("reports.businessIncome")} value={formatAmount(businessIncome, locale)} /><SummaryCard label={t("reports.expenses")} value={formatAmount(expenses, locale)} /><SummaryCard label={t("reports.taxable")} value={formatAmount(taxableIncome, locale)} /><SummaryCard label={t("reports.estimatedTax", {value: formatPercent(quarterlyTaxPercent, locale)})} value={formatAmount(estimatedTax, locale)} /></div><CalculationBreakdown businessIncome={businessIncome} estimatedTax={estimatedTax} expenses={expenses} income={income} locale={locale} quarterlyTaxPercent={quarterlyTaxPercent} specialistEarnings={specialistEarnings} taxableIncome={taxableIncome} t={t} /></div><div className="min-w-0 space-y-4"><TaxSettingsPanel locale={locale} t={t} /><SpecialistSettingsPanel locale={locale} t={t} /><div className="min-w-0 rounded-xl border border-stone-200 bg-stone-50 p-4"><h3 className="break-words text-sm font-semibold text-stone-900">{t("reports.exportTitle")}</h3><p className="mt-1 break-words text-xs leading-5 text-stone-500">{t("reports.exportHint")}</p><div className="mt-4 grid gap-2"><button className={disabledButtonClass} disabled title={t("reports.disabledHint")} type="button">{t("reports.pdf")}</button><button className={disabledButtonClass} disabled title={t("reports.disabledHint")} type="button">{t("reports.excel")}</button></div></div></div></div>;
+function ReportsSection({businessIncome, estimatedTax, expenses, from, income, locale, officeId, quarterlyTaxPercent, specialistEarnings, status, taxableIncome, t, to}: {businessIncome: number; estimatedTax: number; expenses: number; from: string; income: number; locale: string; officeId: string; quarterlyTaxPercent: number; specialistEarnings: number; status: BookingStatus | ""; taxableIncome: number; t: T; to: string}) {
+    const pdfUrl = financeExportUrl("pdf", {from, officeId, status, to});
+    const xlsxUrl = financeExportUrl("xlsx", {from, officeId, status, to});
+    return <div className="grid min-w-0 gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_320px]"><div className="min-w-0"><h2 className="break-words text-base font-semibold text-stone-950">{t("reports.title")}</h2><p className="mt-1 break-words text-sm text-stone-500">{t("reports.subtitle")}</p><div className="mt-4 grid gap-3 sm:grid-cols-2"><SummaryCard label={t("reports.income")} value={formatAmount(income, locale)} /><SummaryCard label={t("reports.specialistEarnings")} value={formatAmount(specialistEarnings, locale)} /><SummaryCard label={t("reports.businessIncome")} value={formatAmount(businessIncome, locale)} /><SummaryCard label={t("reports.expenses")} value={formatAmount(expenses, locale)} /><SummaryCard label={t("reports.taxable")} value={formatAmount(taxableIncome, locale)} /><SummaryCard label={t("reports.estimatedTax", {value: formatPercent(quarterlyTaxPercent, locale)})} value={formatAmount(estimatedTax, locale)} /></div><CalculationBreakdown businessIncome={businessIncome} estimatedTax={estimatedTax} expenses={expenses} income={income} locale={locale} quarterlyTaxPercent={quarterlyTaxPercent} specialistEarnings={specialistEarnings} taxableIncome={taxableIncome} t={t} /></div><div className="min-w-0 space-y-4"><TaxSettingsPanel locale={locale} t={t} /><SpecialistSettingsPanel locale={locale} t={t} /><div className="min-w-0 rounded-xl border border-stone-200 bg-stone-50 p-4"><h3 className="break-words text-sm font-semibold text-stone-900">{t("reports.exportTitle")}</h3><p className="mt-1 break-words text-xs leading-5 text-stone-500">{t("reports.exportHint")}</p><div className="mt-4 grid gap-2"><a className={downloadButtonClass} href={pdfUrl}>{t("reports.pdf")}</a><a className={downloadButtonClass} href={xlsxUrl}>{t("reports.excel")}</a></div></div></div></div>;
 }
 
 function CalculationBreakdown({businessIncome, estimatedTax, expenses, income, locale, quarterlyTaxPercent, specialistEarnings, taxableIncome, t}: {businessIncome: number; estimatedTax: number; expenses: number; income: number; locale: string; quarterlyTaxPercent: number; specialistEarnings: number; taxableIncome: number; t: T}) {
@@ -312,14 +338,14 @@ function specialistName(settings: FinanceSpecialistSettings, t: T) {
     return settings.specialistName.trim() || t("settings.unnamedSpecialist");
 }
 
-const disabledButtonClass = "max-w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-400 disabled:cursor-not-allowed";
+const downloadButtonClass = "max-w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-center text-sm font-medium text-stone-800 transition-colors hover:bg-stone-100";
 
 function EmptyState({body, title}: {body: string; title: string}) {
     return <div className="flex min-h-36 items-center justify-center rounded-xl border border-dashed border-stone-300 bg-stone-50 px-5 py-6 text-center"><div className="min-w-0"><h3 className="break-words text-sm font-semibold text-stone-900">{title}</h3><p className="mx-auto mt-2 max-w-lg break-words text-sm leading-6 text-stone-500">{body}</p></div></div>;
 }
 
-function BookingDetails({booking, confirming, locale, onClose, onConfirm, t}: {booking: FinanceBooking; confirming: boolean; locale: string; onClose: () => void; onConfirm: (id: number) => void; t: T}) {
-    return <div className="fixed inset-0 z-50 flex justify-end bg-stone-950/30" onClick={onClose} role="presentation"><aside className="h-full w-full max-w-md overflow-y-auto bg-white p-4 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()}><div className="flex min-w-0 items-start justify-between gap-3 border-b border-stone-200 pb-4"><div className="min-w-0"><p className="break-words text-xs font-semibold uppercase tracking-wide text-stone-500">{t("details.eyebrow")}</p><h2 className="mt-1 break-words text-xl font-semibold text-stone-950">{booking.clientName}</h2></div><button aria-label={t("details.close")} className="shrink-0 rounded-lg border border-stone-200 px-3 py-2 text-stone-600 hover:bg-stone-100" onClick={onClose} type="button">×</button></div><dl className="mt-5 space-y-4"><Detail label={t("table.service")} value={booking.serviceTitleUa} /><Detail label={t("table.specialist")} value={booking.specialistName} /><Detail label={t("table.office")} value={booking.officeName ?? t("withoutOffice")} /><Detail label={t("table.when")} value={formatDateTime(booking.startsAt, locale)} /><Detail label={t("table.amount")} value={formatAmount(booking.bookedPrice, locale)} /><Detail label={t("table.businessShare")} value={formatAmount(booking.businessShare, locale)} /><Detail label={t("table.specialistShare")} value={`${formatAmount(booking.specialistShare, locale)} · ${formatPercent(booking.specialistSharePercent, locale)}`} />{booking.externalPaymentUrl ? <DetailLink label={t("details.paymentLink")} value={booking.externalPaymentUrl} /> : null}<div><dt className="break-words text-xs font-medium uppercase tracking-wide text-stone-500">{t("table.status")}</dt><dd className="mt-1"><StatusBadge status={booking.status} t={t} /></dd></div></dl><div className="mt-6"><ActionButton booking={booking} confirming={confirming} onConfirm={onConfirm} t={t} /></div></aside></div>;
+function BookingDetails({booking, confirming, locale, markingPayout, onClose, onConfirm, onMarkPayout, t}: {booking: FinanceBooking; confirming: boolean; locale: string; markingPayout: boolean; onClose: () => void; onConfirm: (id: number) => void; onMarkPayout: (id: number) => void; t: T}) {
+    return <div className="fixed inset-0 z-50 flex justify-end bg-stone-950/30" onClick={onClose} role="presentation"><aside className="h-full w-full max-w-md overflow-y-auto bg-white p-4 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()}><div className="flex min-w-0 items-start justify-between gap-3 border-b border-stone-200 pb-4"><div className="min-w-0"><p className="break-words text-xs font-semibold uppercase tracking-wide text-stone-500">{t("details.eyebrow")}</p><h2 className="mt-1 break-words text-xl font-semibold text-stone-950">{booking.clientName}</h2></div><button aria-label={t("details.close")} className="shrink-0 rounded-lg border border-stone-200 px-3 py-2 text-stone-600 hover:bg-stone-100" onClick={onClose} type="button">×</button></div><dl className="mt-5 space-y-4"><Detail label={t("table.service")} value={booking.serviceTitleUa} /><Detail label={t("table.specialist")} value={booking.specialistName} /><Detail label={t("table.office")} value={booking.officeName ?? t("withoutOffice")} /><Detail label={t("table.when")} value={formatDateTime(booking.startsAt, locale)} /><Detail label={t("table.amount")} value={formatAmount(booking.bookedPrice, locale)} /><Detail label={t("table.businessShare")} value={formatAmount(booking.businessShare, locale)} /><Detail label={t("table.specialistShare")} value={`${formatAmount(booking.specialistShare, locale)} · ${formatPercent(booking.specialistSharePercent, locale)}`} /><Detail label={t("payout.label")} value={t(`payout.statuses.${booking.specialistPayoutStatus}`)} />{booking.specialistPayoutPaidAt ? <Detail label={t("payout.paidAt")} value={formatDateTime(booking.specialistPayoutPaidAt, locale)} /> : null}{booking.externalPaymentUrl ? <DetailLink label={t("details.paymentLink")} value={booking.externalPaymentUrl} /> : null}<div><dt className="break-words text-xs font-medium uppercase tracking-wide text-stone-500">{t("table.status")}</dt><dd className="mt-1"><StatusBadge status={booking.status} t={t} /></dd></div></dl><div className="mt-6"><FinanceAction booking={booking} confirming={confirming} markingPayout={markingPayout} onConfirm={onConfirm} onMarkPayout={onMarkPayout} t={t} /></div></aside></div>;
 }
 
 function Detail({label, value}: {label: string; value: string}) {
@@ -344,6 +370,15 @@ function formatAmount(value: number, locale: string) {
 
 function formatPercent(value: number, locale: string) {
     return new Intl.NumberFormat(locale === "ua" ? "uk-UA" : "en-US", {maximumFractionDigits: 2, style: "percent"}).format(value / 100);
+}
+
+function financeExportUrl(format: "pdf" | "xlsx", {from, officeId, status, to}: {from: string; officeId: string; status: BookingStatus | ""; to: string}) {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (officeId) params.set("officeId", officeId);
+    if (from) params.set("from", toStartOfDayIso(from) ?? "");
+    if (to) params.set("to", toNextDayIso(to) ?? "");
+    return `${API_URL}/api/admin/finance/export/${format}?${params.toString()}`;
 }
 
 function toStartOfDayIso(value: string) {

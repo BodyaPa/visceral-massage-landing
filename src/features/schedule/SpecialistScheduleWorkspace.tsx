@@ -21,7 +21,8 @@ import {
 } from "@/features/schedule/schedule.api";
 import AtaraksiaCalendar, {
     toCalendarView,
-    type AtaraksiaCalendarEvent
+    type AtaraksiaCalendarEvent,
+    type AtaraksiaCalendarMessages
 } from "@/features/schedule/AtaraksiaCalendar";
 import type {DayPlanCopyConflict, DayPlanCopyInput, DayPlanCopyResponse, ScheduleBlockStatus, ScheduleBlockType, SpecialistAvailabilityBlock, SpecialistFixedEvent, SpecialistFixedEventEnrollment, SpecialistFixedEventInput} from "@/types/schedule";
 import type {SpecialistBooking, SpecialistFinanceOverview} from "@/types/bookings";
@@ -48,6 +49,17 @@ type AvailabilityForm = {
     endsAt: string;
     notes: string;
 };
+type CalendarFilterState = {
+    officeId: number | "";
+    serviceId: number | "";
+    itemType: "all" | ScheduleBlockType | "BOOKING" | "FIXED_EVENT";
+    status: "all" | ScheduleBlockStatus | SpecialistBooking["status"] | "ACTIVE_EVENT" | "INACTIVE_EVENT";
+};
+type CalendarDetail = {
+    title: string;
+    tone: "available" | "blocked" | "booking" | "event";
+    rows: Array<{label: string; value: string}>;
+};
 type ManualBookingSlot = {
     key: string;
     block: SpecialistAvailabilityBlock;
@@ -58,6 +70,7 @@ type ManualBookingSlot = {
 export default function SpecialistScheduleWorkspace({canManageAllSpecialists, currentUserId}: Props) {
     const t = useTranslations("admin.specialist.page");
     const locale = useLocale();
+    const copy = scheduleCopy(t);
     const toast = useToast();
     const [currentDate, setCurrentDate] = useState(() => new Date());
     const [selectedSpecialistId, setSelectedSpecialistId] = useState<number | "">(canManageAllSpecialists ? "" : currentUserId);
@@ -94,12 +107,17 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const [form, setForm] = useState<AvailabilityForm>(() => buildDefaultForm());
     const [editingBlock, setEditingBlock] = useState<SpecialistAvailabilityBlock | null>(null);
     const [editingEvent, setEditingEvent] = useState<SpecialistFixedEvent | null>(null);
+    const [calendarFilters, setCalendarFilters] = useState<CalendarFilterState>({officeId: "", serviceId: "", itemType: "all", status: "all"});
+    const [selectedCalendarDetail, setSelectedCalendarDetail] = useState<CalendarDetail | null>(null);
     const availableCount = blocks.filter((block) => block.status === "AVAILABLE" && !block.booked).length;
     const blockedCount = blocks.filter((block) => block.status === "BLOCKED").length;
     const availableBlocks = blocks.filter((block) => block.status === "AVAILABLE");
     const blockedBlocks = blocks.filter((block) => block.status === "BLOCKED");
     const eventServices = services.filter((service) => service.bookingMode === "FIXED_EVENT");
     const individualServices = services.filter((service) => service.bookingMode === "INDIVIDUAL_APPOINTMENT");
+    const filteredCalendarBlocks = useMemo(() => filterCalendarBlocks(blocks, calendarFilters), [blocks, calendarFilters]);
+    const filteredCalendarEvents = useMemo(() => filterCalendarEvents(events, calendarFilters), [events, calendarFilters]);
+    const filteredCalendarBookings = useMemo(() => filterCalendarBookings(bookings, calendarFilters), [bookings, calendarFilters]);
 
     useEffect(() => {
         const mobileQuery = window.matchMedia("(max-width: 639px)");
@@ -111,6 +129,10 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 
     function updateForm<K extends keyof AvailabilityForm>(field: K, value: AvailabilityForm[K]) {
         setForm((current) => ({...current, [field]: value}));
+    }
+
+    function updateCalendarFilter<K extends keyof CalendarFilterState>(field: K, value: CalendarFilterState[K]) {
+        setCalendarFilters((current) => ({...current, [field]: value}));
     }
 
     function updateSlotService(serviceId: string) {
@@ -154,7 +176,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
             if (editingBlock) {
                 await updateAvailability({id: editingBlock.id, body}).unwrap();
                 setEditingBlock(null);
-                toast.success(scheduleCopy(locale).availabilityUpdated);
+                toast.success(copy.availabilityUpdated);
             } else {
                 await createAvailability(body).unwrap();
                 toast.success(t("form.created"));
@@ -208,21 +230,21 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 	                        <div className="flex w-full min-w-0 flex-col gap-2 lg:w-72">
 	                            {canManageAllSpecialists ? (
 	                                <label className="block min-w-0">
-	                                    <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-stone-500">{scheduleCopy(locale).specialistFilter}</span>
+	                                    <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-stone-500">{copy.specialistFilter}</span>
 	                                    <select
 	                                        className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-700"
 	                                        disabled={specialistsFetching}
 	                                        onChange={(event) => setSelectedSpecialistId(event.target.value ? Number(event.target.value) : "")}
 	                                        value={selectedSpecialistId}
 	                                    >
-	                                        <option value="">{specialistsFetching ? scheduleCopy(locale).loading : scheduleCopy(locale).allSpecialists}</option>
+	                                        <option value="">{specialistsFetching ? copy.loading : copy.allSpecialists}</option>
 	                                        {specialists.map((specialist) => (
 	                                            <option key={specialist.id} value={specialist.id}>
 	                                                {userDisplayName(specialist)}
 	                                            </option>
 	                                        ))}
 	                                    </select>
-	                                    {specialistsError ? <span className="mt-1 block text-xs text-red-700">{scheduleCopy(locale).specialistsError}</span> : null}
+	                                    {specialistsError ? <span className="mt-1 block text-xs text-red-700">{copy.specialistsError}</span> : null}
 	                                </label>
 	                            ) : null}
 	                            <button className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-stone-700" onClick={() => document.getElementById("availability-form")?.scrollIntoView({behavior: "smooth"})} type="button">
@@ -233,7 +255,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     <div className="mt-6 grid gap-3 sm:grid-cols-3">
                         <StatCard label={t("stats.available")} value={availableCount} tone="success" />
                         <StatCard label={t("stats.blocked")} value={blockedCount} tone="warning" />
-                        <StatCard label={scheduleCopy(locale).eventsTitle} value={events.length} />
+                        <StatCard label={copy.eventsTitle} value={events.length} />
                         <StatCard label={t("stats.bookings")} value={bookings.length} />
                     </div>
                 </header>
@@ -262,20 +284,40 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                             ))}
                         </div>
                     </div>
+                    <CalendarFilters
+                        copy={copy}
+                        filters={calendarFilters}
+                        offices={offices}
+                        onChange={updateCalendarFilter}
+                        onReset={() => setCalendarFilters({officeId: "", serviceId: "", itemType: "all", status: "all"})}
+                        services={services}
+                    />
                     <div className="flex flex-wrap gap-2 border-b border-stone-200 px-4 py-3">
                         <LegendItem className="border-emerald-200 bg-emerald-50" label={t("legend.available")} />
                         <LegendItem className="border-amber-200 bg-amber-50" label={t("legend.blocked")} />
                         <LegendItem className="border-stone-400 bg-stone-700" label={t("legend.booking")} />
-                        <LegendItem className="border-sky-200 bg-sky-50" label={scheduleCopy(locale).eventsTitle} />
+                        <LegendItem className="border-sky-200 bg-sky-50" label={copy.eventsTitle} />
                     </div>
 
                     {isError ? <p className="m-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("calendar.loadError")}</p> : null}
 
                     <div className="min-w-0 p-3 sm:p-4">
-                        <CalendarSurface bookings={bookings} blocks={blocks} currentDate={currentDate} events={events} locale={locale} onNavigate={setCurrentDate} selectedView={selectedView} t={t} />
+                        <CalendarSurface
+                            bookings={filteredCalendarBookings}
+                            blocks={filteredCalendarBlocks}
+                            currentDate={currentDate}
+                            events={filteredCalendarEvents}
+                            locale={locale}
+                            onNavigate={setCurrentDate}
+                            onSelectDetail={setSelectedCalendarDetail}
+                            selectedView={selectedView}
+                            copy={copy}
+                            t={t}
+                        />
                     </div>
                     <p className="border-t border-stone-100 px-4 py-3 text-xs leading-5 text-stone-500">{t("calendar.source")}</p>
                 </section>
+                {selectedCalendarDetail ? <CalendarDetailPanel closeLabel={copy.closeDetails} detail={selectedCalendarDetail} onClose={() => setSelectedCalendarDetail(null)} /> : null}
 
                 <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
                     <ScheduleBlockList
@@ -284,8 +326,9 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         locale={locale}
                         onDelete={removeAvailability}
                         onEdit={editAvailability}
-                        subtitle={scheduleCopy(locale).availabilityListHint}
-                        title={scheduleCopy(locale).availabilityTitle}
+                        subtitle={copy.availabilityListHint}
+                        title={copy.availabilityTitle}
+                        copy={copy}
                         t={t}
                     />
                 </section>
@@ -296,23 +339,24 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         locale={locale}
                         onDelete={removeAvailability}
                         onEdit={editAvailability}
-                        subtitle={scheduleCopy(locale).blocksListHint}
-                        title={scheduleCopy(locale).blocksTitle}
+                        subtitle={copy.blocksListHint}
+                        title={copy.blocksTitle}
+                        copy={copy}
                         t={t}
                     />
                 </section>
             </div>
 
             <aside className="min-w-0 space-y-5">
-                <SpecialistFinanceOverviewPanel copy={scheduleCopy(locale)} isError={financeOverviewError} isFetching={financeOverviewFetching} locale={locale} overview={financeOverview} />
+                <SpecialistFinanceOverviewPanel copy={copy} isError={financeOverviewError} isFetching={financeOverviewFetching} locale={locale} overview={financeOverview} />
                 <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm 2xl:sticky 2xl:top-4" id="availability-form">
                     <div className="border-b border-stone-100 pb-3">
                         <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-                            <h2 className="min-w-0 break-words text-base font-semibold text-stone-950">{editingBlock ? scheduleCopy(locale).editAvailability : form.status === "AVAILABLE" ? t("form.availableTitle") : t("form.blockedTitle")}</h2>
-                            {editingBlock ? <button className="rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100" onClick={cancelAvailabilityEdit} type="button">{scheduleCopy(locale).cancelEdit}</button> : null}
+                            <h2 className="min-w-0 break-words text-base font-semibold text-stone-950">{editingBlock ? copy.editAvailability : form.status === "AVAILABLE" ? t("form.availableTitle") : t("form.blockedTitle")}</h2>
+                            {editingBlock ? <button className="rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100" onClick={cancelAvailabilityEdit} type="button">{copy.cancelEdit}</button> : null}
                         </div>
                         <p className="mt-1 text-xs leading-5 text-stone-500">{t("form.hint")}</p>
-                        {editingBlock?.booked ? <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">{scheduleCopy(locale).bookedBlockEditHint}</p> : null}
+                        {editingBlock?.booked ? <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">{copy.bookedBlockEditHint}</p> : null}
                     </div>
                     <div className="mt-5 space-y-4">
                         <Field help={t("help.type")} label={t("form.status")}>
@@ -326,31 +370,31 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                             </select>
                         </Field>
                         {form.status === "AVAILABLE" ? (
-                            <Field label={scheduleCopy(locale).itemType}>
+                            <Field label={copy.itemType}>
                                 <select
                                     className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
                                     onChange={(event) => updateForm("itemType", event.target.value as ScheduleBlockType)}
                                     value={form.itemType}
                                 >
-                                    <option value="APPOINTMENT_SLOT">{scheduleCopy(locale).appointmentSlot}</option>
-                                    <option value="OPEN_RANGE">{scheduleCopy(locale).openRange}</option>
+                                    <option value="APPOINTMENT_SLOT">{copy.appointmentSlot}</option>
+                                    <option value="OPEN_RANGE">{copy.openRange}</option>
                                 </select>
                             </Field>
                         ) : null}
                         {form.status === "AVAILABLE" && form.itemType === "APPOINTMENT_SLOT" ? (
                             <>
-                                <Field label={scheduleCopy(locale).slotService}>
+                                <Field label={copy.slotService}>
                                     <select
                                         className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
                                         disabled={servicesFetching}
                                         onChange={(event) => updateSlotService(event.target.value)}
                                         value={form.serviceId}
                                     >
-                                        <option value="">{servicesFetching ? scheduleCopy(locale).loading : scheduleCopy(locale).selectSlotService}</option>
+                                        <option value="">{servicesFetching ? copy.loading : copy.selectSlotService}</option>
                                         {individualServices.map((service) => <option key={service.id} value={service.id}>{service.title}</option>)}
                                     </select>
                                 </Field>
-                                <Field label={scheduleCopy(locale).capacity}>
+                                <Field label={copy.capacity}>
                                     <input
                                         className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
                                         min={1}
@@ -407,12 +451,12 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                             onClick={saveAvailability}
                             type="button"
                         >
-                            {isCreating || isUpdatingAvailability ? t("form.saving") : editingBlock ? scheduleCopy(locale).saveAvailability : form.status === "AVAILABLE" ? t("actions.availability") : t("actions.blocking")}
+                            {isCreating || isUpdatingAvailability ? t("form.saving") : editingBlock ? copy.saveAvailability : form.status === "AVAILABLE" ? t("actions.availability") : t("actions.blocking")}
                         </button>
                     </div>
                 </section>
                 <FixedEventForm
-                    copy={scheduleCopy(locale)}
+                    copy={copy}
                     editingEvent={editingEvent}
                     isLoading={isCreatingEvent || isUpdatingEvent}
                     offices={offices}
@@ -421,15 +465,15 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         try {
                             if (editingEvent) {
                                 await updateSpecialistEvent({id: editingEvent.id, body}).unwrap();
-                                toast.success(scheduleCopy(locale).eventUpdated);
+                                toast.success(copy.eventUpdated);
                             } else {
                                 await createSpecialistEvent(body).unwrap();
-                                toast.success(scheduleCopy(locale).eventCreated);
+                                toast.success(copy.eventCreated);
                             }
                             setEditingEvent(null);
                             void refetchEvents();
                         } catch {
-                            toast.error(scheduleCopy(locale).eventError);
+                            toast.error(copy.eventError);
                         }
                     }}
                     onCancelEdit={() => setEditingEvent(null)}
@@ -446,11 +490,13 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     services={individualServices}
                     servicesError={servicesError}
                     servicesFetching={servicesFetching}
+                    copy={copy}
                     onCreated={refetchAvailability}
                     t={t}
                 />
                 <DayPlanCopyForm
-                    conflictsLabel={scheduleCopy(locale).copyConflicts}
+                    conflictsLabel={copy.copyConflicts}
+                    copy={copy}
                     isLoading={isCopyingDayPlan}
                     locale={locale}
                     onCopy={async (body) => {
@@ -464,7 +510,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     }}
                 />
                 <EventsPanel
-                    copy={scheduleCopy(locale)}
+                    copy={copy}
                     events={events}
                     isError={eventsError}
                     isFetching={eventsFetching}
@@ -473,15 +519,15 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         try {
                             await updateSpecialistEvent({id: event.id, body: eventToInput(event, false)}).unwrap();
                             void refetchEvents();
-                            toast.success(scheduleCopy(locale).eventUpdated);
+                            toast.success(copy.eventUpdated);
                         } catch {
-                            toast.error(scheduleCopy(locale).eventError);
+                            toast.error(copy.eventError);
                         }
                     }}
                     onEdit={setEditingEvent}
                 />
                 <EventEnrollmentsPanel
-                    copy={scheduleCopy(locale)}
+                    copy={copy}
                     enrollments={eventEnrollments}
                     isError={eventEnrollmentsError}
                     isFetching={eventEnrollmentsFetching}
@@ -499,47 +545,193 @@ type T = ReturnType<typeof useTranslations<"admin.specialist.page">>;
 const controlButtonClass = "max-w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-white";
 const viewClass = "min-w-0 rounded-md px-3 py-2 text-sm font-medium text-stone-600 transition-colors hover:bg-white";
 const activeViewClass = "min-w-0 rounded-md bg-stone-900 px-3 py-2 text-sm font-medium text-white shadow-sm";
+const compactSelectClass = "h-9 w-full rounded-lg border border-stone-300 bg-white px-2.5 text-sm text-stone-900 outline-none transition-colors focus:border-stone-800";
 
-function CalendarSurface({bookings, blocks, currentDate, events, locale, onNavigate, selectedView, t}: {bookings: SpecialistBooking[]; blocks: SpecialistAvailabilityBlock[]; currentDate: Date; events: SpecialistFixedEvent[]; locale: string; onNavigate: (date: Date) => void; selectedView: CalendarView; t: T}) {
+function CalendarSurface({
+    bookings,
+    blocks,
+    copy,
+    currentDate,
+    events,
+    locale,
+    onNavigate,
+    onSelectDetail,
+    selectedView,
+    t
+}: {
+    bookings: SpecialistBooking[];
+    blocks: SpecialistAvailabilityBlock[];
+    copy: ReturnType<typeof scheduleCopy>;
+    currentDate: Date;
+    events: SpecialistFixedEvent[];
+    locale: string;
+    onNavigate: (date: Date) => void;
+    onSelectDetail: (detail: CalendarDetail) => void;
+    selectedView: CalendarView;
+    t: T;
+}) {
     if (selectedView === "list") {
-        return <ScheduleBlockList blocks={blocks} deleting={false} locale={locale} onDelete={() => undefined} t={t} title={scheduleCopy(locale).availabilityTitle} viewOnly />;
+        return <ScheduleBlockList blocks={blocks} copy={copy} deleting={false} locale={locale} onDelete={() => undefined} t={t} title={copy.availabilityTitle} viewOnly />;
     }
 
+    const detailByEventId = new Map<string, CalendarDetail>();
     const calendarEvents: AtaraksiaCalendarEvent[] = [
-        ...blocks.map((block) => ({
-            id: `block-${block.id}`,
-            title: [
-                block.booked ? t("legend.booked") : null,
-                block.itemType === "APPOINTMENT_SLOT" ? block.serviceTitle : null,
-                block.officeName,
-                block.specialistName,
-                block.notes
-            ].filter(Boolean).join(" · ") || scheduleBlockLabel(block, locale, t),
-            start: new Date(block.startsAt),
-            end: new Date(block.endsAt),
-            tone: block.booked ? "booking" as const : block.status === "AVAILABLE" ? "available" as const : "blocked" as const
-        })),
-        ...bookings.map((booking) => ({
-            id: `booking-${booking.id}`,
-            title: `${booking.clientName} · ${booking.serviceTitleUa}`,
-            start: new Date(booking.startsAt),
-            end: new Date(booking.endsAt),
-            tone: "booking" as const
-        })),
-        ...events.map((event) => ({
-            id: `event-${event.id}`,
-            title: `${event.serviceTitle} · ${event.enrolledCount}/${event.capacity}`,
-            start: new Date(event.startsAt),
-            end: new Date(event.endsAt),
-            tone: "booking" as const
-        }))
+        ...blocks.map((block) => {
+            const id = `block-${block.id}`;
+            detailByEventId.set(id, blockCalendarDetail(block, copy, locale, t));
+            return {
+                id,
+                title: compactBlockCalendarLabel(block, copy, locale, t),
+                start: new Date(block.startsAt),
+                end: new Date(block.endsAt),
+                tone: block.booked ? "booking" as const : block.status === "AVAILABLE" ? "available" as const : "blocked" as const
+            };
+        }),
+        ...bookings.map((booking) => {
+            const id = `booking-${booking.id}`;
+            detailByEventId.set(id, bookingCalendarDetail(booking, copy, locale, t));
+            return {
+                id,
+                title: `${booking.serviceTitleUa} · ${booking.clientName}`,
+                start: new Date(booking.startsAt),
+                end: new Date(booking.endsAt),
+                tone: "booking" as const
+            };
+        }),
+        ...events.map((event) => {
+            const id = `event-${event.id}`;
+            detailByEventId.set(id, eventCalendarDetail(event, copy, locale));
+            return {
+                id,
+                title: `${event.serviceTitle} · ${event.enrolledCount}/${event.capacity}`,
+                start: new Date(event.startsAt),
+                end: new Date(event.endsAt),
+                tone: "event" as const
+            };
+        })
     ];
 
-    return <AtaraksiaCalendar culture={locale === "ua" ? "uk" : locale} date={currentDate} events={calendarEvents} onNavigate={onNavigate} view={toCalendarView(selectedView)} />;
+    return (
+        <AtaraksiaCalendar
+            culture={locale === "ua" ? "uk" : locale}
+            date={currentDate}
+            events={calendarEvents}
+            messages={copy.calendarMessages}
+            onNavigate={onNavigate}
+            onSelectEvent={(event) => {
+                const detail = detailByEventId.get(event.id);
+                if (detail) onSelectDetail(detail);
+            }}
+            view={toCalendarView(selectedView)}
+        />
+    );
+}
+
+function CalendarFilters({
+    copy,
+    filters,
+    offices,
+    onChange,
+    onReset,
+    services
+}: {
+    copy: ReturnType<typeof scheduleCopy>;
+    filters: CalendarFilterState;
+    offices: Array<{id: number; name: string}>;
+    onChange: <K extends keyof CalendarFilterState>(field: K, value: CalendarFilterState[K]) => void;
+    onReset: () => void;
+    services: PublicService[];
+}) {
+    return (
+        <div className="border-b border-stone-200 bg-white px-4 py-3">
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
+                <CompactSelect label={copy.office}>
+                    <select className={compactSelectClass} onChange={(event) => onChange("officeId", toOptionalNumber(event.target.value))} value={filters.officeId}>
+                        <option value="">{copy.allOffices}</option>
+                        {offices.map((office) => <option key={office.id} value={office.id}>{office.name}</option>)}
+                    </select>
+                </CompactSelect>
+                <CompactSelect label={copy.serviceFilter}>
+                    <select className={compactSelectClass} onChange={(event) => onChange("serviceId", toOptionalNumber(event.target.value))} value={filters.serviceId}>
+                        <option value="">{copy.allServices}</option>
+                        {services.map((service) => <option key={service.id} value={service.id}>{service.title}</option>)}
+                    </select>
+                </CompactSelect>
+                <CompactSelect label={copy.itemFilter}>
+                    <select className={compactSelectClass} onChange={(event) => onChange("itemType", event.target.value as CalendarFilterState["itemType"])} value={filters.itemType}>
+                        <option value="all">{copy.allItems}</option>
+                        <option value="APPOINTMENT_SLOT">{copy.appointmentSlot}</option>
+                        <option value="OPEN_RANGE">{copy.openRange}</option>
+                        <option value="BLOCK">{copy.blocksTitle}</option>
+                        <option value="FIXED_EVENT">{copy.eventsTitle}</option>
+                        <option value="BOOKING">{copy.bookingsTitle}</option>
+                    </select>
+                </CompactSelect>
+                <CompactSelect label={copy.statusFilter}>
+                    <select className={compactSelectClass} onChange={(event) => onChange("status", event.target.value as CalendarFilterState["status"])} value={filters.status}>
+                        <option value="all">{copy.allStatuses}</option>
+                        <option value="AVAILABLE">{copy.statusAvailable}</option>
+                        <option value="BLOCKED">{copy.statusBlocked}</option>
+                        <option value="AWAITING_PAYMENT_CONFIRMATION">{copy.statusAwaitingPayment}</option>
+                        <option value="CONFIRMED">{copy.statusConfirmed}</option>
+                        <option value="CANCELLED">{copy.statusCancelled}</option>
+                        <option value="ACTIVE_EVENT">{copy.statusActiveEvent}</option>
+                        <option value="INACTIVE_EVENT">{copy.statusInactiveEvent}</option>
+                    </select>
+                </CompactSelect>
+                <div className="flex items-end">
+                    <button className="h-9 w-full rounded-lg border border-stone-300 bg-white px-3 text-xs font-semibold text-stone-700 transition-colors hover:bg-stone-100 xl:w-auto" onClick={onReset} type="button">
+                        {copy.resetFilters}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function CompactSelect({children, label}: {children: ReactNode; label: string}) {
+    return (
+        <label className="min-w-0">
+            <span className="mb-1 block break-words text-[11px] font-semibold uppercase tracking-wide text-stone-500">{label}</span>
+            {children}
+        </label>
+    );
+}
+
+function CalendarDetailPanel({closeLabel, detail, onClose}: {closeLabel: string; detail: CalendarDetail; onClose: () => void}) {
+    const toneClass = detail.tone === "available"
+        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+        : detail.tone === "blocked"
+        ? "border-amber-200 bg-amber-50 text-amber-800"
+        : detail.tone === "event"
+        ? "border-sky-200 bg-sky-50 text-sky-800"
+        : "border-stone-300 bg-stone-800 text-white";
+
+    return (
+        <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+            <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <span className={`inline-flex max-w-full rounded-full border px-2.5 py-1 text-xs font-semibold ${toneClass}`}>{detail.title}</span>
+                </div>
+                <button className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-100" onClick={onClose} type="button">
+                    {closeLabel}
+                </button>
+            </div>
+            <dl className="mt-4 grid gap-2 sm:grid-cols-2">
+                {detail.rows.map((row) => (
+                    <div className="min-w-0 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2" key={`${row.label}-${row.value}`}>
+                        <dt className="break-words text-[11px] font-semibold uppercase tracking-wide text-stone-500">{row.label}</dt>
+                        <dd className="mt-1 break-words text-sm font-medium text-stone-900">{row.value}</dd>
+                    </div>
+                ))}
+            </dl>
+        </section>
+    );
 }
 
 function ScheduleBlockList({
     blocks,
+    copy,
     deleting,
     locale,
     onDelete,
@@ -550,6 +742,7 @@ function ScheduleBlockList({
     viewOnly = false
 }: {
     blocks: SpecialistAvailabilityBlock[];
+    copy: ReturnType<typeof scheduleCopy>;
     deleting: boolean;
     locale: string;
     onDelete: (id: number) => void;
@@ -559,8 +752,6 @@ function ScheduleBlockList({
     t: T;
     viewOnly?: boolean;
 }) {
-    const copy = scheduleCopy(locale);
-
     return (
         <div className={viewOnly ? "min-w-0 rounded-lg border border-stone-200 bg-white p-3" : "min-w-0"}>
             <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
@@ -574,7 +765,7 @@ function ScheduleBlockList({
                         <div className="min-w-0">
                             <div className="flex min-w-0 flex-wrap items-center gap-2">
                                 <StatusBadge booked={block.booked} status={block.status} t={t} />
-                                <span className="rounded-full border border-stone-200 bg-white px-2 py-1 text-[10px] font-semibold text-stone-600">{scheduleBlockTypeLabel(block, locale)}</span>
+                                <span className="rounded-full border border-stone-200 bg-white px-2 py-1 text-[10px] font-semibold text-stone-600">{scheduleBlockTypeLabel(block, copy)}</span>
                                 <span className="break-words text-sm font-medium text-stone-900">
                                     {formatDateTime(block.startsAt, locale)} - {formatDateTime(block.endsAt, locale)}
                                 </span>
@@ -637,14 +828,13 @@ function StatusBadge({booked = false, status, t}: {booked?: boolean; status: Sch
     );
 }
 
-function scheduleBlockLabel(block: SpecialistAvailabilityBlock, locale: string, t: T) {
+function scheduleBlockLabel(block: SpecialistAvailabilityBlock, copy: ReturnType<typeof scheduleCopy>, t: T) {
     if (block.status === "BLOCKED") return t("legend.blocked");
-    if (block.itemType === "APPOINTMENT_SLOT") return block.serviceTitle ?? scheduleCopy(locale).appointmentSlot;
+    if (block.itemType === "APPOINTMENT_SLOT") return block.serviceTitle ?? copy.appointmentSlot;
     return t("legend.available");
 }
 
-function scheduleBlockTypeLabel(block: SpecialistAvailabilityBlock, locale: string) {
-    const copy = scheduleCopy(locale);
+function scheduleBlockTypeLabel(block: SpecialistAvailabilityBlock, copy: ReturnType<typeof scheduleCopy>) {
     if (block.itemType === "APPOINTMENT_SLOT") return copy.appointmentSlot;
     if (block.itemType === "BLOCK") return copy.blocksTitle;
     return copy.openRange;
@@ -776,17 +966,18 @@ function FixedEventForm({
 
 function DayPlanCopyForm({
     conflictsLabel,
+    copy,
     isLoading,
     locale,
     onCopy
 }: {
     conflictsLabel: string;
+    copy: ReturnType<typeof scheduleCopy>;
     isLoading: boolean;
     locale: string;
     onCopy: (body: DayPlanCopyInput) => Promise<DayPlanCopyResponse>;
 }) {
     const toast = useToast();
-    const copy = scheduleCopy(locale);
     const [sourceDate, setSourceDate] = useState(() => toDateInputValue(new Date()));
     const [targetDatesText, setTargetDatesText] = useState("");
     const [includeAvailability, setIncludeAvailability] = useState(true);
@@ -933,6 +1124,7 @@ function EventEnrollmentsPanel({copy, enrollments, isError, isFetching, locale}:
 function ManualBookingForm({
     blocks,
     bookings,
+    copy,
     events,
     locale,
     onCreated,
@@ -944,6 +1136,7 @@ function ManualBookingForm({
 }: {
     blocks: SpecialistAvailabilityBlock[];
     bookings: SpecialistBooking[];
+    copy: ReturnType<typeof scheduleCopy>;
     events: SpecialistFixedEvent[];
     locale: string;
     onCreated: () => void;
@@ -962,7 +1155,6 @@ function ManualBookingForm({
     const selectedService = services.find((service) => String(service.id) === serviceId);
     const manualSlots = useMemo(() => buildManualBookingSlots(blocks, bookings, events, selectedService), [blocks, bookings, events, selectedService]);
     const selectedSlot = manualSlots.find((slot) => slot.key === selectedSlotKey);
-    const copy = scheduleCopy(locale);
 
     async function submit() {
         if (!selectedSlot) return;
@@ -1081,9 +1273,13 @@ function SpecialistFinanceOverviewPanel({copy, isError, isFetching, locale, over
                 <div className="mt-4 grid gap-3">
                     <FinanceMetric label={copy.financeEarnings} value={formatAmount(overview.specialistEarnings, locale)} />
                     <FinanceMetric label={copy.financePendingEarnings} value={formatAmount(overview.pendingSpecialistEarnings, locale)} />
+                    <FinanceMetric label={copy.financePayoutPending} value={formatAmount(overview.payoutPendingEarnings, locale)} />
+                    <FinanceMetric label={copy.financePayoutPaid} value={formatAmount(overview.payoutPaidEarnings, locale)} />
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                         <FinanceMetric label={copy.financeCompleted} value={String(overview.completedCount)} />
                         <FinanceMetric label={copy.financePending} value={String(overview.pendingCount)} />
+                        <FinanceMetric label={copy.financePayoutPendingCount} value={String(overview.payoutPendingCount)} />
+                        <FinanceMetric label={copy.financePayoutPaidCount} value={String(overview.payoutPaidCount)} />
                         <FinanceMetric label={copy.financeWorked} value={formatMinutes(overview.workedMinutes, copy)} />
                         <FinanceMetric label={copy.financeSharePercent} value={formatPercent(overview.specialistSharePercent, locale)} />
                     </div>
@@ -1125,6 +1321,100 @@ function eventToInput(event: SpecialistFixedEvent, active: boolean): SpecialistF
     };
 }
 
+function filterCalendarBlocks(blocks: SpecialistAvailabilityBlock[], filters: CalendarFilterState) {
+    return blocks.filter((block) => {
+        if (filters.officeId !== "" && block.officeId !== filters.officeId) return false;
+        if (filters.serviceId !== "" && block.serviceId !== filters.serviceId) return false;
+        if (filters.itemType !== "all" && (filters.itemType === "BOOKING" || filters.itemType === "FIXED_EVENT" || block.itemType !== filters.itemType)) return false;
+        if (filters.status !== "all" && (filters.status === "ACTIVE_EVENT" || filters.status === "INACTIVE_EVENT" || !["AVAILABLE", "BLOCKED"].includes(filters.status) || block.status !== filters.status)) return false;
+        return true;
+    });
+}
+
+function filterCalendarEvents(events: SpecialistFixedEvent[], filters: CalendarFilterState) {
+    return events.filter((event) => {
+        if (filters.officeId !== "" && event.officeId !== filters.officeId) return false;
+        if (filters.serviceId !== "" && event.serviceId !== filters.serviceId) return false;
+        if (filters.itemType !== "all" && filters.itemType !== "FIXED_EVENT") return false;
+        if (filters.status === "ACTIVE_EVENT" && !event.active) return false;
+        if (filters.status === "INACTIVE_EVENT" && event.active) return false;
+        if (filters.status !== "all" && filters.status !== "ACTIVE_EVENT" && filters.status !== "INACTIVE_EVENT") return false;
+        return true;
+    });
+}
+
+function filterCalendarBookings(bookings: SpecialistBooking[], filters: CalendarFilterState) {
+    return bookings.filter((booking) => {
+        if (filters.officeId !== "" && booking.officeId !== filters.officeId) return false;
+        if (filters.serviceId !== "" && booking.serviceId !== filters.serviceId) return false;
+        if (filters.itemType !== "all" && filters.itemType !== "BOOKING") return false;
+        if (filters.status !== "all" && !["AWAITING_PAYMENT_CONFIRMATION", "CONFIRMED", "CANCELLED"].includes(filters.status)) return false;
+        if (filters.status !== "all" && booking.status !== filters.status) return false;
+        return true;
+    });
+}
+
+function compactBlockCalendarLabel(block: SpecialistAvailabilityBlock, copy: ReturnType<typeof scheduleCopy>, locale: string, t: T) {
+    if (block.booked) return [t("legend.booked"), block.serviceTitle, block.officeName].filter(Boolean).join(" · ");
+    if (block.itemType === "APPOINTMENT_SLOT") return [block.serviceTitle ?? copy.appointmentSlot, block.officeName].filter(Boolean).join(" · ");
+    return [scheduleBlockLabel(block, copy, t), block.officeName, block.notes].filter(Boolean).join(" · ");
+}
+
+function blockCalendarDetail(block: SpecialistAvailabilityBlock, copy: ReturnType<typeof scheduleCopy>, locale: string, t: T): CalendarDetail {
+    return {
+        title: compactBlockCalendarLabel(block, copy, locale, t) || scheduleBlockLabel(block, copy, t),
+        tone: block.booked ? "booking" : block.status === "AVAILABLE" ? "available" : "blocked",
+        rows: [
+            {label: copy.detailType, value: scheduleBlockTypeLabel(block, copy)},
+            {label: copy.detailStatus, value: block.booked ? t("statuses.booked") : block.status === "AVAILABLE" ? t("statuses.available") : t("statuses.blocked")},
+            {label: copy.startsAt, value: formatDateTime(block.startsAt, locale)},
+            {label: copy.endsAt, value: formatDateTime(block.endsAt, locale)},
+            {label: copy.specialistFilter, value: block.specialistName},
+            {label: copy.office, value: block.officeName ?? copy.noOffice},
+            {label: copy.slotService, value: block.serviceTitle ?? copy.notAssigned},
+            {label: copy.capacity, value: block.capacity === null ? copy.notAssigned : String(block.capacity)}
+        ].concat(block.notes ? [{label: copy.note, value: block.notes}] : [])
+    };
+}
+
+function bookingCalendarDetail(booking: SpecialistBooking, copy: ReturnType<typeof scheduleCopy>, locale: string, t: T): CalendarDetail {
+    return {
+        title: `${booking.serviceTitleUa} · ${booking.clientName}`,
+        tone: "booking",
+        rows: [
+            {label: copy.detailType, value: copy.bookingsTitle},
+            {label: copy.detailStatus, value: t(`bookings.statuses.${booking.status}`)},
+            {label: copy.startsAt, value: formatDateTime(booking.startsAt, locale)},
+            {label: copy.endsAt, value: formatDateTime(booking.endsAt, locale)},
+            {label: copy.client, value: booking.clientName},
+            {label: copy.clientContact, value: booking.clientContact || copy.noClientContact},
+            {label: copy.slotService, value: booking.serviceTitleUa},
+            {label: copy.office, value: booking.officeName ?? copy.noOffice}
+        ]
+    };
+}
+
+function eventCalendarDetail(event: SpecialistFixedEvent, copy: ReturnType<typeof scheduleCopy>, locale: string): CalendarDetail {
+    return {
+        title: event.serviceTitle,
+        tone: "event",
+        rows: [
+            {label: copy.detailType, value: copy.eventsTitle},
+            {label: copy.detailStatus, value: event.active ? copy.statusActiveEvent : copy.statusInactiveEvent},
+            {label: copy.startsAt, value: formatDateTime(event.startsAt, locale)},
+            {label: copy.endsAt, value: formatDateTime(event.endsAt, locale)},
+            {label: copy.specialistFilter, value: event.specialistName},
+            {label: copy.office, value: event.officeName ?? copy.noOffice},
+            {label: copy.capacity, value: `${event.enrolledCount}/${event.capacity}`},
+            {label: copy.price, value: formatAmount(event.price, locale)}
+        ].concat(event.note ? [{label: copy.note, value: event.note}] : [])
+    };
+}
+
+function toOptionalNumber(value: string): number | "" {
+    return value ? Number(value) : "";
+}
+
 function userDisplayName(user: AdminUser) {
     const name = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
     return name || user.phone || user.email || `#${user.id}`;
@@ -1144,92 +1434,139 @@ function parseDateList(value: string) {
     ));
 }
 
-function scheduleCopy(locale: string) {
-    const ua = locale === "ua";
+function scheduleCopy(t: T) {
     return {
-        availabilityTitle: ua ? "Доступність для індивідуальних записів" : "Individual appointment availability",
-        blocksTitle: ua ? "Блокування / відпустка" : "Blocks / vacation",
-        eventsTitle: ua ? "Події / групові сеанси" : "Events / group sessions",
-        specialistFilter: ua ? "Спеціаліст" : "Specialist",
-        allSpecialists: ua ? "Усі спеціалісти" : "All specialists",
-        specialistsError: ua ? "Не вдалося завантажити спеціалістів." : "Unable to load specialists.",
-        itemType: ua ? "Тип графіка" : "Schedule type",
-        appointmentSlot: ua ? "Конкретний слот" : "Concrete slot",
-        openRange: ua ? "Вікно доступності" : "Availability window",
-        slotService: ua ? "Послуга для слоту" : "Slot service",
-        selectSlotService: ua ? "Оберіть послугу" : "Select service",
-        eventsBody: ua ? "Конкретні події з фіксованим часом і кількістю місць." : "Concrete sessions with fixed time and capacity.",
-        eventFormHint: ua ? "Створіть подію, на яку користувачі записуються без вибору окремого слоту." : "Create a fixed session users enroll into directly.",
-        eventService: ua ? "Послуга / подія" : "Service / event",
-        selectEventService: ua ? "Оберіть event-послугу" : "Select event service",
-        office: ua ? "Офіс" : "Office",
-        noOffice: ua ? "Без офісу" : "No office",
-        startsAt: ua ? "Початок" : "Start",
-        endsAt: ua ? "Кінець" : "End",
-        capacity: ua ? "Кількість місць" : "Capacity",
-        note: ua ? "Опис / нотатка" : "Description / note",
-        createEvent: ua ? "Створити подію" : "Create event",
-        saveEvent: ua ? "Зберегти подію" : "Save event",
-        editEvent: ua ? "Редагувати" : "Edit",
-        cancelEdit: ua ? "Скасувати редагування" : "Cancel edit",
-        deactivateEvent: ua ? "Вимкнути" : "Deactivate",
-        active: ua ? "Активна подія" : "Active event",
-        inactive: ua ? "Вимкнено" : "Inactive",
-        saving: ua ? "Збереження..." : "Saving...",
-        loading: ua ? "Завантаження..." : "Loading...",
-        eventCreated: ua ? "Подію створено." : "Event created.",
-        eventUpdated: ua ? "Подію оновлено." : "Event updated.",
-        eventError: ua ? "Не вдалося створити подію." : "Unable to create event.",
-        eventsError: ua ? "Не вдалося завантажити події." : "Unable to load events.",
-        eventsEmpty: ua ? "Подій у цьому періоді ще немає." : "No events in this range yet.",
-        eventEnrollmentsTitle: ua ? "Учасники подій" : "Event participants",
-        eventEnrollmentsBody: ua ? "Записи користувачів на ваші fixed events у вибраному періоді." : "User enrollments for your fixed events in the selected range.",
-        eventEnrollmentsError: ua ? "Не вдалося завантажити учасників подій." : "Unable to load event participants.",
-        eventEnrollmentsEmpty: ua ? "У цьому періоді ще немає записів на події." : "No event enrollments in this range yet.",
-        enrollmentActive: ua ? "Записаний" : "Enrolled",
-        enrollmentCancelled: ua ? "Скасовано" : "Cancelled",
-        noClientContact: ua ? "Контакт не вказано" : "No contact",
-        reminderRequested: ua ? "Нагадування увімкнено" : "Reminder requested",
-        editAvailability: ua ? "Редагування графіка" : "Edit schedule block",
-        saveAvailability: ua ? "Зберегти зміни" : "Save changes",
-        availabilityUpdated: ua ? "Графік оновлено." : "Schedule block updated.",
-        editBlock: ua ? "Редагувати" : "Edit",
-        availabilityListHint: ua ? "Це робочі вікна для індивідуальних записів. Бронювання, події й блокування автоматично вирізають із них час." : "These are working windows for individual appointments. Bookings, events and blocks automatically cut time out of them.",
-        blocksListHint: ua ? "Ці періоди недоступні для індивідуальних записів і не є подіями для клієнтів." : "These periods are unavailable for individual appointments and are not client-facing events.",
-        availabilityCutHint: ua ? "Вільні слоти генеруються всередині цього вікна." : "Free slots are generated inside this window.",
-        appointmentSlotHint: ua ? "Це конкретний слот для вибраної послуги." : "This is a concrete slot for the selected service.",
-        copyTitle: ua ? "Копіювання дня" : "Copy day plan",
-        copyBody: ua ? "Копіює слоти, вікна доступності, блокування і події з одного дня на вибрані дати. Бронювання не копіюються." : "Copies slots, availability windows, blocks and events from one day to selected dates. Bookings are not copied.",
-        copySourceDate: ua ? "День-джерело" : "Source day",
-        copyTargetDates: ua ? "Цільові дати" : "Target dates",
-        copyTargetPlaceholder: ua ? "2033-01-03, 2033-01-04" : "2033-01-03, 2033-01-04",
-        copyAvailability: ua ? "Копіювати слоти / доступність / блокування" : "Copy slots / availability / blocks",
-        copyEvents: ua ? "Копіювати події" : "Copy events",
-        copyAction: ua ? "Скопіювати день" : "Copy day",
-        copyInvalid: ua ? "Вкажіть день-джерело і хоча б одну цільову дату." : "Set a source day and at least one target date.",
-        copyHasConflicts: ua ? "Є конфлікти. Копіювання не виконано." : "Conflicts found. Nothing was copied.",
-        copyConflicts: ua ? "Конфлікти" : "Conflicts",
-        copyError: ua ? "Не вдалося скопіювати день." : "Unable to copy day.",
-        copySuccess: (availability: number, events: number) => ua ? `Скопійовано: ${availability} елементів графіка, ${events} подій.` : `Copied: ${availability} schedule items, ${events} events.`,
-        blockCutHint: ua ? "Цей час буде недоступний у публічному календарі." : "This time will be unavailable in the public calendar.",
-        manualSlotCutHint: ua ? "Слоти нижче рахуються з availability windows; бронювання, події та блокування прибирають зайнятий час зі списку." : "Slots below are calculated from availability windows; bookings, events and blocks remove occupied time from the list.",
-        bookedBlockLocked: ua ? "Є історія бронювань: видалення заблоковане, час/тип/офіс краще не змінювати." : "Booking history exists: deletion is locked, and time/type/office should not be changed.",
-        bookedBlockEditHint: ua ? "У цьому блоці є історія бронювань. Можна оновити нотатку, але backend не дозволить змінити час, тип або офіс." : "This block has booking history. You can update the note, but the backend will reject time, type or office changes.",
-        financeTitle: ua ? "Мої фінанси" : "My finance",
-        financeBody: ua ? "Власний огляд підтверджених і очікуваних виплат за поточний період календаря." : "Own confirmed and pending payout overview for the current calendar range.",
-        financeError: ua ? "Не вдалося завантажити фінансовий огляд." : "Unable to load finance overview.",
-        financeEarnings: ua ? "Підтверджені виплати" : "Confirmed earnings",
-        financePendingEarnings: ua ? "Очікувані виплати" : "Pending earnings",
-        financeCompleted: ua ? "Завершені записи" : "Completed bookings",
-        financePending: ua ? "Очікують оплати" : "Awaiting payment",
-        financeWorked: ua ? "Відпрацьовано" : "Worked time",
-        financeSharePercent: ua ? "Мій відсоток" : "My percentage",
-        financeHint: ua ? "Суми рахуються за підтвердженими бронюваннями та налаштованим фінансовим відсотком спеціаліста." : "Amounts use confirmed bookings and the configured specialist finance percentage.",
-        hoursShort: ua ? "год" : "h",
-        minutesShort: ua ? "хв" : "min"
+        availabilityTitle: t("schedule.availabilityTitle"),
+        blocksTitle: t("schedule.blocksTitle"),
+        eventsTitle: t("schedule.eventsTitle"),
+        bookingsTitle: t("schedule.bookingsTitle"),
+        specialistFilter: t("schedule.specialistFilter"),
+        allSpecialists: t("schedule.allSpecialists"),
+        specialistsError: t("schedule.specialistsError"),
+        allOffices: t("schedule.allOffices"),
+        allServices: t("schedule.allServices"),
+        serviceFilter: t("schedule.serviceFilter"),
+        itemFilter: t("schedule.itemFilter"),
+        statusFilter: t("schedule.statusFilter"),
+        allItems: t("schedule.allItems"),
+        allStatuses: t("schedule.allStatuses"),
+        resetFilters: t("schedule.resetFilters"),
+        statusAvailable: t("schedule.statusAvailable"),
+        statusBlocked: t("schedule.statusBlocked"),
+        statusAwaitingPayment: t("schedule.statusAwaitingPayment"),
+        statusConfirmed: t("schedule.statusConfirmed"),
+        statusCancelled: t("schedule.statusCancelled"),
+        statusActiveEvent: t("schedule.statusActiveEvent"),
+        statusInactiveEvent: t("schedule.statusInactiveEvent"),
+        detailType: t("schedule.detailType"),
+        detailStatus: t("schedule.detailStatus"),
+        closeDetails: t("schedule.closeDetails"),
+        notAssigned: t("schedule.notAssigned"),
+        client: t("schedule.client"),
+        clientContact: t("schedule.clientContact"),
+        price: t("schedule.price"),
+        itemType: t("schedule.itemType"),
+        appointmentSlot: t("schedule.appointmentSlot"),
+        openRange: t("schedule.openRange"),
+        slotService: t("schedule.slotService"),
+        selectSlotService: t("schedule.selectSlotService"),
+        eventsBody: t("schedule.eventsBody"),
+        eventFormHint: t("schedule.eventFormHint"),
+        eventService: t("schedule.eventService"),
+        selectEventService: t("schedule.selectEventService"),
+        office: t("schedule.office"),
+        noOffice: t("schedule.noOffice"),
+        startsAt: t("schedule.startsAt"),
+        endsAt: t("schedule.endsAt"),
+        capacity: t("schedule.capacity"),
+        note: t("schedule.note"),
+        createEvent: t("schedule.createEvent"),
+        saveEvent: t("schedule.saveEvent"),
+        editEvent: t("schedule.editEvent"),
+        cancelEdit: t("schedule.cancelEdit"),
+        deactivateEvent: t("schedule.deactivateEvent"),
+        active: t("schedule.active"),
+        inactive: t("schedule.inactive"),
+        saving: t("schedule.saving"),
+        loading: t("schedule.loading"),
+        eventCreated: t("schedule.eventCreated"),
+        eventUpdated: t("schedule.eventUpdated"),
+        eventError: t("schedule.eventError"),
+        eventsError: t("schedule.eventsError"),
+        eventsEmpty: t("schedule.eventsEmpty"),
+        eventEnrollmentsTitle: t("schedule.eventEnrollmentsTitle"),
+        eventEnrollmentsBody: t("schedule.eventEnrollmentsBody"),
+        eventEnrollmentsError: t("schedule.eventEnrollmentsError"),
+        eventEnrollmentsEmpty: t("schedule.eventEnrollmentsEmpty"),
+        enrollmentActive: t("schedule.enrollmentActive"),
+        enrollmentCancelled: t("schedule.enrollmentCancelled"),
+        noClientContact: t("schedule.noClientContact"),
+        reminderRequested: t("schedule.reminderRequested"),
+        editAvailability: t("schedule.editAvailability"),
+        saveAvailability: t("schedule.saveAvailability"),
+        availabilityUpdated: t("schedule.availabilityUpdated"),
+        editBlock: t("schedule.editBlock"),
+        availabilityListHint: t("schedule.availabilityListHint"),
+        blocksListHint: t("schedule.blocksListHint"),
+        availabilityCutHint: t("schedule.availabilityCutHint"),
+        appointmentSlotHint: t("schedule.appointmentSlotHint"),
+        copyTitle: t("schedule.copyTitle"),
+        copyBody: t("schedule.copyBody"),
+        copySourceDate: t("schedule.copySourceDate"),
+        copyTargetDates: t("schedule.copyTargetDates"),
+        copyTargetPlaceholder: t("schedule.copyTargetPlaceholder"),
+        copyAvailability: t("schedule.copyAvailability"),
+        copyEvents: t("schedule.copyEvents"),
+        copyAction: t("schedule.copyAction"),
+        copyInvalid: t("schedule.copyInvalid"),
+        copyHasConflicts: t("schedule.copyHasConflicts"),
+        copyConflicts: t("schedule.copyConflicts"),
+        copyError: t("schedule.copyError"),
+        blockCutHint: t("schedule.blockCutHint"),
+        manualSlotCutHint: t("schedule.manualSlotCutHint"),
+        bookedBlockLocked: t("schedule.bookedBlockLocked"),
+        bookedBlockEditHint: t("schedule.bookedBlockEditHint"),
+        financeTitle: t("schedule.financeTitle"),
+        financeBody: t("schedule.financeBody"),
+        financeError: t("schedule.financeError"),
+        financeEarnings: t("schedule.financeEarnings"),
+        financePendingEarnings: t("schedule.financePendingEarnings"),
+        financePayoutPending: t("schedule.financePayoutPending"),
+        financePayoutPaid: t("schedule.financePayoutPaid"),
+        financeCompleted: t("schedule.financeCompleted"),
+        financePending: t("schedule.financePending"),
+        financePayoutPendingCount: t("schedule.financePayoutPendingCount"),
+        financePayoutPaidCount: t("schedule.financePayoutPaidCount"),
+        financeWorked: t("schedule.financeWorked"),
+        financeSharePercent: t("schedule.financeSharePercent"),
+        financeHint: t("schedule.financeHint"),
+        hoursShort: t("schedule.hoursShort"),
+        minutesShort: t("schedule.minutesShort"),
+        calendarMessages: calendarMessages(t),
+        copySuccess: (availability: number, events: number) => t("schedule.copySuccess", {availability, events})
     };
 }
 
+function calendarMessages(t: T): AtaraksiaCalendarMessages {
+    return {
+        agenda: t("schedule.calendarMessages.agenda"),
+        allDay: t("schedule.calendarMessages.allDay"),
+        date: t("schedule.calendarMessages.date"),
+        day: t("schedule.calendarMessages.day"),
+        event: t("schedule.calendarMessages.event"),
+        month: t("schedule.calendarMessages.month"),
+        next: t("schedule.calendarMessages.next"),
+        noEventsInRange: t("schedule.calendarMessages.noEventsInRange"),
+        previous: t("schedule.calendarMessages.previous"),
+        showMore: (count) => t("schedule.calendarMessages.showMore", {count}),
+        time: t("schedule.calendarMessages.time"),
+        today: t("schedule.calendarMessages.today"),
+        tomorrow: t("schedule.calendarMessages.tomorrow"),
+        week: t("schedule.calendarMessages.week"),
+        work_week: t("schedule.calendarMessages.workWeek"),
+        yesterday: t("schedule.calendarMessages.yesterday")
+    };
+}
 function buildCalendarRange(date: Date) {
     const from = new Date(date);
     from.setDate(from.getDate() - 31);

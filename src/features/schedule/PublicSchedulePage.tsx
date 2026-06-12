@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect, useMemo, useState, type ReactNode} from "react";
-import {useLocale} from "next-intl";
+import {useLocale, useTranslations} from "next-intl";
 import type {Locale} from "@/i18n";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {useCreateBookingMutation, useListMyBookingsQuery} from "@/features/bookings/bookings.api";
@@ -13,7 +13,7 @@ import {
     useListPublicEventsQuery,
     useListPublicUnavailableQuery
 } from "@/features/schedule/schedule.api";
-import AtaraksiaCalendar, {toCalendarView, type AtaraksiaCalendarEvent} from "@/features/schedule/AtaraksiaCalendar";
+import AtaraksiaCalendar, {toCalendarView, type AtaraksiaCalendarEvent, type AtaraksiaCalendarMessages} from "@/features/schedule/AtaraksiaCalendar";
 import {useListServicesQuery} from "@/features/services/services.api";
 import type {Booking} from "@/types/bookings";
 import type {PublicFixedEvent, PublicScheduleAvailabilityBlock, PublicScheduleUnavailableBlock} from "@/types/schedule";
@@ -41,7 +41,8 @@ type FilterState = {
 
 export default function PublicSchedulePage() {
     const locale = useLocale() as Locale;
-    const copy = labels(locale);
+    const t = useTranslations("calendar.page");
+    const copy = labels(t);
     const toast = useToast();
     const [filters, setFilters] = useState<FilterState>({officeId: "", serviceId: "", specialistId: "", mode: "all", status: "all", period: 31});
     const [selectedView, setSelectedView] = useState<CalendarView>("week");
@@ -516,6 +517,7 @@ function PublicScheduleCalendar({copy, currentDate, events, locale, myBookings, 
                 culture={locale === "ua" ? "uk" : locale}
                 date={currentDate}
                 events={calendarEvents}
+                messages={copy.calendarMessages}
                 onNavigate={onNavigate}
                 onSelectEvent={(event) => {
                     const slot = slotByEventId.get(event.id);
@@ -635,11 +637,21 @@ function uniqueSpecialists(items: Array<{specialistId: number; specialistName: s
 }
 
 function activeFilterChips(filters: FilterState, services: PublicService[], offices: Array<{id: number; name: string}>, specialists: Array<{id: number; name: string}>, copy: Copy) {
-    const chips = [filters.mode !== "all" ? (filters.mode === "individual" ? copy.individual : copy.events) : null, filters.status !== "all" ? filters.status : null];
+    const chips = [
+        filters.mode !== "all" ? (filters.mode === "individual" ? copy.individual : copy.events) : null,
+        filters.status !== "all" ? statusFilterLabel(filters.status, copy) : null
+    ];
     const service = selectedService(services, filters.serviceId);
     const office = filters.officeId === "" ? undefined : offices.find((item) => item.id === filters.officeId);
     const specialist = filters.specialistId === "" ? undefined : specialists.find((item) => item.id === filters.specialistId);
     return [...chips, service?.title, office?.name, specialist?.name].filter(Boolean) as string[];
+}
+
+function statusFilterLabel(status: Exclude<StatusFilter, "all">, copy: Copy) {
+    if (status === "available") return copy.available;
+    if (status === "unavailable") return copy.unavailable;
+    if (status === "events") return copy.eventsWithPlaces;
+    return copy.myBookings;
 }
 
 function slotKey(slot: PublicScheduleAvailabilityBlock) {
@@ -725,100 +737,122 @@ function toLanguageTag(locale: string) {
     return locale === "ua" ? "uk" : locale;
 }
 
+type T = ReturnType<typeof useTranslations<"calendar.page">>;
 type Copy = ReturnType<typeof labels>;
 
-function labels(locale: Locale) {
-    const ua = locale === "ua";
+function labels(t: T) {
     return {
-        eyebrow: ua ? "Запис до Ataraksia" : "Book with Ataraksia",
-        title: ua ? "Запис / Графік" : "Booking / Schedule",
-        subtitle: ua ? "Оберіть послугу або подію, перегляньте доступний час і підтвердіть запис." : "Choose a service or event, review available time, and confirm your booking.",
-        chooseTitle: ua ? "Оберіть послугу або подію" : "Choose a service or event",
-        chooseDescription: ua ? "Почніть із реального варіанту запису. Фільтри нижче лише допомагають уточнити графік." : "Start from a real bookable option. Filters below only refine the schedule.",
-        loading: ua ? "Оновлення..." : "Updating...",
-        individual: ua ? "Індивідуальний запис" : "Individual appointment",
-        fixedEvent: ua ? "Подія / груповий сеанс" : "Fixed event / group session",
-        chooseTime: ua ? "Обрати час" : "Choose time",
-        bookEvent: ua ? "Записатися" : "Enroll",
-        noDescription: ua ? "Опис буде додано пізніше." : "Description will be added later.",
-        withoutOffice: ua ? "Без прив’язки до офісу" : "No office assigned",
-        remaining: (count: number) => ua ? `Залишилось ${count} місць` : `${count} places left`,
-        enrolled: ua ? "Ви записані" : "You are enrolled",
-        full: ua ? "Місць немає" : "Full",
-        filtersTitle: ua ? "Фільтри календаря" : "Calendar filters",
-        filtersHint: ua ? "За замовчуванням показуємо все публічне. Фільтри не замінюють перевірку backend під час запису." : "By default, all public schedule data is shown. Filters never replace backend validation.",
-        showFilters: ua ? "Показати фільтри" : "Show filters",
-        hideFilters: ua ? "Сховати фільтри" : "Hide filters",
-        noActiveFilters: ua ? "Усі публічні записи" : "All public entries",
-        resetFilters: ua ? "Скинути фільтри" : "Reset filters",
-        saveFilters: ua ? "Зберегти фільтри" : "Save filters",
-        updateSaved: ua ? "Оновити збережені" : "Update saved",
-        applySaved: ua ? "Показати збережені" : "Apply saved",
-        deleteSaved: ua ? "Видалити збережені" : "Delete saved",
-        savedActive: ua ? "Збережені фільтри активні або доступні для застосування" : "Saved filters are active or ready to apply",
-        mode: ua ? "Режим" : "Mode",
-        service: ua ? "Послуга" : "Service",
-        office: ua ? "Офіс" : "Office",
-        specialist: ua ? "Спеціаліст" : "Specialist",
-        status: ua ? "Статус" : "Status",
-        period: ua ? "Період" : "Period",
-        all: ua ? "Усе" : "All",
-        events: ua ? "Події" : "Events",
-        allServices: ua ? "Усі послуги й події" : "All services and events",
-        allOffices: ua ? "Усі офіси" : "All offices",
-        allSpecialists: ua ? "Усі спеціалісти" : "All specialists",
-        available: ua ? "Доступно" : "Available",
-        unavailable: ua ? "Недоступно" : "Unavailable",
-        occupied: ua ? "Зайнято" : "Occupied",
-        eventsWithPlaces: ua ? "Події з місцями" : "Events with places",
-        myBookings: ua ? "Мої записи" : "My bookings",
-        days7: ua ? "Найближчі 7 днів" : "Next 7 days",
-        days31: ua ? "Найближчі 31 день" : "Next 31 days",
-        nearestSlots: ua ? "Найближчий доступний час" : "Nearest available times",
-        selectedSummary: ua ? "Обраний варіант" : "Selected option",
-        selectServicePrompt: ua ? "Оберіть послугу або подію вище, щоб побачити доступний час." : "Choose a service or event above to see available times.",
-        slotCount: (count: number) => ua ? `${count} слотів` : `${count} slots`,
-        minutes: (count: number) => ua ? `${count} хв` : `${count} min`,
-        select: ua ? "Обрати" : "Select",
-        selected: ua ? "Обрано" : "Selected",
-        noSlotsTitle: ua ? "Для цієї послуги немає доступного часу за обраними фільтрами." : "No available time for this service with the current filters.",
-        noSlotsBody: ua ? "Спробуйте інші дати, усіх спеціалістів або скиньте фільтри." : "Try other dates, all specialists, or reset filters.",
-        otherDates: ua ? "Показати інші дати" : "Show other dates",
-        calendarTitle: ua ? "Календар" : "Calendar",
-        calendarDescription: ua ? "Календар підтримує вибір часу, але запис створюється тільки після підтвердження." : "The calendar supports time selection, but booking is created only after confirmation.",
-        calendarEmpty: ua ? "Оберіть послугу або змініть фільтри, щоб побачити графік." : "Choose a service or adjust filters to see the schedule.",
-        loadError: ua ? "Не вдалося завантажити графік." : "Unable to load the schedule.",
-        chooseServiceFirst: ua ? "Оберіть послугу для цього часу." : "Choose a service for this time.",
-        chooseServiceForTime: ua ? "Оберіть послугу для цього часу" : "Choose a service for this time",
-        slotTooShort: ua ? "Цей проміжок замалий для обраної послуги. Оберіть інший час." : "This time range is too short for the selected service. Choose another time.",
-        unavailableClick: ua ? "Цей час недоступний. Оберіть інший слот." : "This time is unavailable. Choose another slot.",
-        individualServiceTitle: ua ? "Індивідуальна послуга" : "Individual service",
-        individualServiceHint: ua ? "Оберіть індивідуальну послугу, щоб підсвітити доступні слоти." : "Choose an individual service to highlight available slots.",
-        selectedServiceHint: ua ? "Показано доступний час у календарі." : "Available time is shown in the calendar.",
-        upcomingEvents: ua ? "Найближчі події" : "Upcoming events",
-        noEvents: ua ? "Подій за цими фільтрами немає." : "No events match these filters.",
-        views: {month: ua ? "Місяць" : "Month", week: ua ? "Тиждень" : "Week", day: ua ? "День" : "Day", list: ua ? "Список" : "List"},
-        confirmAppointment: ua ? "Підтвердити запис" : "Confirm booking",
-        confirmEvent: ua ? "Підтвердити участь" : "Confirm participation",
-        confirmParticipation: ua ? "Підтвердити участь" : "Confirm participation",
-        time: ua ? "Час" : "Time",
-        price: ua ? "Ціна" : "Price",
-        places: ua ? "Місця" : "Places",
-        reminder: ua ? "Нагадати про запис" : "Send reminder",
-        reminderHint: ua ? "Нагадування буде надіслано лише для цього запису." : "A reminder will only be sent for this booking.",
-        cancel: ua ? "Скасувати" : "Cancel",
-        close: ua ? "Закрити" : "Close",
-        cancelEnrollment: ua ? "Скасувати участь" : "Cancel enrollment",
-        saving: ua ? "Збереження..." : "Saving...",
-        bookingCreated: ua ? "Бронювання створено. Очікує підтвердження оплати." : "Booking created. Payment confirmation is pending.",
-        bookingCreatedWithPayment: ua ? "Бронювання створено. Перейдіть до оплати за посиланням послуги." : "Booking created. Use the service payment link to continue.",
-        paymentTitle: ua ? "Запис створено, оплата очікує підтвердження" : "Booking created, payment awaits confirmation",
-        paymentBody: (service: string, startsAt: string) => ua ? `${service}, ${startsAt}. Після оплати фінансовий менеджер підтвердить запис вручну.` : `${service}, ${startsAt}. After payment, a finance manager will confirm the booking manually.`,
-        paymentAction: ua ? "Перейти до оплати" : "Go to payment",
-        dismissPayment: ua ? "Приховати" : "Dismiss",
-        eventEnrolled: ua ? "Ви записані на подію." : "You are enrolled in the event.",
-        eventCancelled: ua ? "Участь у події скасовано." : "Event enrollment cancelled.",
-        cancelEventError: ua ? "Не вдалося скасувати участь у події." : "Unable to cancel event enrollment.",
-        bookingError: ua ? "Не вдалося створити запис. Увійдіть в акаунт або оберіть інший час." : "Unable to book. Sign in or choose another time."
+        eyebrow: t("eyebrow"),
+        title: t("bookingScheduleTitle"),
+        subtitle: t("bookingScheduleSubtitle"),
+        chooseTitle: t("chooseTitle"),
+        chooseDescription: t("chooseDescription"),
+        loading: t("public.loading"),
+        individual: t("public.individual"),
+        fixedEvent: t("public.fixedEvent"),
+        chooseTime: t("public.chooseTime"),
+        bookEvent: t("public.bookEvent"),
+        noDescription: t("public.noDescription"),
+        withoutOffice: t("withoutOffice"),
+        remaining: (count: number) => t("public.remaining", {count}),
+        enrolled: t("public.enrolled"),
+        full: t("public.full"),
+        filtersTitle: t("public.filtersTitle"),
+        filtersHint: t("public.filtersHint"),
+        showFilters: t("public.showFilters"),
+        hideFilters: t("public.hideFilters"),
+        noActiveFilters: t("public.noActiveFilters"),
+        resetFilters: t("public.resetFilters"),
+        saveFilters: t("public.saveFilters"),
+        updateSaved: t("public.updateSaved"),
+        applySaved: t("public.applySaved"),
+        deleteSaved: t("public.deleteSaved"),
+        savedActive: t("public.savedActive"),
+        mode: t("public.mode"),
+        service: t("filters.service"),
+        office: t("filters.office"),
+        specialist: t("filters.specialist"),
+        status: t("public.status"),
+        period: t("filters.period"),
+        all: t("public.all"),
+        events: t("public.events"),
+        allServices: t("public.allServices"),
+        allOffices: t("filters.allOffices"),
+        allSpecialists: t("filters.allSpecialists"),
+        available: t("public.available"),
+        unavailable: t("public.unavailable"),
+        occupied: t("public.occupied"),
+        eventsWithPlaces: t("public.eventsWithPlaces"),
+        myBookings: t("public.myBookings"),
+        days7: t("periods.days7"),
+        days31: t("periods.days31"),
+        nearestSlots: t("public.nearestSlots"),
+        selectedSummary: t("public.selectedSummary"),
+        selectServicePrompt: t("public.selectServicePrompt"),
+        slotCount: (count: number) => t("slotCount", {count}),
+        minutes: (count: number) => t("summary.minutes", {count}),
+        select: t("public.select"),
+        selected: t("public.selected"),
+        noSlotsTitle: t("public.noSlotsTitle"),
+        noSlotsBody: t("public.noSlotsBody"),
+        otherDates: t("public.otherDates"),
+        calendarTitle: t("public.calendarTitle"),
+        calendarDescription: t("public.calendarDescription"),
+        calendarEmpty: t("public.calendarEmpty"),
+        loadError: t("loadError"),
+        chooseServiceFirst: t("public.chooseServiceFirst"),
+        chooseServiceForTime: t("public.chooseServiceForTime"),
+        slotTooShort: t("public.slotTooShort"),
+        unavailableClick: t("public.unavailableClick"),
+        individualServiceTitle: t("public.individualServiceTitle"),
+        individualServiceHint: t("public.individualServiceHint"),
+        selectedServiceHint: t("public.selectedServiceHint"),
+        upcomingEvents: t("public.upcomingEvents"),
+        noEvents: t("public.noEvents"),
+        views: {month: t("views.month"), week: t("views.week"), day: t("views.day"), list: t("views.list")},
+        confirmAppointment: t("public.confirmAppointment"),
+        confirmEvent: t("public.confirmEvent"),
+        confirmParticipation: t("public.confirmParticipation"),
+        time: t("public.time"),
+        price: t("summary.price"),
+        places: t("public.places"),
+        reminder: t("booking.reminderOptIn"),
+        reminderHint: t("booking.reminderHint"),
+        cancel: t("public.cancel"),
+        close: t("public.close"),
+        cancelEnrollment: t("public.cancelEnrollment"),
+        saving: t("public.saving"),
+        bookingCreated: t("booking.created"),
+        bookingCreatedWithPayment: t("booking.createdWithPayment"),
+        paymentTitle: t("public.paymentTitle"),
+        paymentBody: (service: string, startsAt: string) => t("public.paymentBody", {service, startsAt}),
+        paymentAction: t("public.paymentAction"),
+        dismissPayment: t("public.dismissPayment"),
+        eventEnrolled: t("public.eventEnrolled"),
+        eventCancelled: t("public.eventCancelled"),
+        cancelEventError: t("public.cancelEventError"),
+        bookingError: t("public.bookingError"),
+        calendarMessages: calendarMessages(t)
+    };
+}
+
+function calendarMessages(t: T): AtaraksiaCalendarMessages {
+    return {
+        agenda: t("calendarMessages.agenda"),
+        allDay: t("calendarMessages.allDay"),
+        date: t("calendarMessages.date"),
+        day: t("calendarMessages.day"),
+        event: t("calendarMessages.event"),
+        month: t("calendarMessages.month"),
+        next: t("calendarMessages.next"),
+        noEventsInRange: t("calendarMessages.noEventsInRange"),
+        previous: t("calendarMessages.previous"),
+        showMore: (count) => t("calendarMessages.showMore", {count}),
+        time: t("calendarMessages.time"),
+        today: t("calendarMessages.today"),
+        tomorrow: t("calendarMessages.tomorrow"),
+        week: t("calendarMessages.week"),
+        work_week: t("calendarMessages.workWeek"),
+        yesterday: t("calendarMessages.yesterday")
     };
 }

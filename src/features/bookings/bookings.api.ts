@@ -174,6 +174,14 @@ export const bookingsApi = createApi({
                 {type: "FinanceSummary", id: "SPECIALIST_OVERVIEW"}
             ]
         }),
+        markSpecialistPayoutPaid: build.mutation<FinanceBooking, number>({
+            query: (id) => ({url: `/admin/finance/bookings/${id}/specialist-payout/mark-paid`, method: "POST"}),
+            invalidatesTags: (result, error, id) => [
+                {type: "Bookings", id},
+                {type: "Bookings", id: "LIST"},
+                {type: "FinanceSummary", id: "SPECIALIST_OVERVIEW"}
+            ]
+        }),
         cancelBooking: build.mutation<Booking, number>({
             query: (id) => ({url: `/bookings/${id}/cancel`, method: "POST"}),
             invalidatesTags: (result, error, id) => [
@@ -201,6 +209,7 @@ export const {
     useListMyBookingsQuery,
     useListSpecialistBookingsQuery,
     useListSpecialistFinanceSettingsQuery,
+    useMarkSpecialistPayoutPaidMutation,
     useUpdateFinanceSettingsMutation,
     useUpdateSpecialistFinanceSettingsMutation,
     useCreateBookingMutation

@@ -1,6 +1,7 @@
 "use client";
 
 import {useMemo} from "react";
+import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {useCancelBookingMutation, useListMyBookingsQuery} from "@/features/bookings/bookings.api";
 import {useCancelFixedEventEnrollmentMutation, useListMyFixedEventEnrollmentsQuery} from "@/features/schedule/schedule.api";
@@ -9,7 +10,8 @@ import type {Booking} from "@/types/bookings";
 import type {PublicFixedEvent} from "@/types/schedule";
 
 export default function AccountBookingsPanel({locale}: {locale: Locale}) {
-    const copy = labels(locale);
+    const t = useTranslations("accountPage.bookings");
+    const copy = labels(t);
     const toast = useToast();
     const range = useMemo(() => buildAccountRange(), []);
     const {data: bookingsData, isFetching: bookingsFetching, isError: bookingsError} = useListMyBookingsQuery({page: 0, size: 10});
@@ -161,27 +163,28 @@ function formatDateTimeRange(start: string, end: string, locale: Locale) {
     return `${date}, ${time.format(new Date(start))}–${time.format(new Date(end))}`;
 }
 
-function labels(locale: Locale) {
-    const ua = locale === "ua";
+type T = ReturnType<typeof useTranslations<"accountPage.bookings">>;
+
+function labels(t: T) {
     return {
-        title: ua ? "Мої записи" : "My bookings",
-        body: ua ? "Індивідуальні записи та участь у подіях показані окремо." : "Individual appointments and event enrollments are shown separately.",
-        loading: ua ? "Оновлення..." : "Updating...",
-        appointments: ua ? "Індивідуальні записи" : "Individual appointments",
-        events: ua ? "Події / групові сеанси" : "Events / group sessions",
-        enrolled: ua ? "Ви записані" : "Enrolled",
-        noOffice: ua ? "Без офісу" : "No office",
-        noAppointments: ua ? "Індивідуальних записів ще немає." : "No individual appointments yet.",
-        noEvents: ua ? "Записів на події ще немає." : "No event enrollments yet.",
-        loadError: ua ? "Не вдалося завантажити записи." : "Unable to load bookings.",
-        cancel: ua ? "Скасувати" : "Cancel",
-        pay: ua ? "Перейти до оплати" : "Go to payment",
-        cancelled: ua ? "Запис скасовано." : "Booking cancelled.",
-        cancelError: ua ? "Не вдалося скасувати запис." : "Unable to cancel booking.",
+        title: t("title"),
+        body: t("body"),
+        loading: t("loading"),
+        appointments: t("appointments"),
+        events: t("events"),
+        enrolled: t("enrolled"),
+        noOffice: t("noOffice"),
+        noAppointments: t("noAppointments"),
+        noEvents: t("noEvents"),
+        loadError: t("loadError"),
+        cancel: t("cancel"),
+        pay: t("pay"),
+        cancelled: t("cancelled"),
+        cancelError: t("cancelError"),
         statuses: {
-            AWAITING_PAYMENT_CONFIRMATION: ua ? "Очікує оплати" : "Payment pending",
-            CONFIRMED: ua ? "Підтверджено" : "Confirmed",
-            CANCELLED: ua ? "Скасовано" : "Cancelled"
+            AWAITING_PAYMENT_CONFIRMATION: t("statuses.AWAITING_PAYMENT_CONFIRMATION"),
+            CONFIRMED: t("statuses.CONFIRMED"),
+            CANCELLED: t("statuses.CANCELLED")
         }
     };
 }

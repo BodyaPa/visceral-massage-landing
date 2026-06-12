@@ -188,7 +188,7 @@ export default function ServicesManagement() {
                                         </span>
                                         <span className="flex flex-wrap gap-1.5">
                                             <MetaBadge active={selected} label={`${service.durationMinutes} ${t("minutesShort")}`} />
-                                            <MetaBadge active={selected} label={service.bookingMode === "FIXED_EVENT" ? "Event" : "Individual"} />
+                                            <MetaBadge active={selected} label={service.bookingMode === "FIXED_EVENT" ? t("fixedEvent") : t("individualAppointment")} />
                                             <MetaBadge active={selected} label={String(service.basePrice)} />
                                             {service.externalPaymentUrl ? <MetaBadge active={selected} label={t("externalPaymentUrl")} /> : null}
                                         </span>
@@ -224,6 +224,7 @@ export default function ServicesManagement() {
                             <LanguageButton
                                 active={editorLanguage === "ua"}
                                 complete={uaComplete}
+                                completeLabel={t("complete")}
                                 label={t("ukrainianVersion")}
                                 missingLabel={t("required")}
                                 onClick={() => setEditorLanguage("ua")}
@@ -231,6 +232,7 @@ export default function ServicesManagement() {
                             <LanguageButton
                                 active={editorLanguage === "en"}
                                 complete={enComplete}
+                                completeLabel={t("complete")}
                                 label={t("englishVersion")}
                                 missingLabel={t("optional")}
                                 onClick={() => setEditorLanguage("en")}
@@ -284,14 +286,14 @@ export default function ServicesManagement() {
                         </Field>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
-                        <Field label="Booking mode" tooltip="Individual services generate free slots; fixed events are concrete sessions with capacity.">
+                        <Field label={t("bookingMode")} tooltip={t("bookingModeHint")}>
                             <select
                                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
                                 onChange={(event) => updateField("bookingMode", event.target.value as ServiceInput["bookingMode"])}
                                 value={form.bookingMode}
                             >
-                                <option value="INDIVIDUAL_APPOINTMENT">Individual appointment</option>
-                                <option value="FIXED_EVENT">Fixed event</option>
+                                <option value="INDIVIDUAL_APPOINTMENT">{t("individualAppointment")}</option>
+                                <option value="FIXED_EVENT">{t("fixedEvent")}</option>
                             </select>
                         </Field>
                         <Field label={t("duration")} tooltip={t("durationHint")}>
@@ -362,9 +364,10 @@ function MetaBadge({active = false, label}: {active?: boolean; label: string}) {
     );
 }
 
-function LanguageButton({active, complete, label, missingLabel, onClick}: {
+function LanguageButton({active, complete, completeLabel, label, missingLabel, onClick}: {
     active: boolean;
     complete: boolean;
+    completeLabel: string;
     label: string;
     missingLabel: string;
     onClick: () => void;
@@ -382,7 +385,7 @@ function LanguageButton({active, complete, label, missingLabel, onClick}: {
             <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
                 complete ? "bg-emerald-100 text-emerald-800" : "bg-stone-200 text-stone-600"
             }`}>
-                {complete ? "OK" : missingLabel}
+                {complete ? completeLabel : missingLabel}
             </span>
         </button>
     );

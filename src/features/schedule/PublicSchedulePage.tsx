@@ -55,7 +55,7 @@ export default function PublicSchedulePage() {
     const [savedFilters, setSavedFilters] = useState<FilterState | null>(null);
     const [paymentPrompt, setPaymentPrompt] = useState<PaymentPrompt | null>(null);
     const [filtersOpen, setFiltersOpen] = useState(true);
-    const range = useMemo(() => buildRange(filters.period), [filters.period]);
+    const range = useMemo(() => buildRange(currentDate, selectedView, filters.period), [currentDate, selectedView, filters.period]);
 
     const {data: officesData} = useListPublicOfficesQuery({size: 100});
     const {data: servicesData} = useListServicesQuery({lang: locale, size: 100});
@@ -303,12 +303,19 @@ export default function PublicSchedulePage() {
                             <h2 className="text-xl font-semibold text-stone-950">{copy.calendarTitle}</h2>
                             <p className="mt-1 break-words text-sm text-stone-500">{formatCalendarLabel(selectedView, range, locale)}</p>
                         </div>
-                        <div className="grid w-full min-w-0 grid-cols-4 gap-1 rounded-xl bg-stone-100 p-1 sm:w-auto">
-                            {views.map((view) => (
-                                <button aria-pressed={selectedView === view} className={selectedView === view ? activeViewClass : viewClass} key={view} onClick={() => setSelectedView(view)} type="button">
-                                    {copy.views[view]}
-                                </button>
-                            ))}
+                        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+                            <div className="grid w-full min-w-0 grid-cols-3 gap-1 rounded-xl bg-stone-100 p-1 sm:w-auto">
+                                <button className={viewClass} onClick={() => setCurrentDate((date) => navigateDate(date, selectedView, filters.period, -1))} title={copy.previous} type="button">←</button>
+                                <button className={viewClass} onClick={() => setCurrentDate(new Date())} type="button">{copy.today}</button>
+                                <button className={viewClass} onClick={() => setCurrentDate((date) => navigateDate(date, selectedView, filters.period, 1))} title={copy.next} type="button">→</button>
+                            </div>
+                            <div className="grid w-full min-w-0 grid-cols-4 gap-1 rounded-xl bg-stone-100 p-1 sm:w-auto">
+                                {views.map((view) => (
+                                    <button aria-pressed={selectedView === view} className={selectedView === view ? activeViewClass : viewClass} key={view} onClick={() => setSelectedView(view)} type="button">
+                                        {copy.views[view]}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                     {slotsError ? <p className="m-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{copy.loadError}</p> : null}
@@ -731,12 +738,47 @@ function InfoRow({label, value}: {label: string; value: string}) {
     return <div className="grid min-w-0 grid-cols-1 gap-1 sm:grid-cols-[110px_minmax(0,1fr)] sm:gap-3"><dt className="break-words text-stone-500">{label}</dt><dd className="break-words font-medium text-stone-900">{value}</dd></div>;
 }
 
-function buildRange(days: number) {
-    const from = new Date();
+function buildRange(date: Date, view: CalendarView, days: number) {
+    const from = view === "week"
+        ? startOfWeek(date)
+        : view === "month"
+        ? firstDayOfMonth(date)
+        : new Date(date);
     from.setHours(0, 0, 0, 0);
+
     const to = new Date(from);
-    to.setDate(to.getDate() + days);
+    if (view === "day") {
+        to.setDate(to.getDate() + 1);
+    } else if (view === "week") {
+        to.setDate(to.getDate() + 7);
+    } else if (view === "month") {
+        to.setMonth(to.getMonth() + 1);
+    } else {
+        to.setDate(to.getDate() + days);
+    }
+
     return {from: from.toISOString(), to: to.toISOString()};
+}
+
+function startOfWeek(date: Date) {
+    const monday = new Date(date);
+    const day = monday.getDay();
+    monday.setHours(0, 0, 0, 0);
+    monday.setDate(monday.getDate() - (day === 0 ? 6 : day - 1));
+    return monday;
+}
+
+function firstDayOfMonth(date: Date) {
+    return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function navigateDate(date: Date, view: CalendarView, days: number, direction: -1 | 1) {
+    const next = new Date(date);
+    if (view === "month") next.setMonth(next.getMonth() + direction);
+    else if (view === "week") next.setDate(next.getDate() + direction * 7);
+    else if (view === "day") next.setDate(next.getDate() + direction);
+    else next.setDate(next.getDate() + direction * days);
+    return next;
 }
 
 function selectedService(services: PublicService[], id: number | "") {
@@ -882,7 +924,7 @@ function filtersFromUrl(): FilterState | null {
         specialistId: toId(params.get("specialistId") ?? ""),
         mode: (params.get("mode") as BookingModeFilter) || "all",
         status: (params.get("status") as StatusFilter) || "all",
-        period: params.get("period") === "7" ? 7 : 31
+        period: params.get("period") === "31" ? 31 : 7
     };
 }
 
@@ -924,7 +966,9 @@ function formatCalendarLabel(view: CalendarView, range: {from: string; to: strin
     const to = new Date(range.to);
     if (view === "month") return new Intl.DateTimeFormat(languageTag, {month: "long", year: "numeric"}).format(from);
     if (view === "day") return new Intl.DateTimeFormat(languageTag, {day: "numeric", month: "long", weekday: "long"}).format(from);
-    return `${new Intl.DateTimeFormat(languageTag, {day: "numeric", month: "short"}).format(from)} – ${new Intl.DateTimeFormat(languageTag, {day: "numeric", month: "short"}).format(to)}`;
+    const labelEnd = new Date(to);
+    labelEnd.setDate(labelEnd.getDate() - 1);
+    return `${new Intl.DateTimeFormat(languageTag, {day: "numeric", month: "short"}).format(from)} – ${new Intl.DateTimeFormat(languageTag, {day: "numeric", month: "short"}).format(labelEnd)}`;
 }
 
 function toLanguageTag(locale: string) {
@@ -993,6 +1037,9 @@ function labels(t: T) {
         calendarTitle: t("public.calendarTitle"),
         calendarDescription: t("public.calendarDescription"),
         calendarEmpty: t("public.calendarEmpty"),
+        previous: t("calendarMessages.previous"),
+        next: t("calendarMessages.next"),
+        today: t("calendarMessages.today"),
         loadError: t("loadError"),
         chooseServiceFirst: t("public.chooseServiceFirst"),
         chooseServiceForTime: t("public.chooseServiceForTime"),

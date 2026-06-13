@@ -1,6 +1,10 @@
 export type ScheduleBlockStatus = "AVAILABLE" | "BLOCKED";
 export type ScheduleBlockType = "OPEN_RANGE" | "APPOINTMENT_SLOT" | "BLOCK";
 
+export interface ScheduleConfig {
+    appointmentBufferMinutes: number;
+}
+
 export interface SpecialistAvailabilityBlock {
     id: number;
     specialistId: number;
@@ -32,7 +36,7 @@ export interface PublicScheduleAvailabilityBlock {
 
 export interface PublicScheduleUnavailableBlock {
     id: string;
-    status: "OCCUPIED" | "UNAVAILABLE";
+    status: "OCCUPIED" | "UNAVAILABLE" | "BUFFER";
     specialistId: number;
     specialistName: string;
     officeId: number | null;

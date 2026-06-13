@@ -1,7 +1,7 @@
 "use client";
 
 import {useMemo} from "react";
-import {Calendar, dayjsLocalizer, type DateRange, type Event, type Formats, type Messages, type View, Views} from "react-big-calendar";
+import {Calendar, dayjsLocalizer, type DateRange, type Event, type EventProps, type Formats, type Messages, type View, Views} from "react-big-calendar";
 import dayjs from "dayjs";
 import "dayjs/locale/uk";
 import "dayjs/locale/en";
@@ -10,7 +10,9 @@ const localizer = dayjsLocalizer(dayjs);
 
 export type AtaraksiaCalendarEvent = Event & {
     id: string;
-    tone: "available" | "blocked" | "booking" | "event";
+    badge?: string;
+    meta?: string;
+    tone: "available" | "blocked" | "booking" | "event" | "buffer";
 };
 export type AtaraksiaCalendarMessages = Messages<AtaraksiaCalendarEvent>;
 
@@ -21,18 +23,25 @@ type Props = {
     messages: AtaraksiaCalendarMessages;
     onNavigate?: (date: Date) => void;
     onSelectEvent?: (event: AtaraksiaCalendarEvent) => void;
+    variant?: "booking" | "planner";
     view: View;
 };
 
-export default function AtaraksiaCalendar({culture, date, events, messages, onNavigate, onSelectEvent, view}: Props) {
+export default function AtaraksiaCalendar({culture, date, events, messages, onNavigate, onSelectEvent, variant = "planner", view}: Props) {
     const languageTag = culture === "uk" || culture === "ua" ? "uk-UA" : "en-US";
     const formats = useMemo(() => calendarFormats(languageTag), [languageTag]);
-    const heightClass = view === Views.AGENDA ? "h-[440px] sm:h-[520px]" : "h-[520px] sm:h-[620px]";
+    const components = useMemo(() => ({event: CalendarEventContent}), []);
+    const heightClass = view === Views.AGENDA
+        ? "h-[440px] sm:h-[520px]"
+        : variant === "booking"
+        ? "h-[500px] sm:h-[600px]"
+        : "h-[620px] sm:h-[760px]";
 
     return (
-        <div className="ataraksia-calendar-scroll">
+        <div className={`ataraksia-calendar-scroll ataraksia-calendar-${variant}`}>
             <div className={`ataraksia-calendar min-w-[720px] md:min-w-0 ${heightClass}`}>
             <Calendar<AtaraksiaCalendarEvent>
+                components={components}
                 culture={culture}
                 date={date}
                 dayLayoutAlgorithm="no-overlap"
@@ -51,6 +60,16 @@ export default function AtaraksiaCalendar({culture, date, events, messages, onNa
             />
             </div>
         </div>
+    );
+}
+
+function CalendarEventContent({event, title}: EventProps<AtaraksiaCalendarEvent>) {
+    return (
+        <span className="ataraksia-calendar-event-content" title={[event.badge, title, event.meta].filter(Boolean).join(" · ")}>
+            {event.badge ? <span className="ataraksia-calendar-event-badge">{event.badge}</span> : null}
+            <span className="ataraksia-calendar-event-title">{title}</span>
+            {event.meta ? <span className="ataraksia-calendar-event-meta">{event.meta}</span> : null}
+        </span>
     );
 }
 

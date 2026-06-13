@@ -45,7 +45,7 @@ export default function PublicSchedulePage() {
     const t = useTranslations("calendar.page");
     const copy = labels(t);
     const toast = useToast();
-    const [filters, setFilters] = useState<FilterState>({officeId: "", serviceId: "", specialistId: "", mode: "all", status: "all", period: 31});
+    const [filters, setFilters] = useState<FilterState>({officeId: "", serviceId: "", specialistId: "", mode: "all", status: "all", period: 7});
     const [selectedView, setSelectedView] = useState<CalendarView>("week");
     const [currentDate, setCurrentDate] = useState(() => new Date());
     const [reminderOptIn, setReminderOptIn] = useState(false);
@@ -54,7 +54,7 @@ export default function PublicSchedulePage() {
     const [slotForServiceChoice, setSlotForServiceChoice] = useState<PublicScheduleAvailabilityBlock | null>(null);
     const [savedFilters, setSavedFilters] = useState<FilterState | null>(null);
     const [paymentPrompt, setPaymentPrompt] = useState<PaymentPrompt | null>(null);
-    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [filtersOpen, setFiltersOpen] = useState(true);
     const range = useMemo(() => buildRange(filters.period), [filters.period]);
 
     const {data: officesData} = useListPublicOfficesQuery({size: 100});
@@ -102,7 +102,8 @@ export default function PublicSchedulePage() {
         : unavailableData.filter((item) => !visibleEventUnavailableIds.has(item.id));
     const filteredSlots = filters.mode === "events" || filters.status === "unavailable" || filters.status === "events" || filters.status === "mine" ? [] : slotsData;
     const myBookings = filters.status === "mine" ? filterMyBookings(myBookingsData?.content ?? [], range) : [];
-    const nearestSlots = selected?.bookingMode === "INDIVIDUAL_APPOINTMENT" ? filteredSlots.slice(0, 5) : [];
+    const nearestSlots = filteredSlots.slice(0, 6);
+    const nearestEvents = filteredEvents.filter((event) => !event.full && new Date(event.startsAt).getTime() > Date.now()).slice(0, 6);
     const specialists = uniqueSpecialists([...slotsData, ...eventsData, ...unavailableData]);
     const isSaving = bookingLoading || enrollmentLoading || cancelEnrollmentLoading;
 
@@ -143,7 +144,7 @@ export default function PublicSchedulePage() {
     }
 
     function resetFilters() {
-        setFilters({officeId: "", serviceId: "", specialistId: "", mode: "all", status: "all", period: 31});
+        setFilters({officeId: "", serviceId: "", specialistId: "", mode: "all", status: "all", period: 7});
     }
 
     function saveFilters() {
@@ -215,7 +216,7 @@ export default function PublicSchedulePage() {
                         {filtersOpen ? copy.hideFilters : copy.showFilters}
                     </button>
                 </div>
-                <div className={`${filtersOpen ? "grid" : "hidden"} mt-3 gap-2 sm:grid-cols-2 md:grid lg:grid-cols-6`}>
+                <div className={`${filtersOpen ? "grid" : "hidden"} mt-3 gap-2 sm:grid sm:grid-cols-2 lg:grid-cols-6`}>
                     <SelectField label={copy.mode}>
                         <select className={compactInputClass} value={filters.mode} onChange={(event) => updateFilter("mode", event.target.value as BookingModeFilter)}>
                             <option value="all">{copy.all}</option>
@@ -283,6 +284,18 @@ export default function PublicSchedulePage() {
                 </section>
             ) : null}
 
+            <section className="grid min-w-0 gap-4 lg:grid-cols-2">
+                <BookingHighlights
+                    copy={copy}
+                    locale={locale}
+                    onChooseEvent={chooseEvent}
+                    onChooseSlot={chooseSlot}
+                    selectedService={selected?.bookingMode === "INDIVIDUAL_APPOINTMENT" ? selected : undefined}
+                    slots={nearestSlots}
+                    events={nearestEvents}
+                />
+            </section>
+
             <section className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
                 <div className="min-w-0 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
                     <div className="flex min-w-0 flex-col gap-3 border-b border-stone-200 px-3 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
@@ -309,6 +322,7 @@ export default function PublicSchedulePage() {
                         onChooseUnavailable={() => toast.error(copy.unavailableClick)}
                         onNavigate={setCurrentDate}
                         myBookings={myBookings}
+                        selectedService={selected?.bookingMode === "INDIVIDUAL_APPOINTMENT" ? selected : undefined}
                         slots={filteredSlots}
                         unavailable={filteredUnavailable}
                         view={selectedView}
@@ -337,14 +351,16 @@ export default function PublicSchedulePage() {
                             <span className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-500">{slotsFetching || eventsFetching || myBookingsFetching ? copy.loading : copy.slotCount(nearestSlots.length)}</span>
                         </div>
                         {selected?.bookingMode !== "INDIVIDUAL_APPOINTMENT" ? <p className="mt-3 text-sm leading-6 text-stone-500">{copy.selectServicePrompt}</p> : null}
-                        {selected?.bookingMode === "INDIVIDUAL_APPOINTMENT" && nearestSlots.length > 0 ? (
+                        {nearestSlots.length > 0 ? (
                             <div className="mt-3 space-y-2">
                                 {nearestSlots.map((slot) => (
-                                    <CompactSlotRow copy={copy} key={slotKey(slot)} locale={locale} onChoose={() => setPendingBooking({type: "individual", service: selected, slot})} service={selected} slot={slot} />
+                                    selected?.bookingMode === "INDIVIDUAL_APPOINTMENT"
+                                        ? <CompactSlotRow copy={copy} key={slotKey(slot)} locale={locale} onChoose={() => setPendingBooking({type: "individual", service: selected, slot})} service={selected} slot={slot} />
+                                        : <CompactOpenSlotRow copy={copy} key={slotKey(slot)} locale={locale} onChoose={() => chooseSlot(slot)} slot={slot} />
                                 ))}
                             </div>
                         ) : null}
-                        {selected?.bookingMode === "INDIVIDUAL_APPOINTMENT" && nearestSlots.length === 0 && !slotsFetching ? (
+                        {nearestSlots.length === 0 && !slotsFetching ? (
                             <div className="mt-3 rounded-xl border border-dashed border-stone-300 bg-stone-50 p-4 text-sm text-stone-600">
                                 <p>{copy.noSlotsTitle}</p>
                                 <div className="mt-3 flex flex-wrap gap-2">
@@ -421,6 +437,59 @@ const secondaryButtonClass = "max-w-full rounded-lg border border-stone-300 bg-w
 const compactButtonClass = "max-w-full rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100";
 const compactDangerButtonClass = "max-w-full rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100";
 
+function BookingHighlights({
+    copy,
+    events,
+    locale,
+    onChooseEvent,
+    onChooseSlot,
+    selectedService,
+    slots
+}: {
+    copy: Copy;
+    events: PublicFixedEvent[];
+    locale: string;
+    onChooseEvent: (event: PublicFixedEvent) => void;
+    onChooseSlot: (slot: PublicScheduleAvailabilityBlock) => void;
+    selectedService?: PublicService;
+    slots: PublicScheduleAvailabilityBlock[];
+}) {
+    return (
+        <>
+            <section className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <h2 className="text-base font-semibold text-stone-950">{copy.nearestSlots}</h2>
+                        <p className="mt-1 text-sm leading-5 text-stone-500">{selectedService ? copy.selectedServiceHint : copy.selectServicePrompt}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800">{copy.slotCount(slots.length)}</span>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {slots.slice(0, 6).map((slot) => (
+                        selectedService
+                            ? <CompactSlotRow copy={copy} key={slotKey(slot)} locale={locale} onChoose={() => onChooseSlot(slot)} service={selectedService} slot={slot} />
+                            : <CompactOpenSlotRow copy={copy} key={slotKey(slot)} locale={locale} onChoose={() => onChooseSlot(slot)} slot={slot} />
+                    ))}
+                    {slots.length === 0 ? <p className="rounded-xl border border-dashed border-stone-200 bg-stone-50 px-4 py-5 text-sm text-stone-500 sm:col-span-2">{copy.noSlotsTitle}</p> : null}
+                </div>
+            </section>
+            <section className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <h2 className="text-base font-semibold text-stone-950">{copy.upcomingEvents}</h2>
+                        <p className="mt-1 text-sm leading-5 text-stone-500">{copy.eventsWithPlaces}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-800">{events.length}</span>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {events.slice(0, 6).map((event) => <CompactEventRow copy={copy} event={event} key={event.id} locale={locale} onChoose={() => onChooseEvent(event)} />)}
+                    {events.length === 0 ? <p className="rounded-xl border border-dashed border-stone-200 bg-stone-50 px-4 py-5 text-sm text-stone-500 sm:col-span-2">{copy.noEvents}</p> : null}
+                </div>
+            </section>
+        </>
+    );
+}
+
 function ServiceChoiceCard({copy, locale, onChoose, selected, service}: {copy: Copy; locale: string; onChoose: () => void; selected: boolean; service: PublicService}) {
     return (
         <button className={selected ? "w-full max-w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white"} onClick={onChoose} type="button">
@@ -430,6 +499,20 @@ function ServiceChoiceCard({copy, locale, onChoose, selected, service}: {copy: C
                     <span className={selected ? "mt-1 block break-words text-xs text-stone-200" : "mt-1 block break-words text-xs text-stone-500"}>{copy.minutes(service.durationMinutes)} · {formatAmount(service.basePrice, locale)}</span>
                 </span>
                 <span className={selected ? "shrink-0 rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-900" : "shrink-0 rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-700"}>{selected ? copy.selected : copy.select}</span>
+            </span>
+        </button>
+    );
+}
+
+function CompactOpenSlotRow({copy, locale, onChoose, slot}: {copy: Copy; locale: string; onChoose: () => void; slot: PublicScheduleAvailabilityBlock}) {
+    return (
+        <button className="block w-full max-w-full rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-left transition-colors hover:border-emerald-300 hover:bg-white" onClick={onChoose} type="button">
+            <span className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+                <span className="min-w-0">
+                    <span className="block break-words text-sm font-semibold text-stone-950">{formatDate(slot.startsAt, locale)} · {formatTime(slot.startsAt, locale)}</span>
+                    <span className="mt-1 block break-words text-xs text-stone-600">{slot.specialistName} · {slot.officeName ?? copy.withoutOffice}</span>
+                </span>
+                <span className="shrink-0 rounded-full bg-white px-2 py-1 text-xs font-semibold text-emerald-800">{copy.chooseTime}</span>
             </span>
         </button>
     );
@@ -497,15 +580,63 @@ function EventDetailsModal({copy, event, isSaving, locale, onCancelEnrollment, o
     );
 }
 
-function PublicScheduleCalendar({copy, currentDate, events, locale, myBookings, onChooseEvent, onChooseSlot, onChooseUnavailable, onNavigate, slots, unavailable, view}: {copy: Copy; currentDate: Date; events: PublicFixedEvent[]; locale: string; myBookings: Booking[]; onChooseEvent: (event: PublicFixedEvent) => void; onChooseSlot: (slot: PublicScheduleAvailabilityBlock) => void; onChooseUnavailable: () => void; onNavigate: (date: Date) => void; slots: PublicScheduleAvailabilityBlock[]; unavailable: PublicScheduleUnavailableBlock[]; view: CalendarView}) {
+function PublicScheduleCalendar({
+    copy,
+    currentDate,
+    events,
+    locale,
+    myBookings,
+    onChooseEvent,
+    onChooseSlot,
+    onChooseUnavailable,
+    onNavigate,
+    selectedService,
+    slots,
+    unavailable,
+    view
+}: {
+    copy: Copy;
+    currentDate: Date;
+    events: PublicFixedEvent[];
+    locale: string;
+    myBookings: Booking[];
+    onChooseEvent: (event: PublicFixedEvent) => void;
+    onChooseSlot: (slot: PublicScheduleAvailabilityBlock) => void;
+    onChooseUnavailable: () => void;
+    onNavigate: (date: Date) => void;
+    selectedService?: PublicService;
+    slots: PublicScheduleAvailabilityBlock[];
+    unavailable: PublicScheduleUnavailableBlock[];
+    view: CalendarView;
+}) {
     const slotByEventId = new Map(slots.map((slot) => [slotKey(slot), slot]));
     const fixedEventByEventId = new Map(events.map((event) => [`event-${event.id}`, event]));
     const unavailableIds = new Set(unavailable.map((item) => item.id));
+    const groupedAvailability = selectedService ? [] : groupSlotsByDay(slots, locale, copy);
+    const slotCalendarEvents = selectedService
+        ? slots.map((slot) => ({
+            id: slotKey(slot),
+            badge: formatTimeRange(slot.startsAt, slot.endsAt, locale),
+            title: selectedService.title,
+            meta: [slot.specialistName, slot.officeName ?? copy.withoutOffice].join(" · "),
+            start: new Date(slot.startsAt),
+            end: new Date(slot.endsAt),
+            tone: "available" as const
+        }))
+        : groupedAvailability;
     const calendarEvents: AtaraksiaCalendarEvent[] = [
-        ...slots.map((slot) => ({id: slotKey(slot), title: `${copy.available} · ${slot.specialistName}`, start: new Date(slot.startsAt), end: new Date(slot.endsAt), tone: "available" as const})),
-        ...unavailable.map((item) => ({id: item.id, title: item.status === "OCCUPIED" ? copy.occupied : copy.unavailable, start: new Date(item.startsAt), end: new Date(item.endsAt), tone: "blocked" as const})),
-        ...myBookings.map((booking) => ({id: `my-booking-${booking.id}`, title: `${bookingServiceTitle(booking, locale)} · ${booking.specialistName}`, start: new Date(booking.startsAt), end: new Date(booking.endsAt), tone: "booking" as const})),
-        ...events.map((event) => ({id: `event-${event.id}`, title: event.enrolled ? `${event.title} · ${copy.enrolled}` : event.full ? `${event.title} · ${copy.full}` : `${event.title} · ${copy.remaining(event.remainingPlaces)}`, start: new Date(event.startsAt), end: new Date(event.endsAt), tone: "booking" as const}))
+        ...slotCalendarEvents,
+        ...compactUnavailable(unavailable, view, locale, copy).map((item) => ({
+            id: item.id,
+            badge: item.badge,
+            meta: item.meta,
+            title: item.title,
+            start: new Date(item.startsAt),
+            end: new Date(item.endsAt),
+            tone: item.tone
+        })),
+        ...myBookings.map((booking) => ({id: `my-booking-${booking.id}`, badge: formatTimeRange(booking.startsAt, booking.endsAt, locale), title: bookingServiceTitle(booking, locale), meta: booking.specialistName, start: new Date(booking.startsAt), end: new Date(booking.endsAt), tone: "booking" as const})),
+        ...events.map((event) => ({id: `event-${event.id}`, badge: formatTimeRange(event.startsAt, event.endsAt, locale), title: event.title, meta: event.enrolled ? copy.enrolled : event.full ? copy.full : copy.remaining(event.remainingPlaces), start: new Date(event.startsAt), end: new Date(event.endsAt), tone: "event" as const}))
     ];
 
     if (calendarEvents.length === 0) {
@@ -525,9 +656,11 @@ function PublicScheduleCalendar({copy, currentDate, events, locale, myBookings, 
                     if (slot) return onChooseSlot(slot);
                     const fixedEvent = fixedEventByEventId.get(event.id);
                     if (fixedEvent) return onChooseEvent(fixedEvent);
+                    if (event.id.startsWith("availability-day-") && event.start) return onNavigate(event.start);
                     if (unavailableIds.has(event.id)) return onChooseUnavailable();
                     return undefined;
                 }}
+                variant="booking"
                 view={toCalendarView(view)}
             />
         </div>
@@ -665,6 +798,66 @@ function serviceDurationSlot(slot: PublicScheduleAvailabilityBlock, service: Pub
     endsAt.setMinutes(endsAt.getMinutes() + service.durationMinutes);
     if (endsAt.getTime() > new Date(slot.endsAt).getTime()) return null;
     return {...slot, endsAt: endsAt.toISOString()};
+}
+
+function groupSlotsByDay(slots: PublicScheduleAvailabilityBlock[], locale: string, copy: Copy): AtaraksiaCalendarEvent[] {
+    const grouped = new Map<string, PublicScheduleAvailabilityBlock[]>();
+    for (const slot of slots) {
+        const key = slot.startsAt.slice(0, 10);
+        grouped.set(key, [...(grouped.get(key) ?? []), slot]);
+    }
+
+    return Array.from(grouped.entries()).map(([dateKey, daySlots]) => {
+        const sorted = [...daySlots].sort((first, second) => new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime());
+        const start = new Date(sorted[0].startsAt);
+        const end = new Date(sorted[sorted.length - 1].endsAt);
+        return {
+            id: `availability-day-${dateKey}`,
+            badge: copy.available,
+            title: copy.slotCount(sorted.length),
+            meta: `${formatTime(sorted[0].startsAt, locale)} · ${sorted[0].officeName ?? copy.withoutOffice}`,
+            start,
+            end,
+            tone: "available" as const
+        };
+    });
+}
+
+function compactUnavailable(unavailable: PublicScheduleUnavailableBlock[], view: CalendarView, locale: string, copy: Copy) {
+    if (view === "day" || view === "list") {
+        return unavailable.map((item) => ({
+            id: item.id,
+            badge: formatTimeRange(item.startsAt, item.endsAt, locale),
+            title: item.status === "BUFFER" ? copy.unavailable : item.status === "OCCUPIED" ? copy.occupied : copy.unavailable,
+            meta: [item.specialistName, item.officeName ?? copy.withoutOffice].join(" · "),
+            startsAt: item.startsAt,
+            endsAt: item.endsAt,
+            tone: item.status === "BUFFER" ? "buffer" as const : "blocked" as const
+        }));
+    }
+
+    const grouped = new Map<string, PublicScheduleUnavailableBlock[]>();
+    for (const item of unavailable) {
+        const key = item.startsAt.slice(0, 10);
+        grouped.set(key, [...(grouped.get(key) ?? []), item]);
+    }
+
+    return Array.from(grouped.entries()).map(([dateKey, items]) => {
+        const sorted = [...items].sort((first, second) => new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime());
+        return {
+            id: `unavailable-day-${dateKey}`,
+            badge: copy.unavailable,
+            title: `${items.length}`,
+            meta: formatTime(sorted[0].startsAt, locale),
+            startsAt: sorted[0].startsAt,
+            endsAt: sorted[sorted.length - 1].endsAt,
+            tone: "blocked" as const
+        };
+    });
+}
+
+function formatTimeRange(start: string, end: string, locale: string) {
+    return `${formatTime(start, locale)}–${formatTime(end, locale)}`;
 }
 
 function toId(value: string): number | "" {

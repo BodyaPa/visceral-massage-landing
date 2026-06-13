@@ -1,15 +1,16 @@
 import {createApi} from "@reduxjs/toolkit/query/react";
 import {baseQuery} from "@/shared/api/baseQuery";
 import type {
+    DayPlanCopyInput,
+    DayPlanCopyResponse,
     PublicFixedEvent,
     PublicScheduleAvailabilityBlock,
     PublicScheduleUnavailableBlock,
-	    SpecialistFixedEvent,
-	    SpecialistFixedEventEnrollment,
-	    SpecialistFixedEventInput,
-	    DayPlanCopyInput,
-	    DayPlanCopyResponse,
-	    SpecialistAvailabilityBlock,
+    ScheduleConfig,
+    SpecialistAvailabilityBlock,
+    SpecialistFixedEvent,
+    SpecialistFixedEventEnrollment,
+    SpecialistFixedEventInput,
     SpecialistAvailabilityInput
 } from "@/types/schedule";
 import type {Locale} from "@/i18n";
@@ -35,6 +36,9 @@ export const scheduleApi = createApi({
     baseQuery,
     tagTypes: ["ScheduleAvailability"],
     endpoints: (build) => ({
+        getScheduleConfig: build.query<ScheduleConfig, void>({
+            query: () => "/schedule/config"
+        }),
         listPublicAvailability: build.query<PublicScheduleAvailabilityBlock[], ListPublicAvailabilityArgs>({
             query: ({from, to, officeId, serviceId, specialistId}) => {
                 const params = new URLSearchParams({from, to});
@@ -166,8 +170,9 @@ export const scheduleApi = createApi({
 });
 
 export const {
-	    useCreateAvailabilityMutation,
-	    useCopyDayPlanMutation,
+    useCreateAvailabilityMutation,
+    useCopyDayPlanMutation,
+    useGetScheduleConfigQuery,
     useCancelFixedEventEnrollmentMutation,
     useCreateSpecialistEventMutation,
     useDeleteAvailabilityMutation,

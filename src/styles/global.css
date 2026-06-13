@@ -91,10 +91,73 @@ button {
 
 .ataraksia-calendar .rbc-event {
   border: 1px solid transparent;
-  border-radius: 0.375rem;
-  padding: 0.15rem 0.3rem;
-  overflow-wrap: anywhere;
+  border-radius: 0.45rem;
+  padding: 0;
+  overflow: hidden;
+  overflow-wrap: normal;
   white-space: normal;
+}
+
+.ataraksia-calendar .rbc-event-content {
+  min-width: 0;
+}
+
+.ataraksia-calendar .rbc-event-label {
+  display: none;
+}
+
+.ataraksia-calendar-event-content {
+  display: grid;
+  min-width: 0;
+  gap: 0.05rem;
+  padding: 0.22rem 0.35rem;
+  line-height: 1.18;
+}
+
+.ataraksia-calendar-event-badge {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  opacity: 0.9;
+}
+
+.ataraksia-calendar-event-title {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.ataraksia-calendar-event-meta {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.6875rem;
+  opacity: 0.86;
+}
+
+.ataraksia-calendar-booking .rbc-month-view .rbc-event,
+.ataraksia-calendar-booking .rbc-time-view .rbc-event {
+  min-height: 1.55rem;
+}
+
+.ataraksia-calendar-planner .rbc-time-view .rbc-event {
+  min-height: 2.4rem;
+}
+
+.ataraksia-calendar-planner .rbc-time-view .ataraksia-calendar-event-content {
+  gap: 0.1rem;
+  padding: 0.35rem 0.45rem;
 }
 
 .ataraksia-calendar .ataraksia-calendar-event-available {
@@ -107,6 +170,12 @@ button {
   border-color: #fde68a;
   background: #fffbeb;
   color: #92400e;
+}
+
+.ataraksia-calendar .ataraksia-calendar-event-buffer {
+  border-color: #d6d3d1;
+  background: #f5f5f4;
+  color: #57534e;
 }
 
 .ataraksia-calendar .ataraksia-calendar-event-booking {

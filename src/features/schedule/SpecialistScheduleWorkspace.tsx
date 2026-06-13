@@ -14,6 +14,7 @@ import {
     useCopyDayPlanMutation,
     useCreateSpecialistEventMutation,
     useDeleteAvailabilityMutation,
+    useGetScheduleConfigQuery,
     useListAvailabilityQuery,
     useListSpecialistEventEnrollmentsQuery,
     useListSpecialistEventsQuery,
@@ -33,7 +34,9 @@ import type {Locale} from "@/i18n";
 
 const views = ["month", "week", "day", "list"] as const;
 const emptyBlocks: SpecialistAvailabilityBlock[] = [];
+const defaultAppointmentBufferMinutes = 30;
 type CalendarView = typeof views[number];
+type PlannerMode = "plan" | "bookings" | "agenda";
 
 type Props = {
     canManageAllSpecialists: boolean;
@@ -53,13 +56,21 @@ type AvailabilityForm = {
 type CalendarFilterState = {
     officeId: number | "";
     serviceId: number | "";
-    itemType: "all" | ScheduleBlockType | "BOOKING" | "FIXED_EVENT";
+    itemType: "all" | ScheduleBlockType | "BOOKING" | "FIXED_EVENT" | "BUFFER";
     status: "all" | ScheduleBlockStatus | SpecialistBooking["status"] | "ACTIVE_EVENT" | "INACTIVE_EVENT";
 };
 type CalendarDetail = {
     title: string;
-    tone: "available" | "blocked" | "booking" | "event";
+    tone: "available" | "blocked" | "booking" | "event" | "buffer";
     rows: Array<{label: string; value: string}>;
+};
+type CalendarBuffer = {
+    id: string;
+    startsAt: string;
+    endsAt: string;
+    specialistName: string;
+    officeId: number | null;
+    officeName: string | null;
 };
 type ManualBookingSlot = {
     key: string;
@@ -94,6 +105,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     );
     const {data: officesData, isFetching: officesFetching, isError: officesError} = useListPublicOfficesQuery({size: 100});
     const {data: servicesData, isFetching: servicesFetching, isError: servicesError} = useListServicesQuery({lang: locale as Locale, size: 100});
+    const {data: scheduleConfig} = useGetScheduleConfigQuery();
     const blocks = data ?? emptyBlocks;
     const offices = officesData?.content ?? [];
     const services = servicesData?.content ?? [];
@@ -105,6 +117,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const [updateAvailability, {isLoading: isUpdatingAvailability}] = useUpdateAvailabilityMutation();
     const [deleteAvailability, {isLoading: isDeleting}] = useDeleteAvailabilityMutation();
     const [selectedView, setSelectedView] = useState<CalendarView>("week");
+    const [plannerMode, setPlannerMode] = useState<PlannerMode>("plan");
     const [form, setForm] = useState<AvailabilityForm>(() => buildDefaultForm());
     const [editingBlock, setEditingBlock] = useState<SpecialistAvailabilityBlock | null>(null);
     const [editingEvent, setEditingEvent] = useState<SpecialistFixedEvent | null>(null);
@@ -116,15 +129,18 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const blockedBlocks = blocks.filter((block) => block.status === "BLOCKED");
     const eventServices = services.filter((service) => service.bookingMode === "FIXED_EVENT");
     const individualServices = services.filter((service) => service.bookingMode === "INDIVIDUAL_APPOINTMENT");
+    const appointmentBufferMinutes = scheduleConfig?.appointmentBufferMinutes ?? defaultAppointmentBufferMinutes;
     const filteredCalendarBlocks = useMemo(() => filterCalendarBlocks(blocks, calendarFilters), [blocks, calendarFilters]);
     const filteredCalendarEvents = useMemo(() => filterCalendarEvents(events, calendarFilters), [events, calendarFilters]);
     const filteredCalendarBookings = useMemo(() => filterCalendarBookings(bookings, calendarFilters), [bookings, calendarFilters]);
+    const filteredCalendarBuffers = useMemo(() => filterCalendarBuffers(buildCalendarBuffers(bookings, events, appointmentBufferMinutes), calendarFilters), [bookings, events, appointmentBufferMinutes, calendarFilters]);
 
     useEffect(() => {
         const mobileQuery = window.matchMedia("(max-width: 639px)");
 
         if (mobileQuery.matches) {
-            setSelectedView("day");
+            setSelectedView("list");
+            setPlannerMode("agenda");
         }
     }, []);
 
@@ -253,7 +269,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 	                            </button>
 	                        </div>
 	                    </div>
-                    <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                    <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         <StatCard label={t("stats.available")} value={availableCount} tone="success" />
                         <StatCard label={t("stats.blocked")} value={blockedCount} tone="warning" />
                         <StatCard label={copy.eventsTitle} value={events.length} />
@@ -285,6 +301,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                             ))}
                         </div>
                     </div>
+                    <PlannerModeSwitch copy={copy} mode={plannerMode} onChange={setPlannerMode} />
                     <CalendarFilters
                         copy={copy}
                         filters={calendarFilters}
@@ -293,12 +310,13 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         onReset={() => setCalendarFilters({officeId: "", serviceId: "", itemType: "all", status: "all"})}
                         services={services}
                     />
-                    <div className="flex flex-wrap gap-2 border-b border-stone-200 px-4 py-3">
-                        <LegendItem className="border-emerald-200 bg-emerald-50" label={t("legend.available")} />
-                        <LegendItem className="border-amber-200 bg-amber-50" label={t("legend.blocked")} />
-                        <LegendItem className="border-stone-400 bg-stone-700" label={t("legend.booking")} />
-                        <LegendItem className="border-sky-200 bg-sky-50" label={copy.eventsTitle} />
-                    </div>
+                        <div className="flex flex-wrap gap-2 border-b border-stone-200 px-4 py-3">
+                            <LegendItem className="border-emerald-200 bg-emerald-50" label={t("legend.available")} />
+                            <LegendItem className="border-amber-200 bg-amber-50" label={t("legend.blocked")} />
+                            <LegendItem className="border-stone-400 bg-stone-700" label={t("legend.booking")} />
+                            <LegendItem className="border-sky-200 bg-sky-50" label={copy.eventsTitle} />
+                            <LegendItem className="border-stone-300 bg-stone-100" label={copy.buffer} />
+                        </div>
 
                     {isError ? <p className="m-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("calendar.loadError")}</p> : null}
 
@@ -306,11 +324,13 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         <CalendarSurface
                             bookings={filteredCalendarBookings}
                             blocks={filteredCalendarBlocks}
+                            buffers={filteredCalendarBuffers}
                             currentDate={currentDate}
                             events={filteredCalendarEvents}
                             locale={locale}
                             onNavigate={setCurrentDate}
                             onSelectDetail={setSelectedCalendarDetail}
+                            plannerMode={plannerMode}
                             selectedView={selectedView}
                             copy={copy}
                             t={t}
@@ -485,6 +505,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                 <ManualBookingForm
                     blocks={blocks}
                     bookings={bookings}
+                    appointmentBufferMinutes={appointmentBufferMinutes}
                     events={events}
                     locale={locale}
                     selectedSpecialistId={selectedSpecialistId}
@@ -494,6 +515,13 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     copy={copy}
                     onCreated={refetchAvailability}
                     t={t}
+                />
+                <DayPlanTemplateForm
+                    copy={copy}
+                    individualServices={individualServices}
+                    offices={offices}
+                    onCreated={refetchAvailability}
+                    selectedSpecialistId={selectedSpecialistId}
                 />
                 <DayPlanCopyForm
                     conflictsLabel={copy.copyConflicts}
@@ -551,60 +579,99 @@ const compactSelectClass = "h-9 w-full rounded-lg border border-stone-300 bg-whi
 function CalendarSurface({
     bookings,
     blocks,
+    buffers,
     copy,
     currentDate,
     events,
     locale,
     onNavigate,
     onSelectDetail,
+    plannerMode,
     selectedView,
     t
 }: {
     bookings: SpecialistBooking[];
     blocks: SpecialistAvailabilityBlock[];
+    buffers: CalendarBuffer[];
     copy: ReturnType<typeof scheduleCopy>;
     currentDate: Date;
     events: SpecialistFixedEvent[];
     locale: string;
     onNavigate: (date: Date) => void;
     onSelectDetail: (detail: CalendarDetail) => void;
+    plannerMode: PlannerMode;
     selectedView: CalendarView;
     t: T;
 }) {
+    const detailByEventId = new Map<string, CalendarDetail>();
+    const visibleBlocks = plannerMode === "bookings" ? [] : blocks;
+    const visibleBookings = plannerMode === "plan" ? [] : bookings;
+    const visibleEvents = events;
+    const visibleBuffers = plannerMode === "agenda" ? buffers : buffers.slice(0, 80);
+
     if (selectedView === "list") {
-        return <ScheduleBlockList blocks={blocks} copy={copy} deleting={false} locale={locale} onDelete={() => undefined} t={t} title={copy.availabilityTitle} viewOnly />;
+        return (
+            <PlannerAgendaList
+                bookings={visibleBookings}
+                blocks={visibleBlocks}
+                buffers={visibleBuffers}
+                copy={copy}
+                events={visibleEvents}
+                locale={locale}
+                onSelectDetail={onSelectDetail}
+                t={t}
+            />
+        );
     }
 
-    const detailByEventId = new Map<string, CalendarDetail>();
     const calendarEvents: AtaraksiaCalendarEvent[] = [
-        ...blocks.map((block) => {
+        ...visibleBlocks.map((block) => {
             const id = `block-${block.id}`;
             detailByEventId.set(id, blockCalendarDetail(block, copy, locale, t));
             return {
                 id,
+                badge: formatTimeRange(block.startsAt, block.endsAt, locale),
                 title: compactBlockCalendarLabel(block, copy, locale, t),
+                meta: [block.specialistName, block.officeName].filter(Boolean).join(" · "),
                 start: new Date(block.startsAt),
                 end: new Date(block.endsAt),
                 tone: block.booked ? "booking" as const : block.status === "AVAILABLE" ? "available" as const : "blocked" as const
             };
         }),
-        ...bookings.map((booking) => {
+        ...visibleBookings.map((booking) => {
             const id = `booking-${booking.id}`;
             detailByEventId.set(id, bookingCalendarDetail(booking, copy, locale, t));
             return {
                 id,
-                title: `${bookingServiceTitle(booking, locale)} · ${booking.clientName}`,
+                badge: formatTimeRange(booking.startsAt, booking.endsAt, locale),
+                title: bookingServiceTitle(booking, locale),
+                meta: [booking.clientName, booking.officeName].filter(Boolean).join(" · "),
                 start: new Date(booking.startsAt),
                 end: new Date(booking.endsAt),
                 tone: "booking" as const
             };
         }),
-        ...events.map((event) => {
+        ...visibleBuffers.map((buffer) => {
+            const id = `buffer-${buffer.id}`;
+            detailByEventId.set(id, bufferCalendarDetail(buffer, copy, locale));
+            return {
+                id,
+                badge: formatTimeRange(buffer.startsAt, buffer.endsAt, locale),
+                title: copy.buffer,
+                meta: [buffer.specialistName, buffer.officeName].filter(Boolean).join(" · "),
+                start: new Date(buffer.startsAt),
+                end: new Date(buffer.endsAt),
+                tone: "buffer" as const
+            };
+        }),
+        ...visibleEvents.map((event) => {
             const id = `event-${event.id}`;
             detailByEventId.set(id, eventCalendarDetail(event, copy, locale));
             return {
                 id,
-                title: `${event.serviceTitle} · ${event.enrolledCount}/${event.capacity}`,
+                badge: formatTimeRange(event.startsAt, event.endsAt, locale),
+                title: event.serviceTitle,
+                meta: `${event.enrolledCount}/${event.capacity} · ${event.officeName ?? copy.noOffice}`,
                 start: new Date(event.startsAt),
                 end: new Date(event.endsAt),
                 tone: "event" as const
@@ -623,8 +690,83 @@ function CalendarSurface({
                 const detail = detailByEventId.get(event.id);
                 if (detail) onSelectDetail(detail);
             }}
+            variant="planner"
             view={toCalendarView(selectedView)}
         />
+    );
+}
+
+function PlannerModeSwitch({copy, mode, onChange}: {copy: ReturnType<typeof scheduleCopy>; mode: PlannerMode; onChange: (mode: PlannerMode) => void}) {
+    const options: Array<{label: string; value: PlannerMode}> = [
+        {label: copy.planMode, value: "plan"},
+        {label: copy.bookingsTitle, value: "bookings"},
+        {label: copy.agendaMode, value: "agenda"}
+    ];
+
+    return (
+        <div className="border-b border-stone-200 px-4 py-3">
+            <div className="grid gap-1 rounded-lg bg-stone-100 p-1 sm:inline-grid sm:grid-cols-3">
+                {options.map((option) => (
+                    <button
+                        aria-pressed={mode === option.value}
+                        className={mode === option.value ? activeViewClass : viewClass}
+                        key={option.value}
+                        onClick={() => onChange(option.value)}
+                        type="button"
+                    >
+                        {option.label}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function PlannerAgendaList({
+    bookings,
+    blocks,
+    buffers,
+    copy,
+    events,
+    locale,
+    onSelectDetail,
+    t
+}: {
+    bookings: SpecialistBooking[];
+    blocks: SpecialistAvailabilityBlock[];
+    buffers: CalendarBuffer[];
+    copy: ReturnType<typeof scheduleCopy>;
+    events: SpecialistFixedEvent[];
+    locale: string;
+    onSelectDetail: (detail: CalendarDetail) => void;
+    t: T;
+}) {
+    const entries = [
+        ...blocks.map((block) => ({detail: blockCalendarDetail(block, copy, locale, t), end: block.endsAt, id: `block-${block.id}`, specialistName: block.specialistName, start: block.startsAt, tone: block.booked ? "booking" as const : block.status === "AVAILABLE" ? "available" as const : "blocked" as const})),
+        ...bookings.map((booking) => ({detail: bookingCalendarDetail(booking, copy, locale, t), end: booking.endsAt, id: `booking-${booking.id}`, specialistName: booking.specialistName, start: booking.startsAt, tone: "booking" as const})),
+        ...events.map((event) => ({detail: eventCalendarDetail(event, copy, locale), end: event.endsAt, id: `event-${event.id}`, specialistName: event.specialistName, start: event.startsAt, tone: "event" as const})),
+        ...buffers.map((buffer) => ({detail: bufferCalendarDetail(buffer, copy, locale), end: buffer.endsAt, id: `buffer-${buffer.id}`, specialistName: buffer.specialistName, start: buffer.startsAt, tone: "buffer" as const}))
+    ].sort((first, second) => new Date(first.start).getTime() - new Date(second.start).getTime()).slice(0, 160);
+
+    if (entries.length === 0) {
+        return <p className="rounded-xl border border-dashed border-stone-200 bg-stone-50 px-4 py-8 text-center text-sm text-stone-500">{t("blocks.empty")}</p>;
+    }
+
+    return (
+        <div className="space-y-3">
+            {entries.map((entry) => (
+                <button className="grid w-full min-w-0 gap-3 rounded-xl border border-stone-200 bg-white px-3 py-3 text-left transition-colors hover:border-stone-400 hover:bg-stone-50 sm:grid-cols-[112px_minmax(0,1fr)]" key={entry.id} onClick={() => onSelectDetail(entry.detail)} type="button">
+                    <span className="text-sm font-semibold text-stone-950">{formatTimeRange(entry.start, entry.end, locale)}</span>
+                    <span className="min-w-0">
+                        <span className="flex min-w-0 flex-wrap items-center gap-2">
+                            <span className={`h-2.5 w-2.5 rounded-full ${agendaToneDot(entry.tone)}`} aria-hidden="true" />
+                            <span className="min-w-0 truncate text-sm font-semibold text-stone-950">{entry.detail.title}</span>
+                        </span>
+                        <span className="mt-1 block truncate text-xs text-stone-500">{entry.specialistName}</span>
+                    </span>
+                </button>
+            ))}
+        </div>
     );
 }
 
@@ -666,6 +808,7 @@ function CalendarFilters({
                         <option value="BLOCK">{copy.blocksTitle}</option>
                         <option value="FIXED_EVENT">{copy.eventsTitle}</option>
                         <option value="BOOKING">{copy.bookingsTitle}</option>
+                        <option value="BUFFER">{copy.buffer}</option>
                     </select>
                 </CompactSelect>
                 <CompactSelect label={copy.statusFilter}>
@@ -706,6 +849,8 @@ function CalendarDetailPanel({closeLabel, detail, onClose}: {closeLabel: string;
         ? "border-amber-200 bg-amber-50 text-amber-800"
         : detail.tone === "event"
         ? "border-sky-200 bg-sky-50 text-sky-800"
+        : detail.tone === "buffer"
+        ? "border-stone-300 bg-stone-100 text-stone-700"
         : "border-stone-300 bg-stone-800 text-white";
 
     return (
@@ -1123,6 +1268,7 @@ function EventEnrollmentsPanel({copy, enrollments, isError, isFetching, locale}:
 }
 
 function ManualBookingForm({
+    appointmentBufferMinutes,
     blocks,
     bookings,
     copy,
@@ -1135,6 +1281,7 @@ function ManualBookingForm({
     servicesFetching,
     t
 }: {
+    appointmentBufferMinutes: number;
     blocks: SpecialistAvailabilityBlock[];
     bookings: SpecialistBooking[];
     copy: ReturnType<typeof scheduleCopy>;
@@ -1154,7 +1301,7 @@ function ManualBookingForm({
     const [serviceId, setServiceId] = useState("");
     const [reminderOptIn, setReminderOptIn] = useState(false);
     const selectedService = services.find((service) => String(service.id) === serviceId);
-    const manualSlots = useMemo(() => buildManualBookingSlots(blocks, bookings, events, selectedService), [blocks, bookings, events, selectedService]);
+    const manualSlots = useMemo(() => buildManualBookingSlots(blocks, bookings, events, appointmentBufferMinutes, selectedService), [blocks, bookings, events, appointmentBufferMinutes, selectedService]);
     const selectedSlot = manualSlots.find((slot) => slot.key === selectedSlotKey);
 
     async function submit() {
@@ -1216,6 +1363,90 @@ function ManualBookingForm({
                 </label>
                 <button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={disabled} onClick={submit} type="button">
                     {isLoading ? t("manualBooking.saving") : t("manualBooking.action")}
+                </button>
+            </div>
+        </section>
+    );
+}
+
+function DayPlanTemplateForm({
+    copy,
+    individualServices,
+    offices,
+    onCreated,
+    selectedSpecialistId
+}: {
+    copy: ReturnType<typeof scheduleCopy>;
+    individualServices: PublicService[];
+    offices: Array<{id: number; name: string}>;
+    onCreated: () => void;
+    selectedSpecialistId: number | "";
+}) {
+    const toast = useToast();
+    const [createAvailability, {isLoading}] = useCreateAvailabilityMutation();
+    const [date, setDate] = useState(() => toDateInputValue(new Date()));
+    const [officeId, setOfficeId] = useState("");
+    const [serviceId, setServiceId] = useState("");
+    const selectedService = individualServices.find((service) => String(service.id) === serviceId);
+    const disabled = isLoading || !date || !selectedService;
+
+    async function submit() {
+        if (!selectedService) return;
+        const plan = [
+            {start: "09:00", end: "10:00", type: "slot"},
+            {start: "10:00", end: "10:30", type: "break"},
+            {start: "10:30", end: "11:30", type: "slot"},
+            {start: "13:00", end: "14:00", type: "slot"},
+            {start: "14:00", end: "14:30", type: "break"},
+            {start: "14:30", end: "15:30", type: "slot"}
+        ] as const;
+
+        try {
+            for (const item of plan) {
+                await createAvailability({
+                    capacity: item.type === "slot" ? 1 : null,
+                    endsAt: toIsoDateAndTime(date, item.end),
+                    itemType: item.type === "slot" ? "APPOINTMENT_SLOT" : "BLOCK",
+                    notes: item.type === "slot" ? copy.templateSlotNote : copy.templateBreakNote,
+                    officeId: officeId ? Number(officeId) : null,
+                    serviceId: item.type === "slot" ? selectedService.id : null,
+                    specialistId: selectedSpecialistId === "" ? null : selectedSpecialistId,
+                    startsAt: toIsoDateAndTime(date, item.start),
+                    status: item.type === "slot" ? "AVAILABLE" : "BLOCKED"
+                }).unwrap();
+            }
+            toast.success(copy.templateCreated);
+            onCreated();
+        } catch {
+            toast.error(copy.templateError);
+        }
+    }
+
+    return (
+        <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+            <h2 className="break-words text-sm font-semibold uppercase tracking-wide text-stone-500">{copy.templateTitle}</h2>
+            <p className="mt-2 break-words text-xs leading-5 text-stone-500">{copy.templateBody}</p>
+            <div className="mt-4 grid gap-3">
+                <Field label={copy.copySourceDate}>
+                    <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => setDate(event.target.value)} type="date" value={date} />
+                </Field>
+                <Field label={copy.office}>
+                    <select className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => setOfficeId(event.target.value)} value={officeId}>
+                        <option value="">{copy.noOffice}</option>
+                        {offices.map((office) => <option key={office.id} value={office.id}>{office.name}</option>)}
+                    </select>
+                </Field>
+                <Field label={copy.slotService}>
+                    <select className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => setServiceId(event.target.value)} value={serviceId}>
+                        <option value="">{copy.selectSlotService}</option>
+                        {individualServices.map((service) => <option key={service.id} value={service.id}>{service.title}</option>)}
+                    </select>
+                </Field>
+                <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-xs leading-5 text-stone-600">
+                    09:00–10:00 · 10:00–10:30 · 10:30–11:30 · 13:00–14:00 · 14:00–14:30 · 14:30–15:30
+                </div>
+                <button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={disabled} onClick={submit} type="button">
+                    {isLoading ? copy.saving : copy.templateAction}
                 </button>
             </div>
         </section>
@@ -1309,6 +1540,14 @@ function LegendItem({className, label}: {className: string; label: string}) {
     );
 }
 
+function agendaToneDot(tone: CalendarDetail["tone"]) {
+    if (tone === "available") return "bg-emerald-500";
+    if (tone === "blocked") return "bg-amber-500";
+    if (tone === "event") return "bg-sky-500";
+    if (tone === "buffer") return "bg-stone-400";
+    return "bg-stone-800";
+}
+
 function eventToInput(event: SpecialistFixedEvent, active: boolean): SpecialistFixedEventInput {
     return {
         specialistId: event.specialistId,
@@ -1353,6 +1592,56 @@ function filterCalendarBookings(bookings: SpecialistBooking[], filters: Calendar
         if (filters.status !== "all" && booking.status !== filters.status) return false;
         return true;
     });
+}
+
+function filterCalendarBuffers(buffers: CalendarBuffer[], filters: CalendarFilterState) {
+    return buffers.filter((buffer) => {
+        if (filters.officeId !== "" && buffer.officeId !== filters.officeId) return false;
+        if (filters.serviceId !== "") return false;
+        if (filters.itemType !== "all" && filters.itemType !== "BUFFER") return false;
+        if (filters.status !== "all") return false;
+        return true;
+    });
+}
+
+function buildCalendarBuffers(bookings: SpecialistBooking[], events: SpecialistFixedEvent[], appointmentBufferMinutes: number): CalendarBuffer[] {
+    const buffers: CalendarBuffer[] = [];
+    for (const booking of bookings.filter((item) => item.status !== "CANCELLED")) {
+        buffers.push(...bufferRanges(
+            `booking-${booking.id}`,
+            booking.startsAt,
+            booking.endsAt,
+            booking.specialistName,
+            booking.officeId,
+            booking.officeName,
+            appointmentBufferMinutes
+        ));
+    }
+    for (const event of events.filter((item) => item.active)) {
+        buffers.push(...bufferRanges(
+            `event-${event.id}`,
+            event.startsAt,
+            event.endsAt,
+            event.specialistName,
+            event.officeId,
+            event.officeName,
+            appointmentBufferMinutes
+        ));
+    }
+    return buffers;
+}
+
+function bufferRanges(idPrefix: string, startsAt: string, endsAt: string, specialistName: string, officeId: number | null, officeName: string | null, appointmentBufferMinutes: number): CalendarBuffer[] {
+    const start = new Date(startsAt);
+    const end = new Date(endsAt);
+    const before = new Date(start);
+    before.setMinutes(before.getMinutes() - appointmentBufferMinutes);
+    const after = new Date(end);
+    after.setMinutes(after.getMinutes() + appointmentBufferMinutes);
+    return [
+        {id: `${idPrefix}-before`, startsAt: before.toISOString(), endsAt: start.toISOString(), specialistName, officeId, officeName},
+        {id: `${idPrefix}-after`, startsAt: end.toISOString(), endsAt: after.toISOString(), specialistName, officeId, officeName}
+    ];
 }
 
 function compactBlockCalendarLabel(block: SpecialistAvailabilityBlock, copy: ReturnType<typeof scheduleCopy>, locale: string, t: T) {
@@ -1412,6 +1701,20 @@ function eventCalendarDetail(event: SpecialistFixedEvent, copy: ReturnType<typeo
     };
 }
 
+function bufferCalendarDetail(buffer: CalendarBuffer, copy: ReturnType<typeof scheduleCopy>, locale: string): CalendarDetail {
+    return {
+        title: copy.buffer,
+        tone: "buffer",
+        rows: [
+            {label: copy.detailType, value: copy.buffer},
+            {label: copy.startsAt, value: formatDateTime(buffer.startsAt, locale)},
+            {label: copy.endsAt, value: formatDateTime(buffer.endsAt, locale)},
+            {label: copy.specialistFilter, value: buffer.specialistName},
+            {label: copy.office, value: buffer.officeName ?? copy.noOffice}
+        ]
+    };
+}
+
 function toOptionalNumber(value: string): number | "" {
     return value ? Number(value) : "";
 }
@@ -1441,6 +1744,8 @@ function scheduleCopy(t: T) {
         blocksTitle: t("schedule.blocksTitle"),
         eventsTitle: t("schedule.eventsTitle"),
         bookingsTitle: t("schedule.bookingsTitle"),
+        planMode: t("schedule.planMode"),
+        agendaMode: t("schedule.agendaMode"),
         specialistFilter: t("schedule.specialistFilter"),
         allSpecialists: t("schedule.allSpecialists"),
         specialistsError: t("schedule.specialistsError"),
@@ -1509,6 +1814,7 @@ function scheduleCopy(t: T) {
         editBlock: t("schedule.editBlock"),
         availabilityListHint: t("schedule.availabilityListHint"),
         blocksListHint: t("schedule.blocksListHint"),
+        buffer: t("schedule.buffer"),
         availabilityCutHint: t("schedule.availabilityCutHint"),
         appointmentSlotHint: t("schedule.appointmentSlotHint"),
         copyTitle: t("schedule.copyTitle"),
@@ -1519,6 +1825,13 @@ function scheduleCopy(t: T) {
         copyAvailability: t("schedule.copyAvailability"),
         copyEvents: t("schedule.copyEvents"),
         copyAction: t("schedule.copyAction"),
+        templateTitle: t("schedule.templateTitle"),
+        templateBody: t("schedule.templateBody"),
+        templateAction: t("schedule.templateAction"),
+        templateCreated: t("schedule.templateCreated"),
+        templateError: t("schedule.templateError"),
+        templateSlotNote: t("schedule.templateSlotNote"),
+        templateBreakNote: t("schedule.templateBreakNote"),
         copyInvalid: t("schedule.copyInvalid"),
         copyHasConflicts: t("schedule.copyHasConflicts"),
         copyConflicts: t("schedule.copyConflicts"),
@@ -1583,7 +1896,13 @@ function buildCalendarRange(date: Date) {
     };
 }
 
-function buildManualBookingSlots(blocks: SpecialistAvailabilityBlock[], bookings: SpecialistBooking[], events: SpecialistFixedEvent[], service?: PublicService): ManualBookingSlot[] {
+function buildManualBookingSlots(
+    blocks: SpecialistAvailabilityBlock[],
+    bookings: SpecialistBooking[],
+    events: SpecialistFixedEvent[],
+    appointmentBufferMinutes: number,
+    service?: PublicService
+): ManualBookingSlot[] {
     if (!service) return [];
 
     const now = Date.now();
@@ -1598,8 +1917,8 @@ function buildManualBookingSlots(blocks: SpecialistAvailabilityBlock[], bookings
             if (block.serviceId !== service.id || block.booked) continue;
             const slotStart = new Date(block.startsAt);
             const slotEnd = new Date(block.endsAt);
-            const overlapsBooking = activeBookings.some((booking) => overlaps(slotStart, slotEnd, new Date(booking.startsAt), new Date(booking.endsAt)));
-            const overlapsEvent = activeEvents.some((event) => overlaps(slotStart, slotEnd, new Date(event.startsAt), new Date(event.endsAt)));
+            const overlapsBooking = activeBookings.some((booking) => overlapsBuffered(slotStart, slotEnd, booking.startsAt, booking.endsAt, appointmentBufferMinutes));
+            const overlapsEvent = activeEvents.some((event) => overlapsBuffered(slotStart, slotEnd, event.startsAt, event.endsAt, appointmentBufferMinutes));
             const overlapsBlocked = blockedBlocks.some((blocked) => overlaps(slotStart, slotEnd, new Date(blocked.startsAt), new Date(blocked.endsAt)));
 
             if (slotStart.getTime() > now && !overlapsBooking && !overlapsEvent && !overlapsBlocked) {
@@ -1623,8 +1942,8 @@ function buildManualBookingSlots(blocks: SpecialistAvailabilityBlock[], bookings
 
             if (slotEnd.getTime() > blockEnd.getTime()) break;
 
-            const overlapsBooking = activeBookings.some((booking) => overlaps(slotStart, slotEnd, new Date(booking.startsAt), new Date(booking.endsAt)));
-            const overlapsEvent = activeEvents.some((event) => overlaps(slotStart, slotEnd, new Date(event.startsAt), new Date(event.endsAt)));
+            const overlapsBooking = activeBookings.some((booking) => overlapsBuffered(slotStart, slotEnd, booking.startsAt, booking.endsAt, appointmentBufferMinutes));
+            const overlapsEvent = activeEvents.some((event) => overlapsBuffered(slotStart, slotEnd, event.startsAt, event.endsAt, appointmentBufferMinutes));
             const overlapsBlocked = blockedBlocks.some((blocked) => overlaps(slotStart, slotEnd, new Date(blocked.startsAt), new Date(blocked.endsAt)));
 
             if (slotStart.getTime() > now && !overlapsBooking && !overlapsEvent && !overlapsBlocked) {
@@ -1646,6 +1965,14 @@ function buildManualBookingSlots(blocks: SpecialistAvailabilityBlock[], bookings
 
 function overlaps(firstStart: Date, firstEnd: Date, secondStart: Date, secondEnd: Date) {
     return firstStart < secondEnd && secondStart < firstEnd;
+}
+
+function overlapsBuffered(firstStart: Date, firstEnd: Date, startsAt: string, endsAt: string, appointmentBufferMinutes: number) {
+    const secondStart = new Date(startsAt);
+    secondStart.setMinutes(secondStart.getMinutes() - appointmentBufferMinutes);
+    const secondEnd = new Date(endsAt);
+    secondEnd.setMinutes(secondEnd.getMinutes() + appointmentBufferMinutes);
+    return overlaps(firstStart, firstEnd, secondStart, secondEnd);
 }
 
 function buildDefaultForm(): AvailabilityForm {
@@ -1682,6 +2009,10 @@ function toIsoDateTime(value: string) {
     return date.toISOString();
 }
 
+function toIsoDateAndTime(date: string, time: string) {
+    return new Date(`${date}T${time}:00`).toISOString();
+}
+
 function formatDateTime(value: string, locale: string) {
     const languageTag = locale === "ua" ? "uk" : locale;
 
@@ -1700,6 +2031,10 @@ function formatTime(value: string, locale: string) {
         hour: "2-digit",
         minute: "2-digit"
     }).format(new Date(value));
+}
+
+function formatTimeRange(start: string, end: string, locale: string) {
+    return `${formatTime(start, locale)}–${formatTime(end, locale)}`;
 }
 
 function formatAmount(value: number, locale: string) {

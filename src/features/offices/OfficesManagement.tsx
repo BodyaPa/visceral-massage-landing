@@ -13,9 +13,10 @@ const emptyForm: OfficeInput = {
     active: true,
     phone: "",
     email: "",
-    locationDetails: "",
-    description: "",
-    directions: ""
+    directions: "",
+    photoUrl: "",
+    videoUrl: "",
+    googleMapsUrl: ""
 };
 
 export default function OfficesManagement() {
@@ -57,9 +58,10 @@ export default function OfficesManagement() {
             active: selectedOffice.active,
             phone: selectedOffice.phone ?? "",
             email: selectedOffice.email ?? "",
-            locationDetails: selectedOffice.locationDetails ?? "",
-            description: selectedOffice.description ?? "",
-            directions: selectedOffice.directions ?? ""
+            directions: selectedOffice.directions ?? selectedOffice.locationDetails ?? "",
+            photoUrl: selectedOffice.photoUrl ?? "",
+            videoUrl: selectedOffice.videoUrl ?? "",
+            googleMapsUrl: selectedOffice.googleMapsUrl ?? ""
         });
     }, [selectedOffice]);
 
@@ -81,9 +83,10 @@ export default function OfficesManagement() {
             ...form,
             phone: form.phone?.trim() || null,
             email: form.email?.trim() || null,
-            locationDetails: form.locationDetails?.trim() || null,
-            description: form.description?.trim() || null,
-            directions: form.directions?.trim() || null
+            directions: form.directions?.trim() || null,
+            photoUrl: form.photoUrl?.trim() || null,
+            videoUrl: form.videoUrl?.trim() || null,
+            googleMapsUrl: form.googleMapsUrl?.trim() || null
         };
     }
 
@@ -174,9 +177,9 @@ export default function OfficesManagement() {
                                             </span>
                                             <StatusBadge active={selected} enabled={office.active} label={office.active ? t("active") : t("inactive")} />
                                         </span>
-                                        {contact || office.locationDetails ? (
+                                        {contact || office.directions || office.locationDetails ? (
                                             <span className={`block break-words text-xs ${selected ? "text-stone-200" : "text-stone-500"}`}>
-                                                {[contact, office.locationDetails].filter(Boolean).join(" · ")}
+                                                {[contact, office.directions ?? office.locationDetails].filter(Boolean).join(" · ")}
                                             </span>
                                         ) : null}
                                     </span>
@@ -236,27 +239,39 @@ export default function OfficesManagement() {
                             />
                         </Field>
                     </div>
-                    <Field label={t("locationDetails")}>
-                        <textarea
-                            className="min-h-20 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                            onChange={(event) => updateField("locationDetails", event.target.value)}
-                            value={form.locationDetails ?? ""}
-                        />
-                    </Field>
-                    <Field label={t("description")}>
-                        <textarea
-                            className="min-h-24 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                            onChange={(event) => updateField("description", event.target.value)}
-                            value={form.description ?? ""}
-                        />
-                    </Field>
                     <Field label={t("directions")}>
                         <textarea
-                            className="min-h-24 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                            className="min-h-20 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
                             onChange={(event) => updateField("directions", event.target.value)}
                             value={form.directions ?? ""}
                         />
                     </Field>
+                    <div className="grid gap-3">
+                        <Field label={t("photoUrl")}>
+                            <input
+                                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                                onChange={(event) => updateField("photoUrl", event.target.value)}
+                                placeholder="https://..."
+                                value={form.photoUrl ?? ""}
+                            />
+                        </Field>
+                        <Field label={t("videoUrl")}>
+                            <input
+                                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                                onChange={(event) => updateField("videoUrl", event.target.value)}
+                                placeholder="https://..."
+                                value={form.videoUrl ?? ""}
+                            />
+                        </Field>
+                        <Field label={t("googleMapsUrl")}>
+                            <input
+                                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                                onChange={(event) => updateField("googleMapsUrl", event.target.value)}
+                                placeholder="https://maps.google.com/..."
+                                value={form.googleMapsUrl ?? ""}
+                            />
+                        </Field>
+                    </div>
                     <label className={`flex min-w-0 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition-colors ${
                         form.active ? "border-stone-300 bg-stone-100 text-stone-950" : "border-stone-200 bg-stone-50 text-stone-700"
                     }`}>

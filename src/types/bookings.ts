@@ -12,9 +12,10 @@ export interface Booking {
     officeId: number | null;
     officeName: string | null;
     officeAddress: string | null;
-    officeLocationDetails: string | null;
-    officeDescription: string | null;
     officeDirections: string | null;
+    officePhotoUrl: string | null;
+    officeVideoUrl: string | null;
+    officeGoogleMapsUrl: string | null;
     startsAt: string;
     endsAt: string;
     reminderOptIn: boolean;

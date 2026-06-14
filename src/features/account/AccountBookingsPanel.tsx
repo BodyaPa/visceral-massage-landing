@@ -112,9 +112,10 @@ function BookingCard({booking, cancelling, copy, locale, onCancel}: {booking: Bo
             <OfficeDetails
                 address={booking.officeAddress}
                 copy={copy}
-                description={booking.officeDescription}
                 directions={booking.officeDirections}
-                locationDetails={booking.officeLocationDetails}
+                googleMapsUrl={booking.officeGoogleMapsUrl}
+                photoUrl={booking.officePhotoUrl}
+                videoUrl={booking.officeVideoUrl}
             />
         </article>
     );
@@ -139,23 +140,23 @@ function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boo
             <OfficeDetails
                 address={event.officeAddress}
                 copy={copy}
-                description={event.officeDescription}
                 directions={event.officeDirections}
-                locationDetails={event.officeLocationDetails}
+                googleMapsUrl={event.officeGoogleMapsUrl}
+                photoUrl={event.officePhotoUrl}
+                videoUrl={event.officeVideoUrl}
             />
         </article>
     );
 }
 
-function OfficeDetails({address, copy, description, directions, locationDetails}: {address: string | null; copy: Copy; description: string | null; directions: string | null; locationDetails: string | null}) {
+function OfficeDetails({address, copy, directions, googleMapsUrl, photoUrl, videoUrl}: {address: string | null; copy: Copy; directions: string | null; googleMapsUrl: string | null; photoUrl: string | null; videoUrl: string | null}) {
     const rows = [
         {label: copy.officeAddress, value: address},
-        {label: copy.officeLocationDetails, value: locationDetails},
-        {label: copy.officeDescription, value: description},
         {label: copy.officeDirections, value: directions}
     ].filter((row) => row.value);
+    const hasMedia = Boolean(photoUrl || videoUrl || googleMapsUrl);
 
-    if (rows.length === 0) {
+    if (rows.length === 0 && !hasMedia) {
         return null;
     }
 
@@ -170,6 +171,18 @@ function OfficeDetails({address, copy, description, directions, locationDetails}
                     </div>
                 ))}
             </dl>
+            {photoUrl ? (
+                <a className="mt-3 block overflow-hidden rounded-lg border border-stone-200 bg-white" href={photoUrl} rel="noreferrer" target="_blank">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img alt={copy.officePhotoAlt} className="max-h-48 w-full object-cover" src={photoUrl} />
+                </a>
+            ) : null}
+            {hasMedia ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                    {videoUrl ? <a className="rounded-md border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50" href={videoUrl} rel="noreferrer" target="_blank">{copy.officeVideo}</a> : null}
+                    {googleMapsUrl ? <a className="rounded-md border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50" href={googleMapsUrl} rel="noreferrer" target="_blank">{copy.officeMap}</a> : null}
+                </div>
+            ) : null}
         </div>
     );
 }
@@ -220,9 +233,10 @@ function labels(t: T) {
         noEvents: t("noEvents"),
         officeDetails: t("officeDetails"),
         officeAddress: t("officeAddress"),
-        officeLocationDetails: t("officeLocationDetails"),
-        officeDescription: t("officeDescription"),
         officeDirections: t("officeDirections"),
+        officePhotoAlt: t("officePhotoAlt"),
+        officeVideo: t("officeVideo"),
+        officeMap: t("officeMap"),
         loadError: t("loadError"),
         cancel: t("cancel"),
         pay: t("pay"),

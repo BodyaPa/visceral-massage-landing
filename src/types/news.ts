@@ -31,6 +31,7 @@ export interface MediaAsset {
     contentType: string;
     sizeBytes: number;
     newsId: NewsId | null;
+    officeId: number | null;
     createdAt: string;
 }
 

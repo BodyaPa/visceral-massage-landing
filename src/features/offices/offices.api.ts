@@ -1,5 +1,6 @@
 import {createApi} from "@reduxjs/toolkit/query/react";
 import {baseQuery} from "@/shared/api/baseQuery";
+import type {MediaAsset} from "@/types/news";
 import type {Office, OfficeInput, OfficePageResponse} from "@/types/offices";
 
 type ListOfficesArgs = {
@@ -59,6 +60,13 @@ export const officesApi = createApi({
                 {type: "Offices", id},
                 {type: "Offices", id: "LIST"}
             ]
+        }),
+        uploadOfficeMedia: build.mutation<MediaAsset, File>({
+            query: (file) => {
+                const body = new FormData();
+                body.append("file", file);
+                return {url: "/admin/offices/media", method: "POST", body};
+            }
         })
     })
 });
@@ -67,5 +75,6 @@ export const {
     useListPublicOfficesQuery,
     useListOfficesQuery,
     useCreateOfficeMutation,
-    useUpdateOfficeMutation
+    useUpdateOfficeMutation,
+    useUploadOfficeMediaMutation
 } = officesApi;

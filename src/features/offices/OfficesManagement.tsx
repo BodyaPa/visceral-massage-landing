@@ -1,9 +1,10 @@
 "use client";
 
-import {useEffect, useState} from "react";
+import {useEffect, useState, type ChangeEvent} from "react";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
-import {useCreateOfficeMutation, useListOfficesQuery, useUpdateOfficeMutation} from "@/features/offices/offices.api";
+import {useCreateOfficeMutation, useListOfficesQuery, useUpdateOfficeMutation, useUploadOfficeMediaMutation} from "@/features/offices/offices.api";
+import {createAdminMediaUrl} from "@/features/news/newsMedia";
 import type {Office, OfficeInput} from "@/types/offices";
 
 const emptyOffices: Office[] = [];
@@ -14,9 +15,8 @@ const emptyForm: OfficeInput = {
     phone: "",
     email: "",
     directions: "",
-    photoUrl: "",
-    videoUrl: "",
-    googleMapsUrl: ""
+    photoMediaId: null,
+    videoMediaId: null
 };
 
 export default function OfficesManagement() {
@@ -33,6 +33,7 @@ export default function OfficesManagement() {
     const [form, setForm] = useState<OfficeInput>(emptyForm);
     const [createOffice, {isLoading: isCreating}] = useCreateOfficeMutation();
     const [updateOffice, {isLoading: isUpdating}] = useUpdateOfficeMutation();
+    const [uploadOfficeMedia, {isLoading: isUploading}] = useUploadOfficeMediaMutation();
     const saving = isCreating || isUpdating;
 
     useEffect(() => {
@@ -59,9 +60,8 @@ export default function OfficesManagement() {
             phone: selectedOffice.phone ?? "",
             email: selectedOffice.email ?? "",
             directions: selectedOffice.directions ?? selectedOffice.locationDetails ?? "",
-            photoUrl: selectedOffice.photoUrl ?? "",
-            videoUrl: selectedOffice.videoUrl ?? "",
-            googleMapsUrl: selectedOffice.googleMapsUrl ?? ""
+            photoMediaId: selectedOffice.photoMediaId,
+            videoMediaId: selectedOffice.videoMediaId
         });
     }, [selectedOffice]);
 
@@ -84,10 +84,22 @@ export default function OfficesManagement() {
             phone: form.phone?.trim() || null,
             email: form.email?.trim() || null,
             directions: form.directions?.trim() || null,
-            photoUrl: form.photoUrl?.trim() || null,
-            videoUrl: form.videoUrl?.trim() || null,
-            googleMapsUrl: form.googleMapsUrl?.trim() || null
+            photoMediaId: form.photoMediaId ?? null,
+            videoMediaId: form.videoMediaId ?? null
         };
+    }
+
+    async function uploadMedia(event: ChangeEvent<HTMLInputElement>, field: "photoMediaId" | "videoMediaId") {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (!file) return;
+        try {
+            const asset = await uploadOfficeMedia(file).unwrap();
+            updateField(field, asset.id);
+            toast.success(t("mediaUploaded"));
+        } catch {
+            toast.error(t("mediaUploadError"));
+        }
     }
 
     async function saveOffice() {
@@ -246,31 +258,31 @@ export default function OfficesManagement() {
                             value={form.directions ?? ""}
                         />
                     </Field>
-                    <div className="grid gap-3">
-                        <Field label={t("photoUrl")}>
-                            <input
-                                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                                onChange={(event) => updateField("photoUrl", event.target.value)}
-                                placeholder="https://..."
-                                value={form.photoUrl ?? ""}
-                            />
-                        </Field>
-                        <Field label={t("videoUrl")}>
-                            <input
-                                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                                onChange={(event) => updateField("videoUrl", event.target.value)}
-                                placeholder="https://..."
-                                value={form.videoUrl ?? ""}
-                            />
-                        </Field>
-                        <Field label={t("googleMapsUrl")}>
-                            <input
-                                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                                onChange={(event) => updateField("googleMapsUrl", event.target.value)}
-                                placeholder="https://maps.google.com/..."
-                                value={form.googleMapsUrl ?? ""}
-                            />
-                        </Field>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        <MediaField
+                            accept="image/jpeg,image/png,image/webp"
+                            disabled={isUploading}
+                            id={form.photoMediaId ?? null}
+                            label={t("photoMedia")}
+                            noMedia={t("noMedia")}
+                            onClear={() => updateField("photoMediaId", null)}
+                            onUpload={(event) => uploadMedia(event, "photoMediaId")}
+                            previewType="image"
+                            replaceLabel={t("replaceMedia")}
+                            uploadLabel={t("uploadMedia")}
+                        />
+                        <MediaField
+                            accept="video/mp4,video/webm"
+                            disabled={isUploading}
+                            id={form.videoMediaId ?? null}
+                            label={t("videoMedia")}
+                            noMedia={t("noMedia")}
+                            onClear={() => updateField("videoMediaId", null)}
+                            onUpload={(event) => uploadMedia(event, "videoMediaId")}
+                            previewType="video"
+                            replaceLabel={t("replaceMedia")}
+                            uploadLabel={t("uploadMedia")}
+                        />
                     </div>
                     <label className={`flex min-w-0 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition-colors ${
                         form.active ? "border-stone-300 bg-stone-100 text-stone-950" : "border-stone-200 bg-stone-50 text-stone-700"
@@ -309,6 +321,33 @@ function StatusBadge({active = false, enabled, label}: {active?: boolean; enable
         <span className={`w-fit max-w-full break-words rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-white/15 text-stone-100" : "bg-stone-100 text-stone-600"}`}>
             {label}
         </span>
+    );
+}
+
+function MediaField({accept, disabled, id, label, noMedia, onClear, onUpload, previewType, replaceLabel, uploadLabel}: {accept: string; disabled: boolean; id: string | null; label: string; noMedia: string; onClear: () => void; onUpload: (event: ChangeEvent<HTMLInputElement>) => void; previewType: "image" | "video"; replaceLabel: string; uploadLabel: string}) {
+    const previewUrl = id ? createAdminMediaUrl(id) : null;
+
+    return (
+        <div className="min-w-0 rounded-lg border border-stone-200 bg-stone-50 p-3">
+            <div className="flex min-w-0 items-center justify-between gap-2">
+                <p className="break-words text-sm font-medium text-stone-800">{label}</p>
+                {id ? <button aria-label={noMedia} className="rounded-md border border-stone-200 bg-white px-2 py-1 text-xs text-stone-600 hover:bg-stone-50" onClick={onClear} type="button">×</button> : null}
+            </div>
+            {previewUrl ? (
+                <div className="mt-3 overflow-hidden rounded-lg border border-stone-200 bg-white">
+                    {previewType === "image" ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- admin media preview is loaded through protected API content.
+                        <img alt="" className="h-32 w-full object-cover" src={previewUrl} />
+                    ) : (
+                        <video className="h-32 w-full bg-black object-cover" controls src={previewUrl} />
+                    )}
+                </div>
+            ) : <p className="mt-3 text-xs text-stone-500">{noMedia}</p>}
+            <label className={`mt-3 inline-flex cursor-pointer rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50 ${disabled ? "pointer-events-none opacity-50" : ""}`}>
+                {id ? replaceLabel : uploadLabel}
+                <input accept={accept} className="sr-only" disabled={disabled} onChange={onUpload} type="file" />
+            </label>
+        </div>
     );
 }
 

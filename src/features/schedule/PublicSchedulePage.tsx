@@ -16,6 +16,7 @@ import {
 } from "@/features/schedule/schedule.api";
 import AtaraksiaCalendar, {toCalendarView, type AtaraksiaCalendarEvent, type AtaraksiaCalendarMessages} from "@/features/schedule/AtaraksiaCalendar";
 import {useListServicesQuery} from "@/features/services/services.api";
+import {API_URL} from "@/shared/constants/env";
 import type {Booking} from "@/types/bookings";
 import type {PublicFixedEvent, PublicScheduleAvailabilityBlock, PublicScheduleUnavailableBlock} from "@/types/schedule";
 import type {PublicService} from "@/types/services";
@@ -742,14 +743,14 @@ function InfoRow({label, value}: {label: string; value: string}) {
     return <div className="grid min-w-0 grid-cols-1 gap-1 sm:grid-cols-[110px_minmax(0,1fr)] sm:gap-3"><dt className="break-words text-stone-500">{label}</dt><dd className="break-words font-medium text-stone-900">{value}</dd></div>;
 }
 
-type OfficeDetailsSource = Pick<PublicScheduleAvailabilityBlock | PublicFixedEvent, "officeAddress" | "officeDirections" | "officePhotoUrl" | "officeVideoUrl" | "officeGoogleMapsUrl">;
+type OfficeDetailsSource = Pick<PublicScheduleAvailabilityBlock | PublicFixedEvent, "officeAddress" | "officeDirections" | "officePhotoMediaUrl" | "officeVideoMediaUrl">;
 
 function OfficeDetailsBlock({copy, details}: {copy: Copy; details: OfficeDetailsSource}) {
     const rows = [
         {label: copy.officeAddress, value: details.officeAddress},
         {label: copy.officeDirections, value: details.officeDirections}
     ].filter((row) => row.value);
-    const hasMedia = Boolean(details.officePhotoUrl || details.officeVideoUrl || details.officeGoogleMapsUrl);
+    const hasMedia = Boolean(details.officePhotoMediaUrl || details.officeVideoMediaUrl);
 
     if (rows.length === 0 && !hasMedia) {
         return null;
@@ -766,20 +767,23 @@ function OfficeDetailsBlock({copy, details}: {copy: Copy; details: OfficeDetails
                     </div>
                 ))}
             </dl>
-            {details.officePhotoUrl ? (
-                <a className="mt-4 block overflow-hidden rounded-xl border border-stone-200 bg-stone-50" href={details.officePhotoUrl} rel="noreferrer" target="_blank">
+            {details.officePhotoMediaUrl ? (
+                <a className="mt-4 block overflow-hidden rounded-xl border border-stone-200 bg-stone-50" href={resolveApiMediaUrl(details.officePhotoMediaUrl)} rel="noreferrer" target="_blank">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img alt={copy.officePhotoAlt} className="max-h-60 w-full object-cover" src={details.officePhotoUrl} />
+                    <img alt={copy.officePhotoAlt} className="max-h-60 w-full object-cover" src={resolveApiMediaUrl(details.officePhotoMediaUrl)} />
                 </a>
             ) : null}
             {hasMedia ? (
                 <div className="mt-3 flex flex-wrap gap-2">
-                    {details.officeVideoUrl ? <a className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50" href={details.officeVideoUrl} rel="noreferrer" target="_blank">{copy.officeVideo}</a> : null}
-                    {details.officeGoogleMapsUrl ? <a className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50" href={details.officeGoogleMapsUrl} rel="noreferrer" target="_blank">{copy.officeMap}</a> : null}
+                    {details.officeVideoMediaUrl ? <a className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50" href={resolveApiMediaUrl(details.officeVideoMediaUrl)} rel="noreferrer" target="_blank">{copy.officeVideo}</a> : null}
                 </div>
             ) : null}
         </section>
     );
+}
+
+function resolveApiMediaUrl(path: string) {
+    return path.startsWith("/api/") ? `${API_URL}${path}` : path;
 }
 
 function buildRange(date: Date, view: CalendarView, days: number) {
@@ -1106,7 +1110,6 @@ function labels(t: T) {
         officeDirections: t("public.officeDirections"),
         officePhotoAlt: t("public.officePhotoAlt"),
         officeVideo: t("public.officeVideo"),
-        officeMap: t("public.officeMap"),
         reminder: t("booking.reminderOptIn"),
         reminderHint: t("booking.reminderHint"),
         cancel: t("public.cancel"),

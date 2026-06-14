@@ -32,9 +32,10 @@ export interface PublicScheduleAvailabilityBlock {
     officeName: string | null;
     officeAddress: string | null;
     officeDirections: string | null;
-    officePhotoUrl: string | null;
-    officeVideoUrl: string | null;
-    officeGoogleMapsUrl: string | null;
+    officePhotoMediaId: string | null;
+    officePhotoMediaUrl: string | null;
+    officeVideoMediaId: string | null;
+    officeVideoMediaUrl: string | null;
     startsAt: string;
     endsAt: string;
 }
@@ -61,9 +62,10 @@ export interface PublicFixedEvent {
     officeName: string | null;
     officeAddress: string | null;
     officeDirections: string | null;
-    officePhotoUrl: string | null;
-    officeVideoUrl: string | null;
-    officeGoogleMapsUrl: string | null;
+    officePhotoMediaId: string | null;
+    officePhotoMediaUrl: string | null;
+    officeVideoMediaId: string | null;
+    officeVideoMediaUrl: string | null;
     startsAt: string;
     endsAt: string;
     capacity: number;

@@ -743,14 +743,14 @@ function InfoRow({label, value}: {label: string; value: string}) {
     return <div className="grid min-w-0 grid-cols-1 gap-1 sm:grid-cols-[110px_minmax(0,1fr)] sm:gap-3"><dt className="break-words text-stone-500">{label}</dt><dd className="break-words font-medium text-stone-900">{value}</dd></div>;
 }
 
-type OfficeDetailsSource = Pick<PublicScheduleAvailabilityBlock | PublicFixedEvent, "officeAddress" | "officeDirections" | "officePhotoMediaUrl" | "officeVideoMediaUrl">;
+type OfficeDetailsSource = Pick<PublicScheduleAvailabilityBlock | PublicFixedEvent, "officeAddress" | "officeDirections" | "officeGoogleMapsUrl" | "officePhotoMediaUrl" | "officeVideoMediaUrl">;
 
 function OfficeDetailsBlock({copy, details}: {copy: Copy; details: OfficeDetailsSource}) {
     const rows = [
         {label: copy.officeAddress, value: details.officeAddress},
         {label: copy.officeDirections, value: details.officeDirections}
     ].filter((row) => row.value);
-    const hasMedia = Boolean(details.officePhotoMediaUrl || details.officeVideoMediaUrl);
+    const hasMedia = Boolean(details.officePhotoMediaUrl || details.officeVideoMediaUrl || details.officeGoogleMapsUrl);
 
     if (rows.length === 0 && !hasMedia) {
         return null;
@@ -776,6 +776,7 @@ function OfficeDetailsBlock({copy, details}: {copy: Copy; details: OfficeDetails
             {hasMedia ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                     {details.officeVideoMediaUrl ? <a className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50" href={resolveApiMediaUrl(details.officeVideoMediaUrl)} rel="noreferrer" target="_blank">{copy.officeVideo}</a> : null}
+                    {details.officeGoogleMapsUrl ? <a className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50" href={details.officeGoogleMapsUrl} rel="noreferrer" target="_blank">{copy.officeMap}</a> : null}
                 </div>
             ) : null}
         </section>
@@ -1110,6 +1111,7 @@ function labels(t: T) {
         officeDirections: t("public.officeDirections"),
         officePhotoAlt: t("public.officePhotoAlt"),
         officeVideo: t("public.officeVideo"),
+        officeMap: t("public.officeMap"),
         reminder: t("booking.reminderOptIn"),
         reminderHint: t("booking.reminderHint"),
         cancel: t("public.cancel"),

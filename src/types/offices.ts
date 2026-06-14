@@ -5,10 +5,9 @@ export interface Office {
     name: string;
     address: string;
     active: boolean;
-    phone: string | null;
-    email: string | null;
     locationDetails: string | null;
     directions: string | null;
+    googleMapsUrl: string | null;
     photoMediaId: string | null;
     photoMediaUrl: string | null;
     videoMediaId: string | null;
@@ -23,9 +22,8 @@ export type OfficeInput = {
     name: string;
     address: string;
     active: boolean;
-    phone?: string | null;
-    email?: string | null;
     directions?: string | null;
+    googleMapsUrl?: string | null;
     photoMediaId?: string | null;
     videoMediaId?: string | null;
 };

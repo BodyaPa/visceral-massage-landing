@@ -12,9 +12,8 @@ const emptyForm: OfficeInput = {
     name: "",
     address: "",
     active: true,
-    phone: "",
-    email: "",
     directions: "",
+    googleMapsUrl: "",
     photoMediaId: null,
     videoMediaId: null
 };
@@ -57,9 +56,8 @@ export default function OfficesManagement() {
             name: selectedOffice.name,
             address: selectedOffice.address,
             active: selectedOffice.active,
-            phone: selectedOffice.phone ?? "",
-            email: selectedOffice.email ?? "",
             directions: selectedOffice.directions ?? selectedOffice.locationDetails ?? "",
+            googleMapsUrl: selectedOffice.googleMapsUrl ?? "",
             photoMediaId: selectedOffice.photoMediaId,
             videoMediaId: selectedOffice.videoMediaId
         });
@@ -81,9 +79,8 @@ export default function OfficesManagement() {
     function requestBody(): OfficeInput {
         return {
             ...form,
-            phone: form.phone?.trim() || null,
-            email: form.email?.trim() || null,
             directions: form.directions?.trim() || null,
+            googleMapsUrl: form.googleMapsUrl?.trim() || null,
             photoMediaId: form.photoMediaId ?? null,
             videoMediaId: form.videoMediaId ?? null
         };
@@ -166,7 +163,6 @@ export default function OfficesManagement() {
                     <div className="space-y-2" role="list">
                         {offices.map((office) => {
                             const selected = office.id === selectedOffice?.id;
-                            const contact = office.phone ?? office.email;
                             return (
                                 <button
                                     aria-pressed={selected}
@@ -189,9 +185,9 @@ export default function OfficesManagement() {
                                             </span>
                                             <StatusBadge active={selected} enabled={office.active} label={office.active ? t("active") : t("inactive")} />
                                         </span>
-                                        {contact || office.directions || office.locationDetails ? (
+                                        {office.directions || office.locationDetails ? (
                                             <span className={`block break-words text-xs ${selected ? "text-stone-200" : "text-stone-500"}`}>
-                                                {[contact, office.directions ?? office.locationDetails].filter(Boolean).join(" · ")}
+                                                {office.directions ?? office.locationDetails}
                                             </span>
                                         ) : null}
                                     </span>
@@ -235,27 +231,19 @@ export default function OfficesManagement() {
                             value={form.address}
                         />
                     </Field>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        <Field label={t("phone")}>
-                            <input
-                                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                                onChange={(event) => updateField("phone", event.target.value)}
-                                value={form.phone ?? ""}
-                            />
-                        </Field>
-                        <Field label={t("email")}>
-                            <input
-                                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                                onChange={(event) => updateField("email", event.target.value)}
-                                value={form.email ?? ""}
-                            />
-                        </Field>
-                    </div>
                     <Field label={t("directions")}>
                         <textarea
                             className="min-h-20 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
                             onChange={(event) => updateField("directions", event.target.value)}
                             value={form.directions ?? ""}
+                        />
+                    </Field>
+                    <Field label={t("googleMapsUrl")}>
+                        <input
+                            className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                            onChange={(event) => updateField("googleMapsUrl", event.target.value)}
+                            placeholder="https://maps.google.com/..."
+                            value={form.googleMapsUrl ?? ""}
                         />
                     </Field>
                     <div className="grid gap-3 sm:grid-cols-2">

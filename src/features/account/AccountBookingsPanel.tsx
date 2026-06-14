@@ -114,6 +114,7 @@ function BookingCard({booking, cancelling, copy, locale, onCancel}: {booking: Bo
                 address={booking.officeAddress}
                 copy={copy}
                 directions={booking.officeDirections}
+                googleMapsUrl={booking.officeGoogleMapsUrl}
                 photoUrl={booking.officePhotoMediaUrl}
                 videoUrl={booking.officeVideoMediaUrl}
             />
@@ -141,6 +142,7 @@ function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boo
                 address={event.officeAddress}
                 copy={copy}
                 directions={event.officeDirections}
+                googleMapsUrl={event.officeGoogleMapsUrl}
                 photoUrl={event.officePhotoMediaUrl}
                 videoUrl={event.officeVideoMediaUrl}
             />
@@ -148,12 +150,12 @@ function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boo
     );
 }
 
-function OfficeDetails({address, copy, directions, photoUrl, videoUrl}: {address: string | null; copy: Copy; directions: string | null; photoUrl: string | null; videoUrl: string | null}) {
+function OfficeDetails({address, copy, directions, googleMapsUrl, photoUrl, videoUrl}: {address: string | null; copy: Copy; directions: string | null; googleMapsUrl: string | null; photoUrl: string | null; videoUrl: string | null}) {
     const rows = [
         {label: copy.officeAddress, value: address},
         {label: copy.officeDirections, value: directions}
     ].filter((row) => row.value);
-    const hasMedia = Boolean(photoUrl || videoUrl);
+    const hasMedia = Boolean(photoUrl || videoUrl || googleMapsUrl);
 
     if (rows.length === 0 && !hasMedia) {
         return null;
@@ -179,6 +181,7 @@ function OfficeDetails({address, copy, directions, photoUrl, videoUrl}: {address
             {hasMedia ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                     {videoUrl ? <a className="rounded-md border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50" href={resolveApiMediaUrl(videoUrl)} rel="noreferrer" target="_blank">{copy.officeVideo}</a> : null}
+                    {googleMapsUrl ? <a className="rounded-md border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50" href={googleMapsUrl} rel="noreferrer" target="_blank">{copy.officeMap}</a> : null}
                 </div>
             ) : null}
         </div>
@@ -238,6 +241,7 @@ function labels(t: T) {
         officeDirections: t("officeDirections"),
         officePhotoAlt: t("officePhotoAlt"),
         officeVideo: t("officeVideo"),
+        officeMap: t("officeMap"),
         loadError: t("loadError"),
         cancel: t("cancel"),
         pay: t("pay"),

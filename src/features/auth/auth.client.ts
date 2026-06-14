@@ -9,6 +9,7 @@ export type AuthenticatedUser = {
     email: string | null;
     firstName: string | null;
     lastName: string | null;
+    dateOfBirth: string | null;
     roles: UserRole[];
 };
 
@@ -22,6 +23,7 @@ type RegisterRequest = {
     email?: string;
     firstName: string;
     lastName: string;
+    dateOfBirth?: string;
     password: string;
 };
 

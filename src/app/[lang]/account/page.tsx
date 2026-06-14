@@ -35,6 +35,7 @@ export default async function AccountPage({params}: Props) {
     const user = await requireAuthenticatedUser(locale);
     const displayName = [user.firstName, user.lastName].filter(Boolean).join(" ") || t("nameUnavailable");
     const contactValue = user.email ?? user.phone ?? t("notProvided");
+    const dateOfBirth = user.dateOfBirth ? formatDate(user.dateOfBirth, locale) : t("notProvided");
 
     return (
         <main className="fixed inset-0 z-[5] overflow-y-auto overflow-x-clip p-2 sm:p-5">
@@ -78,6 +79,7 @@ export default async function AccountPage({params}: Props) {
                                         <InfoCard label={t("lastName")} value={user.lastName ?? t("notProvided")} />
                                         <InfoCard label={t("phone")} value={user.phone ?? t("notProvided")} />
                                         <InfoCard label={t("email")} value={user.email ?? t("notProvided")} />
+                                        <InfoCard label={t("dateOfBirth")} value={dateOfBirth} />
                                     </div>
                                 </div>
 
@@ -137,6 +139,10 @@ function InfoCard({label, value}: {label: string; value: string}) {
             <p className="mt-2 break-words text-sm font-medium text-stone-950">{value}</p>
         </div>
     );
+}
+
+function formatDate(value: string, locale: Locale) {
+    return new Intl.DateTimeFormat(locale === "ua" ? "uk-UA" : "en-US", {dateStyle: "medium"}).format(new Date(`${value}T00:00:00`));
 }
 
 function RoleBadge({label}: {label: string}) {

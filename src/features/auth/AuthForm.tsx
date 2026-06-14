@@ -90,6 +90,7 @@ export default function AuthForm({initialMode = "login"}: Props) {
                     email: email || undefined,
                     firstName: String(formData.get("firstName") ?? "").trim(),
                     lastName: String(formData.get("lastName") ?? "").trim(),
+                    dateOfBirth: String(formData.get("dateOfBirth") ?? "") || undefined,
                     password
             });
             setRegistrationContact(email || phone);
@@ -259,6 +260,11 @@ export default function AuthForm({initialMode = "login"}: Props) {
                             <input required name="lastName" type="text" minLength={2} maxLength={50} autoComplete="family-name" disabled={registrationRequested} className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal disabled:bg-stone-100" />
                         </label>
                     </div>
+
+                    <label className="block space-y-2 text-sm font-medium text-stone-800">
+                        <span>{t("fields.dateOfBirth")}</span>
+                        <input name="dateOfBirth" type="date" autoComplete="bday" disabled={registrationRequested} className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal disabled:bg-stone-100" />
+                    </label>
 
                     <p className="text-sm text-stone-600">{t("register.contactHint")}</p>
                     <div className="grid gap-3 sm:grid-cols-2">

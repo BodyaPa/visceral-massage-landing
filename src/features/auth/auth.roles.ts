@@ -1,7 +1,7 @@
 export type UserRole = "USER" | "MASTER" | "SPECIALIST" | "FINANCE_MANAGER" | "SMM";
 
 export type RoleBearingUser = {
-    roles?: UserRole[];
+    roles?: readonly UserRole[];
 };
 
 export function hasRole(user: RoleBearingUser | null | undefined, role: UserRole) {

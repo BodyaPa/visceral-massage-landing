@@ -27,6 +27,12 @@ type RegisterRequest = {
     password: string;
 };
 
+export type ProfileUpdateRequest = {
+    firstName: string;
+    lastName: string;
+    dateOfBirth?: string | null;
+};
+
 type RegisterConfirmRequest = {
     email?: string;
     phone?: string;
@@ -53,9 +59,9 @@ export class AuthRequestError extends Error {
 
 let refreshRequest: Promise<void> | null = null;
 
-async function sendAuthMutation(path: string, body: unknown, csrfToken: string) {
+async function sendAuthMutation(path: string, body: unknown, csrfToken: string, method = "POST") {
     return fetch(`${API_URL}/api/auth/${path}`, {
-        method: "POST",
+        method,
         credentials: "include",
         headers: {
             "Content-Type": "application/json",
@@ -91,6 +97,28 @@ async function postAuth<T>(path: string, body?: unknown): Promise<T> {
     return response.status === 204 ? undefined as T : response.json() as Promise<T>;
 }
 
+async function putAuth<T>(path: string, body?: unknown): Promise<T> {
+    let response = await sendAuthMutation(path, body, await getCsrfToken(), "PUT");
+
+    if (response.status === 403) {
+        clearCsrfToken();
+        response = await sendAuthMutation(path, body, await getCsrfToken(), "PUT");
+    }
+
+    if (!response.ok) {
+        let serverMessage: string | null = null;
+        try {
+            const data = await response.json() as {message?: string};
+            serverMessage = data.message ?? null;
+        } catch {
+            // Responses without JSON still map to the generic UI message.
+        }
+        throw new AuthRequestError(serverMessage);
+    }
+
+    return response.json() as Promise<T>;
+}
+
 export function login(request: LoginRequest) {
     return postAuth<AuthenticatedUser>("login", request);
 }
@@ -113,6 +141,10 @@ export function confirmPasswordRecovery(request: PasswordRecoveryConfirmRequest)
 
 export function logout() {
     return postAuth<void>("logout");
+}
+
+export function updateProfile(request: ProfileUpdateRequest) {
+    return putAuth<AuthenticatedUser>("me", request);
 }
 
 export function refreshSession() {

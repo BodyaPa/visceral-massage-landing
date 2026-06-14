@@ -8,6 +8,7 @@ import {withLocale} from "@/shared/lib/locale/withLocale";
 import LanguageSwitcher from "@/components/common/LanguageSwitcher";
 import AuthSessionPanel from "@/features/auth/AuthSessionPanel";
 import AccountBookingsPanel from "@/features/account/AccountBookingsPanel";
+import AccountProfileForm from "@/features/account/AccountProfileForm";
 
 type Props = {
     params: Promise<{lang: string}>;
@@ -74,9 +75,9 @@ export default async function AccountPage({params}: Props) {
                                         <p className="mt-1 break-words text-sm text-stone-600">{contactValue}</p>
                                     </div>
 
+                                    <AccountProfileForm user={user} />
+
                                     <div className="grid gap-3 sm:grid-cols-2">
-                                        <InfoCard label={t("firstName")} value={user.firstName ?? t("notProvided")} />
-                                        <InfoCard label={t("lastName")} value={user.lastName ?? t("notProvided")} />
                                         <InfoCard label={t("phone")} value={user.phone ?? t("notProvided")} />
                                         <InfoCard label={t("email")} value={user.email ?? t("notProvided")} />
                                         <InfoCard label={t("dateOfBirth")} value={dateOfBirth} />

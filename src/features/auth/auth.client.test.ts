@@ -65,6 +65,36 @@ describe("client authentication requests", () => {
         );
     });
 
+    it("submits profile updates as a CSRF-protected mutation", async () => {
+        const user = {id: 1, phone: "+380000000001", email: "client@example.com", firstName: "Olena", lastName: "Koval", dateOfBirth: "1990-05-20", roles: ["USER"]};
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce(new Response(
+                JSON.stringify({token: "profile-token"}),
+                {status: 200, headers: {"Content-Type": "application/json"}}
+            ))
+            .mockResolvedValueOnce(new Response(
+                JSON.stringify(user),
+                {status: 200, headers: {"Content-Type": "application/json"}}
+            ));
+        vi.stubGlobal("fetch", fetchMock);
+
+        const {updateProfile} = await import("./auth.client");
+
+        await expect(updateProfile({firstName: "Olena", lastName: "Koval", dateOfBirth: "1990-05-20"})).resolves.toEqual(user);
+        expect(fetchMock).toHaveBeenNthCalledWith(
+            2,
+            "http://localhost:8080/api/auth/me",
+            expect.objectContaining({
+                method: "PUT",
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-XSRF-TOKEN": "profile-token"
+                }
+            })
+        );
+    });
+
     it("refreshes the CSRF token and retries one rejected login mutation", async () => {
         const user = {id: 1, phone: "+380671234567", email: null, firstName: "Iryna", lastName: "Koval", roles: ["USER"]};
         const fetchMock = vi.fn()

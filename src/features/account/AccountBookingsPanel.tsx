@@ -109,6 +109,13 @@ function BookingCard({booking, cancelling, copy, locale, onCancel}: {booking: Bo
                     {cancellable ? <button className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300" disabled={cancelling} onClick={() => onCancel(booking.id)} type="button">{copy.cancel}</button> : null}
                 </div>
             </div>
+            <OfficeDetails
+                address={booking.officeAddress}
+                copy={copy}
+                description={booking.officeDescription}
+                directions={booking.officeDirections}
+                locationDetails={booking.officeLocationDetails}
+            />
         </article>
     );
 }
@@ -129,7 +136,41 @@ function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boo
                 <p className="text-xs font-medium text-stone-700">{formatDateTimeRange(event.startsAt, event.endsAt, locale)}</p>
                 {cancellable ? <button className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300" disabled={cancelling} onClick={() => onCancel(event.id)} type="button">{copy.cancel}</button> : null}
             </div>
+            <OfficeDetails
+                address={event.officeAddress}
+                copy={copy}
+                description={event.officeDescription}
+                directions={event.officeDirections}
+                locationDetails={event.officeLocationDetails}
+            />
         </article>
+    );
+}
+
+function OfficeDetails({address, copy, description, directions, locationDetails}: {address: string | null; copy: Copy; description: string | null; directions: string | null; locationDetails: string | null}) {
+    const rows = [
+        {label: copy.officeAddress, value: address},
+        {label: copy.officeLocationDetails, value: locationDetails},
+        {label: copy.officeDescription, value: description},
+        {label: copy.officeDirections, value: directions}
+    ].filter((row) => row.value);
+
+    if (rows.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="mt-3 border-t border-stone-200 pt-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{copy.officeDetails}</p>
+            <dl className="mt-2 space-y-1.5 text-xs leading-5">
+                {rows.map((row) => (
+                    <div className="grid min-w-0 gap-0.5 sm:grid-cols-[96px_minmax(0,1fr)] sm:gap-2" key={row.label}>
+                        <dt className="break-words text-stone-500">{row.label}</dt>
+                        <dd className="whitespace-pre-line break-words text-stone-800">{row.value}</dd>
+                    </div>
+                ))}
+            </dl>
+        </div>
     );
 }
 
@@ -177,6 +218,11 @@ function labels(t: T) {
         noOffice: t("noOffice"),
         noAppointments: t("noAppointments"),
         noEvents: t("noEvents"),
+        officeDetails: t("officeDetails"),
+        officeAddress: t("officeAddress"),
+        officeLocationDetails: t("officeLocationDetails"),
+        officeDescription: t("officeDescription"),
+        officeDirections: t("officeDirections"),
         loadError: t("loadError"),
         cancel: t("cancel"),
         pay: t("pay"),

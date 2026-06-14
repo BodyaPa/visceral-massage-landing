@@ -678,6 +678,9 @@ function ConfirmationModal({copy, isSaving, locale, onClose, onConfirm, pending,
     const title = pending.type === "individual" ? pending.service.title : pending.event.title;
     const specialist = pending.type === "individual" ? pending.slot.specialistName : pending.event.specialistName;
     const office = pending.type === "individual" ? pending.slot.officeName : pending.event.officeName;
+    const officeDetails = pending.type === "individual"
+        ? pending.slot
+        : pending.event;
     const startsAt = pending.type === "individual" ? pending.slot.startsAt : pending.event.startsAt;
     const endsAt = pending.type === "individual" ? pending.slot.endsAt : pending.event.endsAt;
     const price = pending.type === "individual" ? pending.service.basePrice : pending.event.price;
@@ -695,6 +698,7 @@ function ConfirmationModal({copy, isSaving, locale, onClose, onConfirm, pending,
                     <InfoRow label={copy.price} value={formatAmount(price, locale)} />
                     {capacity ? <InfoRow label={copy.places} value={capacity} /> : null}
                 </dl>
+                <OfficeDetailsBlock copy={copy} details={officeDetails} />
                 <label className="mt-5 flex min-w-0 gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
                     <input checked={reminderOptIn} className="mt-0.5 h-4 w-4 accent-stone-900" onChange={(event) => setReminderOptIn(event.target.checked)} type="checkbox" />
                     <span className="min-w-0"><strong className="block break-words font-medium text-stone-900">{copy.reminder}</strong><span className="mt-0.5 block break-words text-xs leading-5 text-stone-500">{copy.reminderHint}</span></span>
@@ -736,6 +740,35 @@ function SelectField({children, label}: {children: ReactNode; label: string}) {
 
 function InfoRow({label, value}: {label: string; value: string}) {
     return <div className="grid min-w-0 grid-cols-1 gap-1 sm:grid-cols-[110px_minmax(0,1fr)] sm:gap-3"><dt className="break-words text-stone-500">{label}</dt><dd className="break-words font-medium text-stone-900">{value}</dd></div>;
+}
+
+type OfficeDetailsSource = Pick<PublicScheduleAvailabilityBlock | PublicFixedEvent, "officeAddress" | "officeLocationDetails" | "officeDescription" | "officeDirections">;
+
+function OfficeDetailsBlock({copy, details}: {copy: Copy; details: OfficeDetailsSource}) {
+    const rows = [
+        {label: copy.officeAddress, value: details.officeAddress},
+        {label: copy.officeLocationDetails, value: details.officeLocationDetails},
+        {label: copy.officeDescription, value: details.officeDescription},
+        {label: copy.officeDirections, value: details.officeDirections}
+    ].filter((row) => row.value);
+
+    if (rows.length === 0) {
+        return null;
+    }
+
+    return (
+        <section className="mt-5 border-t border-stone-100 pt-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-stone-500">{copy.officeDetails}</h3>
+            <dl className="mt-2 space-y-2 text-sm leading-6">
+                {rows.map((row) => (
+                    <div className="grid min-w-0 grid-cols-1 gap-1 sm:grid-cols-[110px_minmax(0,1fr)] sm:gap-3" key={row.label}>
+                        <dt className="break-words text-stone-500">{row.label}</dt>
+                        <dd className="whitespace-pre-line break-words font-medium text-stone-900">{row.value}</dd>
+                    </div>
+                ))}
+            </dl>
+        </section>
+    );
 }
 
 function buildRange(date: Date, view: CalendarView, days: number) {
@@ -1057,6 +1090,11 @@ function labels(t: T) {
         time: t("public.time"),
         price: t("summary.price"),
         places: t("public.places"),
+        officeDetails: t("public.officeDetails"),
+        officeAddress: t("public.officeAddress"),
+        officeLocationDetails: t("public.officeLocationDetails"),
+        officeDescription: t("public.officeDescription"),
+        officeDirections: t("public.officeDirections"),
         reminder: t("booking.reminderOptIn"),
         reminderHint: t("booking.reminderHint"),
         cancel: t("public.cancel"),

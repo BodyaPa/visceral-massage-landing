@@ -30,6 +30,10 @@ export interface PublicScheduleAvailabilityBlock {
     specialistName: string;
     officeId: number | null;
     officeName: string | null;
+    officeAddress: string | null;
+    officeLocationDetails: string | null;
+    officeDescription: string | null;
+    officeDirections: string | null;
     startsAt: string;
     endsAt: string;
 }
@@ -54,6 +58,10 @@ export interface PublicFixedEvent {
     specialistName: string;
     officeId: number | null;
     officeName: string | null;
+    officeAddress: string | null;
+    officeLocationDetails: string | null;
+    officeDescription: string | null;
+    officeDirections: string | null;
     startsAt: string;
     endsAt: string;
     capacity: number;

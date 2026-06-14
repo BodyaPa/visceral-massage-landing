@@ -11,6 +11,10 @@ export interface Booking {
     specialistName: string;
     officeId: number | null;
     officeName: string | null;
+    officeAddress: string | null;
+    officeLocationDetails: string | null;
+    officeDescription: string | null;
+    officeDirections: string | null;
     startsAt: string;
     endsAt: string;
     reminderOptIn: boolean;

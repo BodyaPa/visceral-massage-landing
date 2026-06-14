@@ -13,7 +13,9 @@ const emptyForm: OfficeInput = {
     active: true,
     phone: "",
     email: "",
-    locationDetails: ""
+    locationDetails: "",
+    description: "",
+    directions: ""
 };
 
 export default function OfficesManagement() {
@@ -55,7 +57,9 @@ export default function OfficesManagement() {
             active: selectedOffice.active,
             phone: selectedOffice.phone ?? "",
             email: selectedOffice.email ?? "",
-            locationDetails: selectedOffice.locationDetails ?? ""
+            locationDetails: selectedOffice.locationDetails ?? "",
+            description: selectedOffice.description ?? "",
+            directions: selectedOffice.directions ?? ""
         });
     }, [selectedOffice]);
 
@@ -77,7 +81,9 @@ export default function OfficesManagement() {
             ...form,
             phone: form.phone?.trim() || null,
             email: form.email?.trim() || null,
-            locationDetails: form.locationDetails?.trim() || null
+            locationDetails: form.locationDetails?.trim() || null,
+            description: form.description?.trim() || null,
+            directions: form.directions?.trim() || null
         };
     }
 
@@ -235,6 +241,20 @@ export default function OfficesManagement() {
                             className="min-h-20 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
                             onChange={(event) => updateField("locationDetails", event.target.value)}
                             value={form.locationDetails ?? ""}
+                        />
+                    </Field>
+                    <Field label={t("description")}>
+                        <textarea
+                            className="min-h-24 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                            onChange={(event) => updateField("description", event.target.value)}
+                            value={form.description ?? ""}
+                        />
+                    </Field>
+                    <Field label={t("directions")}>
+                        <textarea
+                            className="min-h-24 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                            onChange={(event) => updateField("directions", event.target.value)}
+                            value={form.directions ?? ""}
                         />
                     </Field>
                     <label className={`flex min-w-0 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition-colors ${

@@ -8,6 +8,8 @@ export interface Office {
     phone: string | null;
     email: string | null;
     locationDetails: string | null;
+    description: string | null;
+    directions: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -21,4 +23,6 @@ export type OfficeInput = {
     phone?: string | null;
     email?: string | null;
     locationDetails?: string | null;
+    description?: string | null;
+    directions?: string | null;
 };

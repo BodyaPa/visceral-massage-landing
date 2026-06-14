@@ -35,6 +35,7 @@ export default function FinanceBookingsManagement() {
     const [from, setFrom] = useState("");
     const [to, setTo] = useState("");
     const [selectedBooking, setSelectedBooking] = useState<FinanceBooking | null>(null);
+    const [bookingToConfirm, setBookingToConfirm] = useState<FinanceBooking | null>(null);
     const {data: officesData} = useListPublicOfficesQuery({size: 100});
     const activeOffices = useMemo(() => officesData?.content ?? [], [officesData?.content]);
     const bookingStatusFilter = tab === "pending" ? "AWAITING_PAYMENT_CONFIRMATION" : status;
@@ -76,10 +77,15 @@ export default function FinanceBookingsManagement() {
         try {
             await confirmPayment(bookingId).unwrap();
             setSelectedBooking(null);
+            setBookingToConfirm(null);
             toast.success(t("confirmed"));
         } catch {
             toast.error(t("confirmError"));
         }
+    }
+
+    function requestConfirm(booking: FinanceBooking) {
+        setBookingToConfirm(booking);
     }
 
     async function markPayout(bookingId: number) {
@@ -136,13 +142,14 @@ export default function FinanceBookingsManagement() {
                 {isError ? <p className="m-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("loadError")}</p> : null}
                 {summaryError ? <p className="m-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("loadError")}</p> : null}
                 {tab === "pending" || tab === "transactions" ? (
-                    <BookingSection bookings={bookings} confirming={isConfirming} isFetching={isFetching} locale={locale} markingPayout={isMarkingPayout} onConfirm={confirm} onMarkPayout={markPayout} onSelect={setSelectedBooking} tab={tab} t={t} />
+                    <BookingSection bookings={bookings} confirming={isConfirming} isFetching={isFetching} locale={locale} markingPayout={isMarkingPayout} onConfirm={requestConfirm} onMarkPayout={markPayout} onSelect={setSelectedBooking} tab={tab} t={t} />
                 ) : null}
                 {tab === "expenses" ? <ExpensesSection expenses={expenses} isError={expensesError} isFetching={expensesFetching} locale={locale} offices={activeOffices} t={t} /> : null}
                 {tab === "reports" ? <ReportsSection businessIncome={businessIncome} estimatedTax={estimatedTax} expenses={expenseTotal} income={income} locale={locale} officeId={officeId} quarterlyTaxPercent={quarterlyTaxPercent} specialistEarnings={specialistEarnings} status={status} taxableIncome={taxableIncome} t={t} to={to} from={from} /> : null}
             </section>
 
-            {selectedBooking ? <BookingDetails booking={selectedBooking} confirming={isConfirming} locale={locale} markingPayout={isMarkingPayout} onClose={() => setSelectedBooking(null)} onConfirm={confirm} onMarkPayout={markPayout} t={t} /> : null}
+            {selectedBooking ? <BookingDetails booking={selectedBooking} confirming={isConfirming} locale={locale} markingPayout={isMarkingPayout} onClose={() => setSelectedBooking(null)} onConfirm={requestConfirm} onMarkPayout={markPayout} t={t} /> : null}
+            {bookingToConfirm ? <PaymentReviewModal booking={bookingToConfirm} confirming={isConfirming} locale={locale} onClose={() => setBookingToConfirm(null)} onConfirm={confirm} t={t} /> : null}
         </section>
     );
 }
@@ -161,7 +168,7 @@ function SummaryCard({label, muted = false, tone = "neutral", value}: {label: st
     return <div className="flex min-h-24 min-w-0 flex-col justify-center rounded-xl border border-stone-200 bg-stone-50 px-4 py-4"><p className={`break-words text-xl font-semibold ${valueClass}`}>{value}</p><p className="mt-2 break-words text-xs font-medium text-stone-500">{label}</p></div>;
 }
 
-function BookingSection({bookings, confirming, isFetching, locale, markingPayout, onConfirm, onMarkPayout, onSelect, tab, t}: {bookings: FinanceBooking[]; confirming: boolean; isFetching: boolean; locale: string; markingPayout: boolean; onConfirm: (id: number) => void; onMarkPayout: (id: number) => void; onSelect: (booking: FinanceBooking) => void; tab: "pending" | "transactions"; t: T}) {
+function BookingSection({bookings, confirming, isFetching, locale, markingPayout, onConfirm, onMarkPayout, onSelect, tab, t}: {bookings: FinanceBooking[]; confirming: boolean; isFetching: boolean; locale: string; markingPayout: boolean; onConfirm: (booking: FinanceBooking) => void; onMarkPayout: (id: number) => void; onSelect: (booking: FinanceBooking) => void; tab: "pending" | "transactions"; t: T}) {
     return (
         <div className="p-4 sm:p-5">
             <div className="mb-4"><h2 className="text-base font-semibold text-stone-950">{t(`${tab}.title`)}</h2><p className="mt-1 text-sm text-stone-500">{t(`${tab}.subtitle`)}</p></div>
@@ -182,11 +189,11 @@ function BookingSection({bookings, confirming, isFetching, locale, markingPayout
     );
 }
 
-function BookingRow({booking, confirming, locale, markingPayout, onConfirm, onMarkPayout, onSelect, t}: {booking: FinanceBooking; confirming: boolean; locale: string; markingPayout: boolean; onConfirm: (id: number) => void; onMarkPayout: (id: number) => void; onSelect: (booking: FinanceBooking) => void; t: T}) {
+function BookingRow({booking, confirming, locale, markingPayout, onConfirm, onMarkPayout, onSelect, t}: {booking: FinanceBooking; confirming: boolean; locale: string; markingPayout: boolean; onConfirm: (booking: FinanceBooking) => void; onMarkPayout: (id: number) => void; onSelect: (booking: FinanceBooking) => void; t: T}) {
     return <tr className="border-t border-stone-100 align-top transition-colors hover:bg-stone-50"><td className="px-3 py-3"><button className="text-left font-medium text-stone-950 hover:underline" onClick={() => onSelect(booking)} type="button">{booking.clientName}</button><p className="mt-1 text-xs text-stone-500">{booking.clientContact ?? t("unknownContact")}</p></td><td className="px-3 py-3 text-stone-700">{bookingServiceTitle(booking, locale)}</td><td className="px-3 py-3 text-stone-700">{booking.specialistName}</td><td className="px-3 py-3 text-stone-700">{formatDateTime(booking.startsAt, locale)}</td><td className="px-3 py-3 text-stone-700">{booking.officeName ?? t("withoutOffice")}</td><td className="px-3 py-3 text-right"><MoneyBreakdown booking={booking} locale={locale} t={t} /></td><td className="px-3 py-3"><div className="space-y-1"><StatusBadge status={booking.status} t={t} /><PayoutBadge booking={booking} t={t} /></div></td><td className="px-3 py-3"><FinanceAction booking={booking} confirming={confirming} markingPayout={markingPayout} onConfirm={onConfirm} onMarkPayout={onMarkPayout} t={t} /></td></tr>;
 }
 
-function BookingCard({booking, confirming, locale, markingPayout, onConfirm, onMarkPayout, onSelect, t}: {booking: FinanceBooking; confirming: boolean; locale: string; markingPayout: boolean; onConfirm: (id: number) => void; onMarkPayout: (id: number) => void; onSelect: (booking: FinanceBooking) => void; t: T}) {
+function BookingCard({booking, confirming, locale, markingPayout, onConfirm, onMarkPayout, onSelect, t}: {booking: FinanceBooking; confirming: boolean; locale: string; markingPayout: boolean; onConfirm: (booking: FinanceBooking) => void; onMarkPayout: (id: number) => void; onSelect: (booking: FinanceBooking) => void; t: T}) {
     return <article className="max-w-full rounded-xl border border-stone-200 bg-white p-4"><div className="flex min-w-0 flex-wrap items-start justify-between gap-3"><div className="min-w-0"><button className="break-words text-left font-semibold text-stone-950 hover:underline" onClick={() => onSelect(booking)} type="button">{booking.clientName}</button><p className="mt-1 break-words text-xs text-stone-500">{bookingServiceTitle(booking, locale)} · {booking.specialistName}</p></div><div className="space-y-1"><StatusBadge status={booking.status} t={t} /><PayoutBadge booking={booking} t={t} /></div></div><div className="mt-3 grid min-w-0 grid-cols-1 gap-3 border-t border-stone-100 pt-3 text-xs text-stone-500 sm:grid-cols-2"><span className="break-words">{formatDateTime(booking.startsAt, locale)}</span><span className="break-words sm:text-right">{booking.officeName ?? t("withoutOffice")}</span><MoneyBreakdown booking={booking} locale={locale} t={t} /><div className="sm:text-right"><FinanceAction booking={booking} confirming={confirming} markingPayout={markingPayout} onConfirm={onConfirm} onMarkPayout={onMarkPayout} t={t} /></div></div></article>;
 }
 
@@ -200,9 +207,9 @@ function PayoutBadge({booking, t}: {booking: FinanceBooking; t: T}) {
     return <span className={`inline-flex max-w-full break-words rounded-full border px-2.5 py-1 text-xs font-medium ${tone}`}>{t(`payout.statuses.${booking.specialistPayoutStatus}`)}</span>;
 }
 
-function FinanceAction({booking, confirming, markingPayout, onConfirm, onMarkPayout, t}: {booking: FinanceBooking; confirming: boolean; markingPayout: boolean; onConfirm: (id: number) => void; onMarkPayout: (id: number) => void; t: T}) {
+function FinanceAction({booking, confirming, markingPayout, onConfirm, onMarkPayout, t}: {booking: FinanceBooking; confirming: boolean; markingPayout: boolean; onConfirm: (booking: FinanceBooking) => void; onMarkPayout: (id: number) => void; t: T}) {
     if (booking.status === "AWAITING_PAYMENT_CONFIRMATION") {
-        return <button className="max-w-full rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-stone-700 disabled:bg-stone-300" disabled={confirming} onClick={() => onConfirm(booking.id)} type="button">{confirming ? t("confirming") : t("confirm")}</button>;
+        return <div className="flex min-w-0 flex-col items-start gap-2"><button className="max-w-full rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-stone-700 disabled:bg-stone-300" disabled={confirming} onClick={() => onConfirm(booking)} type="button">{confirming ? t("confirming") : t("confirm")}</button>{booking.externalPaymentUrl ? <a className="break-all text-xs font-medium text-emerald-800 underline-offset-2 hover:underline" href={booking.externalPaymentUrl} rel="noreferrer" target="_blank">{t("details.paymentLink")}</a> : null}</div>;
     }
     if (booking.status === "CONFIRMED" && booking.specialistPayoutStatus === "PENDING") {
         return <button className="max-w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 transition-colors hover:bg-stone-100 disabled:text-stone-400" disabled={markingPayout} onClick={() => onMarkPayout(booking.id)} type="button">{markingPayout ? t("payout.marking") : t("payout.markPaid")}</button>;
@@ -345,8 +352,13 @@ function EmptyState({body, title}: {body: string; title: string}) {
     return <div className="flex min-h-36 items-center justify-center rounded-xl border border-dashed border-stone-300 bg-stone-50 px-5 py-6 text-center"><div className="min-w-0"><h3 className="break-words text-sm font-semibold text-stone-900">{title}</h3><p className="mx-auto mt-2 max-w-lg break-words text-sm leading-6 text-stone-500">{body}</p></div></div>;
 }
 
-function BookingDetails({booking, confirming, locale, markingPayout, onClose, onConfirm, onMarkPayout, t}: {booking: FinanceBooking; confirming: boolean; locale: string; markingPayout: boolean; onClose: () => void; onConfirm: (id: number) => void; onMarkPayout: (id: number) => void; t: T}) {
+function BookingDetails({booking, confirming, locale, markingPayout, onClose, onConfirm, onMarkPayout, t}: {booking: FinanceBooking; confirming: boolean; locale: string; markingPayout: boolean; onClose: () => void; onConfirm: (booking: FinanceBooking) => void; onMarkPayout: (id: number) => void; t: T}) {
     return <div className="fixed inset-0 z-50 flex justify-end bg-stone-950/30" onClick={onClose} role="presentation"><aside className="h-full w-full max-w-md overflow-y-auto bg-white p-4 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()}><div className="flex min-w-0 items-start justify-between gap-3 border-b border-stone-200 pb-4"><div className="min-w-0"><p className="break-words text-xs font-semibold uppercase tracking-wide text-stone-500">{t("details.eyebrow")}</p><h2 className="mt-1 break-words text-xl font-semibold text-stone-950">{booking.clientName}</h2></div><button aria-label={t("details.close")} className="shrink-0 rounded-lg border border-stone-200 px-3 py-2 text-stone-600 hover:bg-stone-100" onClick={onClose} type="button">×</button></div><dl className="mt-5 space-y-4"><Detail label={t("table.service")} value={bookingServiceTitle(booking, locale)} /><Detail label={t("table.specialist")} value={booking.specialistName} /><Detail label={t("table.office")} value={booking.officeName ?? t("withoutOffice")} /><Detail label={t("table.when")} value={formatDateTime(booking.startsAt, locale)} /><Detail label={t("table.amount")} value={formatAmount(booking.bookedPrice, locale)} /><Detail label={t("table.businessShare")} value={formatAmount(booking.businessShare, locale)} /><Detail label={t("table.specialistShare")} value={`${formatAmount(booking.specialistShare, locale)} · ${formatPercent(booking.specialistSharePercent, locale)}`} /><Detail label={t("payout.label")} value={t(`payout.statuses.${booking.specialistPayoutStatus}`)} />{booking.specialistPayoutPaidAt ? <Detail label={t("payout.paidAt")} value={formatDateTime(booking.specialistPayoutPaidAt, locale)} /> : null}{booking.externalPaymentUrl ? <DetailLink label={t("details.paymentLink")} value={booking.externalPaymentUrl} /> : null}<div><dt className="break-words text-xs font-medium uppercase tracking-wide text-stone-500">{t("table.status")}</dt><dd className="mt-1"><StatusBadge status={booking.status} t={t} /></dd></div></dl><div className="mt-6"><FinanceAction booking={booking} confirming={confirming} markingPayout={markingPayout} onConfirm={onConfirm} onMarkPayout={onMarkPayout} t={t} /></div></aside></div>;
+}
+
+function PaymentReviewModal({booking, confirming, locale, onClose, onConfirm, t}: {booking: FinanceBooking; confirming: boolean; locale: string; onClose: () => void; onConfirm: (id: number) => void; t: T}) {
+    const [verified, setVerified] = useState(false);
+    return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-stone-950/40 p-4" onClick={onClose} role="presentation"><section aria-modal="true" className="w-full max-w-lg rounded-xl bg-white p-4 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()} role="dialog"><div className="flex min-w-0 items-start justify-between gap-3 border-b border-stone-200 pb-4"><div className="min-w-0"><p className="break-words text-xs font-semibold uppercase tracking-wide text-amber-700">{t("paymentReview.eyebrow")}</p><h2 className="mt-1 break-words text-xl font-semibold text-stone-950">{t("paymentReview.title")}</h2><p className="mt-2 break-words text-sm leading-6 text-stone-600">{t("paymentReview.body")}</p></div><button aria-label={t("details.close")} className="shrink-0 rounded-lg border border-stone-200 px-3 py-2 text-stone-600 hover:bg-stone-100" onClick={onClose} type="button">×</button></div><dl className="mt-5 grid gap-3 sm:grid-cols-2"><Detail label={t("table.client")} value={booking.clientName} /><Detail label={t("table.service")} value={bookingServiceTitle(booking, locale)} /><Detail label={t("table.when")} value={formatDateTime(booking.startsAt, locale)} /><Detail label={t("table.amount")} value={formatAmount(booking.bookedPrice, locale)} /><Detail label={t("table.specialist")} value={booking.specialistName} /><Detail label={t("table.office")} value={booking.officeName ?? t("withoutOffice")} /></dl>{booking.externalPaymentUrl ? <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3"><DetailLink label={t("details.paymentLink")} value={booking.externalPaymentUrl} /></div> : <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{t("paymentReview.noPaymentLink")}</p>}<label className="mt-5 flex items-start gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm text-stone-700"><input checked={verified} className="mt-1 h-4 w-4 rounded border-stone-300 text-stone-900" onChange={(event) => setVerified(event.target.checked)} type="checkbox" /><span className="min-w-0"><strong className="block break-words text-stone-950">{t("paymentReview.verified")}</strong><span className="mt-1 block break-words text-xs leading-5 text-stone-500">{t("paymentReview.verifyHint")}</span></span></label><div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-100" onClick={onClose} type="button">{t("paymentReview.cancel")}</button><button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={!verified || confirming} onClick={() => onConfirm(booking.id)} type="button">{confirming ? t("confirming") : t("paymentReview.confirm")}</button></div></section></div>;
 }
 
 function Detail({label, value}: {label: string; value: string}) {

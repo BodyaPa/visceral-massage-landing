@@ -164,6 +164,7 @@
     "securitySection": "Access and security",
     "securityText": "Account recovery is available from the login page through an email code. Password changes inside the account will be added separately.",
     "securityAction": "Recover access",
+    "securitySettings": {"title": "Contacts and password", "body": "Contact changes require a confirmation code. After changing the password, sign in again.", "saving": "Saving...", "empty": "not set", "contact": {"title": "Change contact", "current": "Current email: {email}. Current phone: {phone}.", "type": "Contact type", "email": "Email", "phone": "Phone", "code": "Confirmation code", "request": "Send code", "confirm": "Confirm contact", "requested": "Confirmation code sent.", "requestError": "Unable to send confirmation code.", "saved": "Contact updated.", "saveError": "Unable to confirm contact."}, "password": {"title": "Change password", "current": "Current password", "next": "New password", "repeat": "Repeat new password", "save": "Change password", "saved": "Password changed. Sign in again.", "saveError": "Unable to change password.", "mismatch": "New passwords do not match."}},
     "deleteSection": "Account deletion",
     "deleteText": "Account deletion requires a separate retention policy for bookings, payments, and business history.",
     "deleteAction": "Deletion unavailable",

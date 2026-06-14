@@ -9,6 +9,7 @@ import LanguageSwitcher from "@/components/common/LanguageSwitcher";
 import AuthSessionPanel from "@/features/auth/AuthSessionPanel";
 import AccountBookingsPanel from "@/features/account/AccountBookingsPanel";
 import AccountProfileForm from "@/features/account/AccountProfileForm";
+import AccountSecuritySettings from "@/features/account/AccountSecuritySettings";
 
 type Props = {
     params: Promise<{lang: string}>;
@@ -95,16 +96,7 @@ export default async function AccountPage({params}: Props) {
                                         <p className="mt-3 text-sm text-stone-600">{t("rolesHint")}</p>
                                     </section>
 
-                                    <section className="rounded-xl border border-stone-200 bg-stone-50 p-4">
-                                        <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">{t("securitySection")}</h2>
-                                        <p className="mt-2 text-sm text-stone-700">{t("securityText")}</p>
-                                        <Link
-                                            className="mt-3 inline-flex rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100"
-                                            href={withLocale("/auth?mode=recovery", locale)}
-                                        >
-                                            {t("securityAction")}
-                                        </Link>
-                                    </section>
+                                    <AccountSecuritySettings user={user} />
                                 </aside>
                             </section>
 

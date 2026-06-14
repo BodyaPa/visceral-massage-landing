@@ -33,6 +33,20 @@ export type ProfileUpdateRequest = {
     dateOfBirth?: string | null;
 };
 
+export type ContactChangeRequest = {
+    email?: string;
+    phone?: string;
+};
+
+export type ContactChangeConfirmRequest = ContactChangeRequest & {
+    code: string;
+};
+
+export type PasswordChangeRequest = {
+    currentPassword: string;
+    newPassword: string;
+};
+
 type RegisterConfirmRequest = {
     email?: string;
     phone?: string;
@@ -145,6 +159,18 @@ export function logout() {
 
 export function updateProfile(request: ProfileUpdateRequest) {
     return putAuth<AuthenticatedUser>("me", request);
+}
+
+export function requestContactChange(request: ContactChangeRequest) {
+    return postAuth<void>("me/contact-change/request", request);
+}
+
+export function confirmContactChange(request: ContactChangeConfirmRequest) {
+    return postAuth<AuthenticatedUser>("me/contact-change/confirm", request);
+}
+
+export function changePassword(request: PasswordChangeRequest) {
+    return postAuth<void>("me/password", request);
 }
 
 export function refreshSession() {

@@ -95,6 +95,52 @@ describe("client authentication requests", () => {
         );
     });
 
+    it("submits contact change requests and confirmations as CSRF-protected mutations", async () => {
+        const user = {id: 1, phone: "+380000000001", email: "new@example.com", firstName: "Olena", lastName: "Koval", dateOfBirth: null, roles: ["USER"]};
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce(new Response(JSON.stringify({token: "contact-token"}), {status: 200, headers: {"Content-Type": "application/json"}}))
+            .mockResolvedValueOnce(new Response(null, {status: 204}))
+            .mockResolvedValueOnce(new Response(JSON.stringify(user), {status: 200, headers: {"Content-Type": "application/json"}}));
+        vi.stubGlobal("fetch", fetchMock);
+
+        const {confirmContactChange, requestContactChange} = await import("./auth.client");
+
+        await expect(requestContactChange({email: "new@example.com"})).resolves.toBeUndefined();
+        await expect(confirmContactChange({email: "new@example.com", code: "123456"})).resolves.toEqual(user);
+        expect(fetchMock).toHaveBeenNthCalledWith(
+            2,
+            "http://localhost:8080/api/auth/me/contact-change/request",
+            expect.objectContaining({method: "POST"})
+        );
+        expect(fetchMock).toHaveBeenNthCalledWith(
+            3,
+            "http://localhost:8080/api/auth/me/contact-change/confirm",
+            expect.objectContaining({method: "POST"})
+        );
+    });
+
+    it("submits password changes as CSRF-protected mutations", async () => {
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce(new Response(JSON.stringify({token: "password-token"}), {status: 200, headers: {"Content-Type": "application/json"}}))
+            .mockResolvedValueOnce(new Response(null, {status: 204}));
+        vi.stubGlobal("fetch", fetchMock);
+
+        const {changePassword} = await import("./auth.client");
+
+        await expect(changePassword({currentPassword: "Passw0rd!Secure", newPassword: "NewPassw0rd!Secure"})).resolves.toBeUndefined();
+        expect(fetchMock).toHaveBeenNthCalledWith(
+            2,
+            "http://localhost:8080/api/auth/me/password",
+            expect.objectContaining({
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-XSRF-TOKEN": "password-token"
+                }
+            })
+        );
+    });
+
     it("refreshes the CSRF token and retries one rejected login mutation", async () => {
         const user = {id: 1, phone: "+380671234567", email: null, firstName: "Iryna", lastName: "Koval", roles: ["USER"]};
         const fetchMock = vi.fn()

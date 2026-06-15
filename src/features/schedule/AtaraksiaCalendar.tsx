@@ -12,7 +12,7 @@ export type AtaraksiaCalendarEvent = Event & {
     id: string;
     badge?: string;
     meta?: string;
-    tone: "available" | "blocked" | "booking" | "event" | "buffer";
+    tone: "available" | "blocked" | "booking" | "event" | "buffer" | "past" | "cancelled";
 };
 export type AtaraksiaCalendarMessages = Messages<AtaraksiaCalendarEvent>;
 

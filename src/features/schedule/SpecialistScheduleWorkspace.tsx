@@ -57,11 +57,11 @@ type CalendarFilterState = {
     officeId: number | "";
     serviceId: number | "";
     itemType: "all" | ScheduleBlockType | "BOOKING" | "FIXED_EVENT" | "BUFFER";
-    status: "all" | ScheduleBlockStatus | SpecialistBooking["status"] | "ACTIVE_EVENT" | "INACTIVE_EVENT";
+    status: "all" | ScheduleBlockStatus | SpecialistBooking["status"] | "ACTIVE_EVENT" | "INACTIVE_EVENT" | "PAST";
 };
 type CalendarDetail = {
     title: string;
-    tone: "available" | "blocked" | "booking" | "event" | "buffer";
+    tone: "available" | "blocked" | "booking" | "event" | "buffer" | "past" | "cancelled";
     rows: Array<{label: string; value: string}>;
 };
 type CalendarBuffer = {
@@ -117,7 +117,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const [updateAvailability, {isLoading: isUpdatingAvailability}] = useUpdateAvailabilityMutation();
     const [deleteAvailability, {isLoading: isDeleting}] = useDeleteAvailabilityMutation();
     const [selectedView, setSelectedView] = useState<CalendarView>("week");
-    const [plannerMode, setPlannerMode] = useState<PlannerMode>("plan");
+    const [plannerMode, setPlannerMode] = useState<PlannerMode>("agenda");
     const [form, setForm] = useState<AvailabilityForm>(() => buildDefaultForm());
     const [editingBlock, setEditingBlock] = useState<SpecialistAvailabilityBlock | null>(null);
     const [editingEvent, setEditingEvent] = useState<SpecialistFixedEvent | null>(null);
@@ -316,6 +316,8 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                             <LegendItem className="border-stone-400 bg-stone-700" label={t("legend.booking")} />
                             <LegendItem className="border-sky-200 bg-sky-50" label={copy.eventsTitle} />
                             <LegendItem className="border-stone-300 bg-stone-100" label={copy.buffer} />
+                            <LegendItem className="border-stone-300 bg-stone-50" label={copy.statusPast} />
+                            <LegendItem className="border-red-200 bg-red-50" label={copy.statusCancelled} />
                         </div>
 
                     {isError ? <p className="m-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("calendar.loadError")}</p> : null}
@@ -562,7 +564,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     isFetching={eventEnrollmentsFetching}
                     locale={locale}
                 />
-                <BookingsPanel bookings={bookings} isError={bookingsError} isFetching={bookingsFetching} locale={locale} t={t} />
+                <BookingsPanel bookings={bookings} copy={copy} isError={bookingsError} isFetching={bookingsFetching} locale={locale} t={t} />
                 <PreparedPanel title={t("exceptions.title")} body={t("exceptions.body")} empty={t("exceptions.empty")} />
             </aside>
         </section>
@@ -635,7 +637,7 @@ function CalendarSurface({
                 meta: [block.specialistName, block.officeName].filter(Boolean).join(" · "),
                 start: new Date(block.startsAt),
                 end: new Date(block.endsAt),
-                tone: block.booked ? "booking" as const : block.status === "AVAILABLE" ? "available" as const : "blocked" as const
+                tone: calendarToneForBlock(block)
             };
         }),
         ...visibleBookings.map((booking) => {
@@ -645,10 +647,10 @@ function CalendarSurface({
                 id,
                 badge: formatTimeRange(booking.startsAt, booking.endsAt, locale),
                 title: bookingServiceTitle(booking, locale),
-                meta: [booking.clientName, booking.officeName].filter(Boolean).join(" · "),
+                meta: [bookingStatusLabel(booking, copy, t), booking.clientName, booking.officeName].filter(Boolean).join(" · "),
                 start: new Date(booking.startsAt),
                 end: new Date(booking.endsAt),
-                tone: "booking" as const
+                tone: calendarToneForBooking(booking)
             };
         }),
         ...visibleBuffers.map((buffer) => {
@@ -671,10 +673,10 @@ function CalendarSurface({
                 id,
                 badge: formatTimeRange(event.startsAt, event.endsAt, locale),
                 title: event.serviceTitle,
-                meta: `${event.enrolledCount}/${event.capacity} · ${event.officeName ?? copy.noOffice}`,
+                meta: [eventStatusLabel(event, copy), `${event.enrolledCount}/${event.capacity}`, event.officeName ?? copy.noOffice].join(" · "),
                 start: new Date(event.startsAt),
                 end: new Date(event.endsAt),
-                tone: "event" as const
+                tone: calendarToneForEvent(event)
             };
         })
     ];
@@ -742,9 +744,9 @@ function PlannerAgendaList({
     t: T;
 }) {
     const entries = [
-        ...blocks.map((block) => ({detail: blockCalendarDetail(block, copy, locale, t), end: block.endsAt, id: `block-${block.id}`, specialistName: block.specialistName, start: block.startsAt, tone: block.booked ? "booking" as const : block.status === "AVAILABLE" ? "available" as const : "blocked" as const})),
-        ...bookings.map((booking) => ({detail: bookingCalendarDetail(booking, copy, locale, t), end: booking.endsAt, id: `booking-${booking.id}`, specialistName: booking.specialistName, start: booking.startsAt, tone: "booking" as const})),
-        ...events.map((event) => ({detail: eventCalendarDetail(event, copy, locale), end: event.endsAt, id: `event-${event.id}`, specialistName: event.specialistName, start: event.startsAt, tone: "event" as const})),
+        ...blocks.map((block) => ({detail: blockCalendarDetail(block, copy, locale, t), end: block.endsAt, id: `block-${block.id}`, specialistName: block.specialistName, start: block.startsAt, tone: calendarToneForBlock(block)})),
+        ...bookings.map((booking) => ({detail: bookingCalendarDetail(booking, copy, locale, t), end: booking.endsAt, id: `booking-${booking.id}`, specialistName: booking.specialistName, start: booking.startsAt, tone: calendarToneForBooking(booking)})),
+        ...events.map((event) => ({detail: eventCalendarDetail(event, copy, locale), end: event.endsAt, id: `event-${event.id}`, specialistName: event.specialistName, start: event.startsAt, tone: calendarToneForEvent(event)})),
         ...buffers.map((buffer) => ({detail: bufferCalendarDetail(buffer, copy, locale), end: buffer.endsAt, id: `buffer-${buffer.id}`, specialistName: buffer.specialistName, start: buffer.startsAt, tone: "buffer" as const}))
     ].sort((first, second) => new Date(first.start).getTime() - new Date(second.start).getTime()).slice(0, 160);
 
@@ -819,6 +821,7 @@ function CalendarFilters({
                         <option value="AWAITING_PAYMENT_CONFIRMATION">{copy.statusAwaitingPayment}</option>
                         <option value="CONFIRMED">{copy.statusConfirmed}</option>
                         <option value="CANCELLED">{copy.statusCancelled}</option>
+                        <option value="PAST">{copy.statusPast}</option>
                         <option value="ACTIVE_EVENT">{copy.statusActiveEvent}</option>
                         <option value="INACTIVE_EVENT">{copy.statusInactiveEvent}</option>
                     </select>
@@ -851,6 +854,10 @@ function CalendarDetailPanel({closeLabel, detail, onClose}: {closeLabel: string;
         ? "border-sky-200 bg-sky-50 text-sky-800"
         : detail.tone === "buffer"
         ? "border-stone-300 bg-stone-100 text-stone-700"
+        : detail.tone === "past"
+        ? "border-stone-300 bg-stone-50 text-stone-600"
+        : detail.tone === "cancelled"
+        ? "border-red-200 bg-red-50 text-red-800"
         : "border-stone-300 bg-stone-800 text-white";
 
     return (
@@ -1453,7 +1460,7 @@ function DayPlanTemplateForm({
     );
 }
 
-function BookingsPanel({bookings, isError, isFetching, locale, t}: {bookings: SpecialistBooking[]; isError: boolean; isFetching: boolean; locale: string; t: T}) {
+function BookingsPanel({bookings, copy, isError, isFetching, locale, t}: {bookings: SpecialistBooking[]; copy: ReturnType<typeof scheduleCopy>; isError: boolean; isFetching: boolean; locale: string; t: T}) {
     return (
         <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
             <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
@@ -1473,7 +1480,7 @@ function BookingsPanel({bookings, isError, isFetching, locale, t}: {bookings: Sp
                                     <p className="break-words text-sm font-semibold text-stone-900">{booking.clientName}</p>
                                     <p className="mt-0.5 break-words text-xs text-stone-500">{bookingServiceTitle(booking, locale)}</p>
                                 </div>
-                                <BookingStatusBadge status={booking.status} t={t} />
+                                <BookingStatusBadge booking={booking} copy={copy} t={t} />
                             </div>
                             <p className="mt-2 break-words text-xs font-medium text-stone-700">{formatDateTime(booking.startsAt, locale)}</p>
                             <p className="mt-1 break-words text-xs text-stone-500">{[booking.officeName, booking.clientContact].filter(Boolean).join(" · ")}</p>
@@ -1485,11 +1492,16 @@ function BookingsPanel({bookings, isError, isFetching, locale, t}: {bookings: Sp
     );
 }
 
-function BookingStatusBadge({status, t}: {status: SpecialistBooking["status"]; t: T}) {
-    const className = status === "CONFIRMED"
+function BookingStatusBadge({booking, copy, t}: {booking: SpecialistBooking; copy: ReturnType<typeof scheduleCopy>; t: T}) {
+    const tone = calendarToneForBooking(booking);
+    const className = tone === "cancelled"
+        ? "border-red-200 bg-red-50 text-red-800"
+        : tone === "past"
+        ? "border-stone-300 bg-stone-50 text-stone-600"
+        : booking.status === "CONFIRMED"
         ? "border-emerald-200 bg-emerald-50 text-emerald-800"
         : "border-amber-200 bg-amber-50 text-amber-800";
-    return <span className={`max-w-full break-words rounded-full border px-2 py-1 text-[10px] font-semibold sm:shrink-0 ${className}`}>{t(`bookings.statuses.${status}`)}</span>;
+    return <span className={`max-w-full break-words rounded-full border px-2 py-1 text-[10px] font-semibold sm:shrink-0 ${className}`}>{bookingStatusLabel(booking, copy, t)}</span>;
 }
 
 function SpecialistFinanceOverviewPanel({copy, isError, isFetching, locale, overview}: {copy: ReturnType<typeof scheduleCopy>; isError: boolean; isFetching: boolean; locale: string; overview?: SpecialistFinanceOverview}) {
@@ -1545,6 +1557,8 @@ function agendaToneDot(tone: CalendarDetail["tone"]) {
     if (tone === "blocked") return "bg-amber-500";
     if (tone === "event") return "bg-sky-500";
     if (tone === "buffer") return "bg-stone-400";
+    if (tone === "past") return "bg-stone-300";
+    if (tone === "cancelled") return "bg-red-500";
     return "bg-stone-800";
 }
 
@@ -1566,6 +1580,7 @@ function filterCalendarBlocks(blocks: SpecialistAvailabilityBlock[], filters: Ca
         if (filters.officeId !== "" && block.officeId !== filters.officeId) return false;
         if (filters.serviceId !== "" && block.serviceId !== filters.serviceId) return false;
         if (filters.itemType !== "all" && (filters.itemType === "BOOKING" || filters.itemType === "FIXED_EVENT" || block.itemType !== filters.itemType)) return false;
+        if (filters.status === "PAST") return isPastRange(block.endsAt);
         if (filters.status !== "all" && (filters.status === "ACTIVE_EVENT" || filters.status === "INACTIVE_EVENT" || !["AVAILABLE", "BLOCKED"].includes(filters.status) || block.status !== filters.status)) return false;
         return true;
     });
@@ -1576,6 +1591,7 @@ function filterCalendarEvents(events: SpecialistFixedEvent[], filters: CalendarF
         if (filters.officeId !== "" && event.officeId !== filters.officeId) return false;
         if (filters.serviceId !== "" && event.serviceId !== filters.serviceId) return false;
         if (filters.itemType !== "all" && filters.itemType !== "FIXED_EVENT") return false;
+        if (filters.status === "PAST") return isPastRange(event.endsAt);
         if (filters.status === "ACTIVE_EVENT" && !event.active) return false;
         if (filters.status === "INACTIVE_EVENT" && event.active) return false;
         if (filters.status !== "all" && filters.status !== "ACTIVE_EVENT" && filters.status !== "INACTIVE_EVENT") return false;
@@ -1588,6 +1604,7 @@ function filterCalendarBookings(bookings: SpecialistBooking[], filters: Calendar
         if (filters.officeId !== "" && booking.officeId !== filters.officeId) return false;
         if (filters.serviceId !== "" && booking.serviceId !== filters.serviceId) return false;
         if (filters.itemType !== "all" && filters.itemType !== "BOOKING") return false;
+        if (filters.status === "PAST") return booking.status !== "CANCELLED" && isPastRange(booking.endsAt);
         if (filters.status !== "all" && !["AWAITING_PAYMENT_CONFIRMATION", "CONFIRMED", "CANCELLED"].includes(filters.status)) return false;
         if (filters.status !== "all" && booking.status !== filters.status) return false;
         return true;
@@ -1599,6 +1616,7 @@ function filterCalendarBuffers(buffers: CalendarBuffer[], filters: CalendarFilte
         if (filters.officeId !== "" && buffer.officeId !== filters.officeId) return false;
         if (filters.serviceId !== "") return false;
         if (filters.itemType !== "all" && filters.itemType !== "BUFFER") return false;
+        if (filters.status === "PAST") return isPastRange(buffer.endsAt);
         if (filters.status !== "all") return false;
         return true;
     });
@@ -1632,19 +1650,54 @@ function buildCalendarBuffers(bookings: SpecialistBooking[], events: SpecialistF
 }
 
 function bufferRanges(idPrefix: string, startsAt: string, endsAt: string, specialistName: string, officeId: number | null, officeName: string | null, appointmentBufferMinutes: number): CalendarBuffer[] {
-    const start = new Date(startsAt);
     const end = new Date(endsAt);
-    const before = new Date(start);
-    before.setMinutes(before.getMinutes() - appointmentBufferMinutes);
     const after = new Date(end);
     after.setMinutes(after.getMinutes() + appointmentBufferMinutes);
     return [
-        {id: `${idPrefix}-before`, startsAt: before.toISOString(), endsAt: start.toISOString(), specialistName, officeId, officeName},
         {id: `${idPrefix}-after`, startsAt: end.toISOString(), endsAt: after.toISOString(), specialistName, officeId, officeName}
     ];
 }
 
+function calendarToneForBlock(block: SpecialistAvailabilityBlock): CalendarDetail["tone"] {
+    if (isPastRange(block.endsAt)) return "past";
+    if (block.booked) return "booking";
+    return block.status === "AVAILABLE" ? "available" : "blocked";
+}
+
+function calendarToneForBooking(booking: SpecialistBooking): CalendarDetail["tone"] {
+    if (booking.status === "CANCELLED") return "cancelled";
+    if (isPastRange(booking.endsAt)) return "past";
+    return "booking";
+}
+
+function calendarToneForEvent(event: SpecialistFixedEvent): CalendarDetail["tone"] {
+    if (isPastRange(event.endsAt)) return "past";
+    return event.active ? "event" : "blocked";
+}
+
+function isPastRange(endsAt: string) {
+    return new Date(endsAt).getTime() < Date.now();
+}
+
+function blockStatusLabel(block: SpecialistAvailabilityBlock, copy: ReturnType<typeof scheduleCopy>, t: T) {
+    if (isPastRange(block.endsAt)) return copy.statusPast;
+    if (block.booked) return t("statuses.booked");
+    return block.status === "AVAILABLE" ? t("statuses.available") : t("statuses.blocked");
+}
+
+function bookingStatusLabel(booking: SpecialistBooking, copy: ReturnType<typeof scheduleCopy>, t: T) {
+    if (booking.status === "CANCELLED") return t("bookings.statuses.CANCELLED");
+    if (isPastRange(booking.endsAt)) return copy.statusPast;
+    return t(`bookings.statuses.${booking.status}`);
+}
+
+function eventStatusLabel(event: SpecialistFixedEvent, copy: ReturnType<typeof scheduleCopy>) {
+    if (isPastRange(event.endsAt)) return copy.statusPast;
+    return event.active ? copy.statusActiveEvent : copy.statusInactiveEvent;
+}
+
 function compactBlockCalendarLabel(block: SpecialistAvailabilityBlock, copy: ReturnType<typeof scheduleCopy>, locale: string, t: T) {
+    if (isPastRange(block.endsAt)) return [copy.statusPast, scheduleBlockLabel(block, copy, t), block.officeName].filter(Boolean).join(" · ");
     if (block.booked) return [t("legend.booked"), block.serviceTitle, block.officeName].filter(Boolean).join(" · ");
     if (block.itemType === "APPOINTMENT_SLOT") return [block.serviceTitle ?? copy.appointmentSlot, block.officeName].filter(Boolean).join(" · ");
     return [scheduleBlockLabel(block, copy, t), block.officeName, block.notes].filter(Boolean).join(" · ");
@@ -1653,10 +1706,10 @@ function compactBlockCalendarLabel(block: SpecialistAvailabilityBlock, copy: Ret
 function blockCalendarDetail(block: SpecialistAvailabilityBlock, copy: ReturnType<typeof scheduleCopy>, locale: string, t: T): CalendarDetail {
     return {
         title: compactBlockCalendarLabel(block, copy, locale, t) || scheduleBlockLabel(block, copy, t),
-        tone: block.booked ? "booking" : block.status === "AVAILABLE" ? "available" : "blocked",
+        tone: calendarToneForBlock(block),
         rows: [
             {label: copy.detailType, value: scheduleBlockTypeLabel(block, copy)},
-            {label: copy.detailStatus, value: block.booked ? t("statuses.booked") : block.status === "AVAILABLE" ? t("statuses.available") : t("statuses.blocked")},
+            {label: copy.detailStatus, value: blockStatusLabel(block, copy, t)},
             {label: copy.startsAt, value: formatDateTime(block.startsAt, locale)},
             {label: copy.endsAt, value: formatDateTime(block.endsAt, locale)},
             {label: copy.specialistFilter, value: block.specialistName},
@@ -1670,10 +1723,10 @@ function blockCalendarDetail(block: SpecialistAvailabilityBlock, copy: ReturnTyp
 function bookingCalendarDetail(booking: SpecialistBooking, copy: ReturnType<typeof scheduleCopy>, locale: string, t: T): CalendarDetail {
     return {
         title: `${bookingServiceTitle(booking, locale)} · ${booking.clientName}`,
-        tone: "booking",
+        tone: calendarToneForBooking(booking),
         rows: [
             {label: copy.detailType, value: copy.bookingsTitle},
-            {label: copy.detailStatus, value: t(`bookings.statuses.${booking.status}`)},
+            {label: copy.detailStatus, value: bookingStatusLabel(booking, copy, t)},
             {label: copy.startsAt, value: formatDateTime(booking.startsAt, locale)},
             {label: copy.endsAt, value: formatDateTime(booking.endsAt, locale)},
             {label: copy.client, value: booking.clientName},
@@ -1687,10 +1740,10 @@ function bookingCalendarDetail(booking: SpecialistBooking, copy: ReturnType<type
 function eventCalendarDetail(event: SpecialistFixedEvent, copy: ReturnType<typeof scheduleCopy>, locale: string): CalendarDetail {
     return {
         title: event.serviceTitle,
-        tone: "event",
+        tone: calendarToneForEvent(event),
         rows: [
             {label: copy.detailType, value: copy.eventsTitle},
-            {label: copy.detailStatus, value: event.active ? copy.statusActiveEvent : copy.statusInactiveEvent},
+            {label: copy.detailStatus, value: eventStatusLabel(event, copy)},
             {label: copy.startsAt, value: formatDateTime(event.startsAt, locale)},
             {label: copy.endsAt, value: formatDateTime(event.endsAt, locale)},
             {label: copy.specialistFilter, value: event.specialistName},
@@ -1762,6 +1815,7 @@ function scheduleCopy(t: T) {
         statusAwaitingPayment: t("schedule.statusAwaitingPayment"),
         statusConfirmed: t("schedule.statusConfirmed"),
         statusCancelled: t("schedule.statusCancelled"),
+        statusPast: t("schedule.statusPast"),
         statusActiveEvent: t("schedule.statusActiveEvent"),
         statusInactiveEvent: t("schedule.statusInactiveEvent"),
         detailType: t("schedule.detailType"),
@@ -1968,11 +2022,12 @@ function overlaps(firstStart: Date, firstEnd: Date, secondStart: Date, secondEnd
 }
 
 function overlapsBuffered(firstStart: Date, firstEnd: Date, startsAt: string, endsAt: string, appointmentBufferMinutes: number) {
+    const firstBufferedEnd = new Date(firstEnd);
+    firstBufferedEnd.setMinutes(firstBufferedEnd.getMinutes() + appointmentBufferMinutes);
     const secondStart = new Date(startsAt);
-    secondStart.setMinutes(secondStart.getMinutes() - appointmentBufferMinutes);
     const secondEnd = new Date(endsAt);
     secondEnd.setMinutes(secondEnd.getMinutes() + appointmentBufferMinutes);
-    return overlaps(firstStart, firstEnd, secondStart, secondEnd);
+    return overlaps(firstStart, firstBufferedEnd, secondStart, secondEnd);
 }
 
 function buildDefaultForm(): AvailabilityForm {

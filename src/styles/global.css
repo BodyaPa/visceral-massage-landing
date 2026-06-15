@@ -184,6 +184,19 @@ button {
   color: #fff;
 }
 
+.ataraksia-calendar .ataraksia-calendar-event-past {
+  border-color: #d6d3d1;
+  background: #fafaf9;
+  color: #57534e;
+}
+
+.ataraksia-calendar .ataraksia-calendar-event-cancelled {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+  text-decoration: line-through;
+}
+
 .ataraksia-calendar .ataraksia-calendar-event-event {
   border-color: #bae6fd;
   background: #f0f9ff;

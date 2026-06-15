@@ -176,6 +176,15 @@
   font-size: 18px;
 }
 
+.managementAccountMenu .accountDropdown,
+.personalAccountMenu .accountDropdown {
+  position: fixed;
+  top: 3.75rem;
+  right: max(0.75rem, env(safe-area-inset-right));
+  z-index: 80;
+  max-width: min(calc(100vw - 1.5rem), 280px);
+}
+
 .accountMenuLight {
   color: #292524;
 }

@@ -75,6 +75,7 @@ export interface PublicFixedEvent {
     remainingPlaces: number;
     full: boolean;
     enrolled: boolean;
+    enrollmentStatus: "ACTIVE" | "CANCELLED" | null;
     price: number;
     note: string | null;
 }

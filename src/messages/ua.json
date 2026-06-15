@@ -141,6 +141,7 @@
         "paymentTitle": "Запис створено, оплата очікує підтвердження",
         "paymentBody": "{service}, {startsAt}. Після оплати фінансовий менеджер підтвердить запис вручну.",
         "paymentAction": "Перейти до оплати",
+        "accountAction": "Мої записи",
         "dismissPayment": "Приховати",
         "eventEnrolled": "Ви записані на подію.",
         "eventCancelled": "Участь у події скасовано.",
@@ -196,7 +197,9 @@
       "pay": "Перейти до оплати",
       "cancelled": "Запис скасовано.",
       "cancelError": "Не вдалося скасувати запис.",
-      "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Очікує оплати", "CONFIRMED": "Підтверджено", "CANCELLED": "Скасовано"}
+      "filters": {"upcoming": "Майбутні", "history": "Історія", "cancelled": "Скасовані", "all": "Усі"},
+      "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Очікує оплати", "CONFIRMED": "Підтверджено", "CANCELLED": "Скасовано", "PAST": "Пройшло"},
+      "eventStatuses": {"ACTIVE": "Ви записані", "PAST": "Пройшло", "CANCELLED": "Скасовано"}
     },
     "roles": {
       "USER": "Користувач",

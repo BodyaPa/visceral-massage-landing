@@ -17,6 +17,7 @@ import {
 import AtaraksiaCalendar, {toCalendarView, type AtaraksiaCalendarEvent, type AtaraksiaCalendarMessages} from "@/features/schedule/AtaraksiaCalendar";
 import {useListServicesQuery} from "@/features/services/services.api";
 import {API_URL} from "@/shared/constants/env";
+import {withLocale} from "@/shared/lib/locale/withLocale";
 import type {Booking} from "@/types/bookings";
 import type {PublicFixedEvent, PublicScheduleAvailabilityBlock, PublicScheduleUnavailableBlock} from "@/types/schedule";
 import type {PublicService} from "@/types/services";
@@ -30,7 +31,13 @@ type StatusFilter = "all" | "available" | "unavailable" | "events" | "mine";
 type PendingBooking =
     | {type: "individual"; service: PublicService; slot: PublicScheduleAvailabilityBlock}
     | {type: "event"; event: PublicFixedEvent};
-type PaymentPrompt = Pick<Booking, "externalPaymentUrl" | "id" | "serviceTitleUa" | "serviceTitleEn" | "startsAt">;
+type PaymentPrompt = {
+    externalPaymentUrl: string | null;
+    serviceTitleUa?: string;
+    serviceTitleEn?: string | null;
+    title?: string;
+    startsAt: string;
+};
 
 type FilterState = {
     officeId: number | "";
@@ -169,12 +176,12 @@ export default function PublicSchedulePage() {
                     reminderOptIn
                 }).unwrap();
                 toast.success(booking.externalPaymentUrl ? copy.bookingCreatedWithPayment : copy.bookingCreated);
-                setPaymentPrompt(booking.externalPaymentUrl ? booking : null);
+                setPaymentPrompt(booking);
                 void refetchSlots();
             } else {
                 await enrollEvent({id: pendingBooking.event.id, lang: locale, reminderOptIn}).unwrap();
                 toast.success(copy.eventEnrolled);
-                setPaymentPrompt(null);
+                setPaymentPrompt({externalPaymentUrl: null, title: pendingBooking.event.title, startsAt: pendingBooking.event.startsAt});
                 void refetchEvents();
             }
             setPendingBooking(null);
@@ -270,15 +277,16 @@ export default function PublicSchedulePage() {
                 </div>
             </section>
 
-            {paymentPrompt?.externalPaymentUrl ? (
+            {paymentPrompt ? (
                 <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
                             <h2 className="text-base font-semibold text-emerald-950">{copy.paymentTitle}</h2>
-                            <p className="mt-1 text-sm leading-6 text-emerald-900">{copy.paymentBody(bookingServiceTitle(paymentPrompt, locale), formatDateTime(paymentPrompt.startsAt, locale))}</p>
+                            <p className="mt-1 text-sm leading-6 text-emerald-900">{copy.paymentBody(paymentPromptTitle(paymentPrompt, locale), formatDateTime(paymentPrompt.startsAt, locale))}</p>
                         </div>
                         <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-                            <a className="rounded-lg bg-emerald-900 px-4 py-2 text-center text-sm font-semibold text-white transition-colors hover:bg-emerald-800" href={paymentPrompt.externalPaymentUrl} rel="noreferrer" target="_blank">{copy.paymentAction}</a>
+                            {paymentPrompt.externalPaymentUrl ? <a className="rounded-lg bg-emerald-900 px-4 py-2 text-center text-sm font-semibold text-white transition-colors hover:bg-emerald-800" href={paymentPrompt.externalPaymentUrl} rel="noreferrer" target="_blank">{copy.paymentAction}</a> : null}
+                            <a className="rounded-lg border border-emerald-300 bg-white px-4 py-2 text-center text-sm font-semibold text-emerald-900 transition-colors hover:bg-emerald-100" href={withLocale("/account", locale)}>{copy.accountAction}</a>
                             <button className="rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-900 transition-colors hover:bg-emerald-100" onClick={() => setPaymentPrompt(null)} type="button">{copy.dismissPayment}</button>
                         </div>
                     </div>
@@ -1009,6 +1017,14 @@ function formatDateTimeRange(start: string, end: string, locale: string) {
     return `${new Intl.DateTimeFormat(toLanguageTag(locale), {day: "numeric", month: "long", weekday: "short"}).format(new Date(start))}, ${formatTime(start, locale)}–${formatTime(end, locale)}`;
 }
 
+function paymentPromptTitle(prompt: PaymentPrompt, locale: string) {
+    if (prompt.title) return prompt.title;
+    return bookingServiceTitle({
+        serviceTitleUa: prompt.serviceTitleUa ?? "",
+        serviceTitleEn: prompt.serviceTitleEn ?? null
+    }, locale);
+}
+
 function formatCalendarLabel(view: CalendarView, range: {from: string; to: string}, locale: string) {
     const languageTag = toLanguageTag(locale);
     const from = new Date(range.from);
@@ -1123,6 +1139,7 @@ function labels(t: T) {
         paymentTitle: t("public.paymentTitle"),
         paymentBody: (service: string, startsAt: string) => t("public.paymentBody", {service, startsAt}),
         paymentAction: t("public.paymentAction"),
+        accountAction: t("public.accountAction"),
         dismissPayment: t("public.dismissPayment"),
         eventEnrolled: t("public.eventEnrolled"),
         eventCancelled: t("public.eventCancelled"),

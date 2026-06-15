@@ -141,6 +141,7 @@
         "paymentTitle": "Booking created, payment awaits confirmation",
         "paymentBody": "{service}, {startsAt}. After payment, a finance manager will confirm the booking manually.",
         "paymentAction": "Go to payment",
+        "accountAction": "My bookings",
         "dismissPayment": "Dismiss",
         "eventEnrolled": "You are enrolled in the event.",
         "eventCancelled": "Event enrollment cancelled.",
@@ -196,7 +197,9 @@
       "pay": "Go to payment",
       "cancelled": "Booking cancelled.",
       "cancelError": "Unable to cancel booking.",
-      "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Payment pending", "CONFIRMED": "Confirmed", "CANCELLED": "Cancelled"}
+      "filters": {"upcoming": "Upcoming", "history": "History", "cancelled": "Cancelled", "all": "All"},
+      "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Payment pending", "CONFIRMED": "Confirmed", "CANCELLED": "Cancelled", "PAST": "Past"},
+      "eventStatuses": {"ACTIVE": "Enrolled", "PAST": "Past", "CANCELLED": "Cancelled"}
     },
     "roles": {
       "USER": "User",

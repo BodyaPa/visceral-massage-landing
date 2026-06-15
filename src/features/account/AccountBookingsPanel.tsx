@@ -1,6 +1,6 @@
 "use client";
 
-import {useMemo} from "react";
+import {useMemo, useState} from "react";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {useCancelBookingMutation, useListMyBookingsQuery} from "@/features/bookings/bookings.api";
@@ -11,16 +11,27 @@ import {API_URL} from "@/shared/constants/env";
 import type {Booking} from "@/types/bookings";
 import type {PublicFixedEvent} from "@/types/schedule";
 
+type AccountBookingFilter = "upcoming" | "history" | "cancelled" | "all";
+
 export default function AccountBookingsPanel({locale}: {locale: Locale}) {
     const t = useTranslations("accountPage.bookings");
     const copy = labels(t);
     const toast = useToast();
     const range = useMemo(() => buildAccountRange(), []);
-    const {data: bookingsData, isFetching: bookingsFetching, isError: bookingsError} = useListMyBookingsQuery({page: 0, size: 10});
+    const [filter, setFilter] = useState<AccountBookingFilter>("upcoming");
+    const {data: bookingsData, isFetching: bookingsFetching, isError: bookingsError} = useListMyBookingsQuery({page: 0, size: 100});
     const {data: events = [], isFetching: eventsFetching, isError: eventsError} = useListMyFixedEventEnrollmentsQuery({...range, lang: locale});
     const [cancelBooking, {isLoading: cancellingBooking}] = useCancelBookingMutation();
     const [cancelEnrollment, {isLoading: cancellingEnrollment}] = useCancelFixedEventEnrollmentMutation();
-    const bookings = bookingsData?.content ?? [];
+    const bookings = useMemo(() => bookingsData?.content ?? [], [bookingsData?.content]);
+    const filteredBookings = useMemo(() => filterBookings(bookings, filter), [bookings, filter]);
+    const filteredEvents = useMemo(() => filterEvents(events, filter), [events, filter]);
+    const counts = useMemo(() => ({
+        upcoming: filterBookings(bookings, "upcoming").length + filterEvents(events, "upcoming").length,
+        history: filterBookings(bookings, "history").length + filterEvents(events, "history").length,
+        cancelled: filterBookings(bookings, "cancelled").length + filterEvents(events, "cancelled").length,
+        all: bookings.length + events.length
+    }), [bookings, events]);
 
     async function cancelAppointment(id: number) {
         try {
@@ -49,14 +60,25 @@ export default function AccountBookingsPanel({locale}: {locale: Locale}) {
                 </div>
                 {(bookingsFetching || eventsFetching) ? <span className="text-xs font-medium text-stone-500">{copy.loading}</span> : null}
             </div>
+            <div className="mt-4 grid gap-1 rounded-xl bg-stone-100 p-1 sm:grid-cols-4">
+                {(["upcoming", "history", "cancelled", "all"] as const).map((item) => (
+                    <button aria-pressed={filter === item} className={filter === item ? activeFilterClass : filterClass} key={item} onClick={() => setFilter(item)} type="button">
+                        <span>{copy.filters[item]}</span>
+                        <span className={filter === item ? "rounded-full bg-white/15 px-1.5 py-0.5 text-[10px]" : "rounded-full bg-white px-1.5 py-0.5 text-[10px] text-stone-500"}>{counts[item]}</span>
+                    </button>
+                ))}
+            </div>
 
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                <BookingList bookings={bookings} cancelling={cancellingBooking} copy={copy} isError={bookingsError} locale={locale} onCancel={cancelAppointment} />
-                <EventList cancelling={cancellingEnrollment} copy={copy} events={events} isError={eventsError} locale={locale} onCancel={cancelEvent} />
+                <BookingList bookings={filteredBookings} cancelling={cancellingBooking} copy={copy} isError={bookingsError} locale={locale} onCancel={cancelAppointment} />
+                <EventList cancelling={cancellingEnrollment} copy={copy} events={filteredEvents} isError={eventsError} locale={locale} onCancel={cancelEvent} />
             </div>
         </section>
     );
 }
+
+const filterClass = "flex min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-stone-600 transition-colors hover:bg-white hover:text-stone-900";
+const activeFilterClass = "flex min-w-0 items-center justify-center gap-2 rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white shadow-sm";
 
 function BookingList({bookings, cancelling, copy, isError, locale, onCancel}: {bookings: Booking[]; cancelling: boolean; copy: Copy; isError: boolean; locale: Locale; onCancel: (id: number) => void}) {
     return (
@@ -101,7 +123,7 @@ function BookingCard({booking, cancelling, copy, locale, onCancel}: {booking: Bo
                     <p className="truncate text-sm font-semibold text-stone-950">{bookingServiceTitle(booking, locale)}</p>
                     <p className="mt-1 text-xs text-stone-500">{booking.specialistName} · {booking.officeName ?? copy.noOffice}</p>
                 </div>
-                <StatusBadge copy={copy} status={booking.status} />
+                <BookingStatusBadge booking={booking} copy={copy} />
             </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs font-medium text-stone-700">{formatDateTimeRange(booking.startsAt, booking.endsAt, locale)}</p>
@@ -123,7 +145,8 @@ function BookingCard({booking, cancelling, copy, locale, onCancel}: {booking: Bo
 }
 
 function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boolean; copy: Copy; event: PublicFixedEvent; locale: Locale; onCancel: (id: number) => void}) {
-    const cancellable = new Date(event.startsAt).getTime() > Date.now();
+    const status = eventStatus(event);
+    const cancellable = status === "ACTIVE" && new Date(event.startsAt).getTime() > Date.now();
 
     return (
         <article className="rounded-lg border border-stone-200 bg-stone-50 p-3">
@@ -132,7 +155,7 @@ function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boo
                     <p className="truncate text-sm font-semibold text-stone-950">{event.title}</p>
                     <p className="mt-1 text-xs text-stone-500">{event.specialistName} · {event.officeName ?? copy.noOffice}</p>
                 </div>
-                <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-800">{copy.enrolled}</span>
+                <EventStatusBadge copy={copy} status={status} />
             </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs font-medium text-stone-700">{formatDateTimeRange(event.startsAt, event.endsAt, locale)}</p>
@@ -148,6 +171,15 @@ function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boo
             />
         </article>
     );
+}
+
+function EventStatusBadge({copy, status}: {copy: Copy; status: "ACTIVE" | "PAST" | "CANCELLED"}) {
+    const className = status === "CANCELLED"
+        ? "border-red-200 bg-red-50 text-red-700"
+        : status === "PAST"
+        ? "border-stone-300 bg-stone-100 text-stone-600"
+        : "border-emerald-200 bg-emerald-50 text-emerald-800";
+    return <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${className}`}>{copy.eventStatuses[status]}</span>;
 }
 
 function OfficeDetails({address, copy, directions, googleMapsUrl, photoUrl, videoUrl}: {address: string | null; copy: Copy; directions: string | null; googleMapsUrl: string | null; photoUrl: string | null; videoUrl: string | null}) {
@@ -192,21 +224,51 @@ function resolveApiMediaUrl(path: string) {
     return path.startsWith("/api/") ? `${API_URL}${path}` : path;
 }
 
-function StatusBadge({copy, status}: {copy: Copy; status: Booking["status"]}) {
-    const confirmed = status === "CONFIRMED";
-    const cancelled = status === "CANCELLED";
+function BookingStatusBadge({booking, copy}: {booking: Booking; copy: Copy}) {
+    const past = booking.status !== "CANCELLED" && new Date(booking.endsAt).getTime() < Date.now();
+    const confirmed = booking.status === "CONFIRMED" && !past;
+    const cancelled = booking.status === "CANCELLED";
     const className = cancelled
         ? "border-red-200 bg-red-50 text-red-700"
+        : past
+        ? "border-stone-300 bg-stone-100 text-stone-600"
         : confirmed
         ? "border-emerald-200 bg-emerald-50 text-emerald-800"
         : "border-amber-200 bg-amber-50 text-amber-800";
+    const label = past ? copy.statuses.PAST : copy.statuses[booking.status];
 
-    return <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${className}`}>{copy.statuses[status]}</span>;
+    return <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${className}`}>{label}</span>;
+}
+
+function filterBookings(bookings: Booking[], filter: AccountBookingFilter) {
+    return bookings.filter((booking) => {
+        const past = new Date(booking.endsAt).getTime() < Date.now();
+        if (filter === "all") return true;
+        if (filter === "cancelled") return booking.status === "CANCELLED";
+        if (filter === "history") return booking.status !== "CANCELLED" && past;
+        return booking.status !== "CANCELLED" && !past;
+    });
+}
+
+function filterEvents(events: PublicFixedEvent[], filter: AccountBookingFilter) {
+    return events.filter((event) => {
+        const status = eventStatus(event);
+        if (filter === "all") return true;
+        if (filter === "cancelled") return status === "CANCELLED";
+        if (filter === "history") return status === "PAST";
+        return status === "ACTIVE";
+    });
+}
+
+function eventStatus(event: PublicFixedEvent): "ACTIVE" | "PAST" | "CANCELLED" {
+    if (event.enrollmentStatus === "CANCELLED") return "CANCELLED";
+    if (new Date(event.endsAt).getTime() < Date.now()) return "PAST";
+    return "ACTIVE";
 }
 
 function buildAccountRange() {
     const from = new Date();
-    from.setDate(from.getDate() - 31);
+    from.setDate(from.getDate() - 365);
     from.setHours(0, 0, 0, 0);
 
     const to = new Date();
@@ -236,6 +298,12 @@ function labels(t: T) {
         noOffice: t("noOffice"),
         noAppointments: t("noAppointments"),
         noEvents: t("noEvents"),
+        filters: {
+            upcoming: t("filters.upcoming"),
+            history: t("filters.history"),
+            cancelled: t("filters.cancelled"),
+            all: t("filters.all")
+        },
         officeDetails: t("officeDetails"),
         officeAddress: t("officeAddress"),
         officeDirections: t("officeDirections"),
@@ -250,7 +318,13 @@ function labels(t: T) {
         statuses: {
             AWAITING_PAYMENT_CONFIRMATION: t("statuses.AWAITING_PAYMENT_CONFIRMATION"),
             CONFIRMED: t("statuses.CONFIRMED"),
-            CANCELLED: t("statuses.CANCELLED")
+            CANCELLED: t("statuses.CANCELLED"),
+            PAST: t("statuses.PAST")
+        },
+        eventStatuses: {
+            ACTIVE: t("eventStatuses.ACTIVE"),
+            PAST: t("eventStatuses.PAST"),
+            CANCELLED: t("eventStatuses.CANCELLED")
         }
     };
 }

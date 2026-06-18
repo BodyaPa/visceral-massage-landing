@@ -13,12 +13,16 @@ import type {
     SpecialistFixedEventInput,
     SpecialistAvailabilityInput
 } from "@/types/schedule";
+import type {BookingStatus} from "@/types/bookings";
 import type {Locale} from "@/i18n";
 
 type ListAvailabilityArgs = {
     from: string;
     to: string;
     specialistId?: number | "";
+    officeId?: number | "";
+    serviceId?: number | "";
+    status?: "AVAILABLE" | "BLOCKED" | BookingStatus | "ACTIVE_EVENT" | "INACTIVE_EVENT" | "PAST" | "";
 };
 
 type ListPublicAvailabilityArgs = ListAvailabilityArgs & {
@@ -97,9 +101,12 @@ export const scheduleApi = createApi({
             ]
         }),
         listAvailability: build.query<SpecialistAvailabilityBlock[], ListAvailabilityArgs>({
-            query: ({from, to, specialistId}) => {
+            query: ({from, to, specialistId, officeId, serviceId, status}) => {
                 const params = new URLSearchParams({from, to});
                 if (specialistId !== "" && specialistId !== undefined) params.set("specialistId", String(specialistId));
+                if (officeId !== "" && officeId !== undefined) params.set("officeId", String(officeId));
+                if (serviceId !== "" && serviceId !== undefined) params.set("serviceId", String(serviceId));
+                if (status === "AVAILABLE" || status === "BLOCKED") params.set("status", status);
                 return `/admin/schedule/availability?${params.toString()}`;
             },
             providesTags: (result) =>
@@ -111,17 +118,25 @@ export const scheduleApi = createApi({
                     : [{type: "ScheduleAvailability" as const, id: "LIST"}]
         }),
         listSpecialistEvents: build.query<SpecialistFixedEvent[], ListAvailabilityArgs>({
-            query: ({from, to, specialistId}) => {
+            query: ({from, to, specialistId, officeId, serviceId, status}) => {
                 const params = new URLSearchParams({from, to});
                 if (specialistId !== "" && specialistId !== undefined) params.set("specialistId", String(specialistId));
+                if (officeId !== "" && officeId !== undefined) params.set("officeId", String(officeId));
+                if (serviceId !== "" && serviceId !== undefined) params.set("serviceId", String(serviceId));
+                if (status === "ACTIVE_EVENT") params.set("active", "true");
+                if (status === "INACTIVE_EVENT") params.set("active", "false");
                 return `/admin/schedule/events?${params.toString()}`;
             },
             providesTags: [{type: "ScheduleAvailability", id: "SPECIALIST_EVENTS"}]
         }),
         listSpecialistEventEnrollments: build.query<SpecialistFixedEventEnrollment[], ListAvailabilityArgs>({
-            query: ({from, to, specialistId}) => {
+            query: ({from, to, specialistId, officeId, serviceId, status}) => {
                 const params = new URLSearchParams({from, to});
                 if (specialistId !== "" && specialistId !== undefined) params.set("specialistId", String(specialistId));
+                if (officeId !== "" && officeId !== undefined) params.set("officeId", String(officeId));
+                if (serviceId !== "" && serviceId !== undefined) params.set("serviceId", String(serviceId));
+                if (status === "ACTIVE_EVENT") params.set("eventActive", "true");
+                if (status === "INACTIVE_EVENT") params.set("eventActive", "false");
                 return `/admin/schedule/events/enrollments?${params.toString()}`;
             },
             providesTags: [{type: "ScheduleAvailability", id: "SPECIALIST_EVENT_ENROLLMENTS"}]

@@ -124,10 +124,13 @@ export const bookingsApi = createApi({
                 {type: "FinanceSummary", id: "CURRENT"}
             ]
         }),
-        listSpecialistBookings: build.query<SpecialistBooking[], {from: string; to: string; specialistId?: number | ""}>({
-            query: ({from, to, specialistId}) => {
+        listSpecialistBookings: build.query<SpecialistBooking[], {from: string; to: string; specialistId?: number | ""; officeId?: number | ""; serviceId?: number | ""; status?: BookingStatus | "AVAILABLE" | "BLOCKED" | "ACTIVE_EVENT" | "INACTIVE_EVENT" | "PAST" | ""}>({
+            query: ({from, to, specialistId, officeId, serviceId, status}) => {
                 const params = new URLSearchParams({from, to});
                 if (specialistId !== "" && specialistId !== undefined) params.set("specialistId", String(specialistId));
+                if (officeId !== "" && officeId !== undefined) params.set("officeId", String(officeId));
+                if (serviceId !== "" && serviceId !== undefined) params.set("serviceId", String(serviceId));
+                if (status === "AWAITING_PAYMENT_CONFIRMATION" || status === "CONFIRMED" || status === "CANCELLED") params.set("status", status);
                 return `/admin/schedule/bookings?${params.toString()}`;
             },
             providesTags: [{type: "Bookings", id: "LIST"}]

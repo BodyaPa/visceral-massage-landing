@@ -86,11 +86,21 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const toast = useToast();
     const [currentDate, setCurrentDate] = useState(() => new Date());
     const [selectedSpecialistId, setSelectedSpecialistId] = useState<number | "">(canManageAllSpecialists ? "" : currentUserId);
+    const [calendarFilters, setCalendarFilters] = useState<CalendarFilterState>({officeId: "", serviceId: "", itemType: "all", status: "all"});
     const range = useMemo(() => buildCalendarRange(currentDate), [currentDate]);
     const scheduleQuery = useMemo(() => ({
         ...range,
         specialistId: selectedSpecialistId
     }), [range, selectedSpecialistId]);
+    const hasBackendCalendarFilters = calendarFilters.officeId !== "" || calendarFilters.serviceId !== "" || (calendarFilters.status !== "all" && calendarFilters.status !== "PAST");
+    const calendarBackendStatus: CalendarFilterState["status"] | "" = calendarFilters.status === "all" || calendarFilters.status === "PAST" ? "" : calendarFilters.status;
+    const calendarScheduleQuery = useMemo(() => ({
+        ...range,
+        specialistId: selectedSpecialistId,
+        officeId: calendarFilters.officeId,
+        serviceId: calendarFilters.serviceId,
+        status: calendarBackendStatus
+    }), [calendarBackendStatus, calendarFilters.officeId, calendarFilters.serviceId, range, selectedSpecialistId]);
     const {data, isFetching, isError, refetch: refetchAvailability} = useListAvailabilityQuery(scheduleQuery, {
         pollingInterval: 30_000,
         skipPollingIfUnfocused: true
@@ -98,6 +108,13 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const {data: events = [], isFetching: eventsFetching, isError: eventsError, refetch: refetchEvents} = useListSpecialistEventsQuery(scheduleQuery);
     const {data: eventEnrollments = [], isFetching: eventEnrollmentsFetching, isError: eventEnrollmentsError} = useListSpecialistEventEnrollmentsQuery(scheduleQuery);
     const {data: bookings = [], isFetching: bookingsFetching, isError: bookingsError} = useListSpecialistBookingsQuery(scheduleQuery);
+    const {data: calendarData, isFetching: calendarAvailabilityFetching} = useListAvailabilityQuery(calendarScheduleQuery, {
+        skip: !hasBackendCalendarFilters,
+        pollingInterval: 30_000,
+        skipPollingIfUnfocused: true
+    });
+    const {data: calendarEventsData = [], isFetching: calendarEventsFetching} = useListSpecialistEventsQuery(calendarScheduleQuery, {skip: !hasBackendCalendarFilters});
+    const {data: calendarBookingsData = [], isFetching: calendarBookingsFetching} = useListSpecialistBookingsQuery(calendarScheduleQuery, {skip: !hasBackendCalendarFilters});
     const {data: financeOverview, isFetching: financeOverviewFetching, isError: financeOverviewError} = useGetSpecialistFinanceOverviewQuery(range);
     const {data: specialistsData, isFetching: specialistsFetching, isError: specialistsError} = useListUsersQuery(
         {role: "SPECIALIST", enabled: true, size: 100},
@@ -121,7 +138,6 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const [form, setForm] = useState<AvailabilityForm>(() => buildDefaultForm());
     const [editingBlock, setEditingBlock] = useState<SpecialistAvailabilityBlock | null>(null);
     const [editingEvent, setEditingEvent] = useState<SpecialistFixedEvent | null>(null);
-    const [calendarFilters, setCalendarFilters] = useState<CalendarFilterState>({officeId: "", serviceId: "", itemType: "all", status: "all"});
     const [selectedCalendarDetail, setSelectedCalendarDetail] = useState<CalendarDetail | null>(null);
     const availableCount = blocks.filter((block) => block.status === "AVAILABLE" && !block.booked).length;
     const blockedCount = blocks.filter((block) => block.status === "BLOCKED").length;
@@ -130,10 +146,16 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const eventServices = services.filter((service) => service.bookingMode === "FIXED_EVENT");
     const individualServices = services.filter((service) => service.bookingMode === "INDIVIDUAL_APPOINTMENT");
     const appointmentBufferMinutes = scheduleConfig?.appointmentBufferMinutes ?? defaultAppointmentBufferMinutes;
-    const filteredCalendarBlocks = useMemo(() => filterCalendarBlocks(blocks, calendarFilters), [blocks, calendarFilters]);
-    const filteredCalendarEvents = useMemo(() => filterCalendarEvents(events, calendarFilters), [events, calendarFilters]);
-    const filteredCalendarBookings = useMemo(() => filterCalendarBookings(bookings, calendarFilters), [bookings, calendarFilters]);
-    const filteredCalendarBuffers = useMemo(() => filterCalendarBuffers(buildCalendarBuffers(bookings, events, appointmentBufferMinutes), calendarFilters), [bookings, events, appointmentBufferMinutes, calendarFilters]);
+    const calendarBlocksSource = hasBackendCalendarFilters ? calendarData ?? emptyBlocks : blocks;
+    const calendarEventsSource = hasBackendCalendarFilters ? calendarEventsData : events;
+    const calendarBookingsSource = hasBackendCalendarFilters ? calendarBookingsData : bookings;
+    const calendarIsFetching = hasBackendCalendarFilters
+        ? calendarAvailabilityFetching || calendarEventsFetching || calendarBookingsFetching
+        : isFetching;
+    const filteredCalendarBlocks = useMemo(() => filterCalendarBlocks(calendarBlocksSource, calendarFilters), [calendarBlocksSource, calendarFilters]);
+    const filteredCalendarEvents = useMemo(() => filterCalendarEvents(calendarEventsSource, calendarFilters), [calendarEventsSource, calendarFilters]);
+    const filteredCalendarBookings = useMemo(() => filterCalendarBookings(calendarBookingsSource, calendarFilters), [calendarBookingsSource, calendarFilters]);
+    const filteredCalendarBuffers = useMemo(() => filterCalendarBuffers(buildCalendarBuffers(calendarBookingsSource, calendarEventsSource, appointmentBufferMinutes), calendarFilters), [calendarBookingsSource, calendarEventsSource, appointmentBufferMinutes, calendarFilters]);
 
     useEffect(() => {
         const mobileQuery = window.matchMedia("(max-width: 639px)");
@@ -284,7 +306,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                             <p className="mt-1 break-words text-sm text-stone-500">{formatCalendarTitle(selectedView, currentDate, locale)}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="w-fit rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800" title={t("calendar.source")}>{isFetching ? t("calendar.loading") : t("calendar.connected")}</span>
+                            <span className="w-fit rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800" title={t("calendar.source")}>{calendarIsFetching ? t("calendar.loading") : t("calendar.connected")}</span>
                         </div>
                     </div>
                     <div className="flex min-w-0 flex-col gap-3 border-b border-stone-200 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">

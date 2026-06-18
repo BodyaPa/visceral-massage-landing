@@ -18,6 +18,11 @@
   "toast": {
     "dismiss": "Dismiss notification"
   },
+  "footer": {
+    "body": "Visceral massage, events, news, and personal booking in the Ataraksia space.",
+    "navigationLabel": "Footer navigation",
+    "copyright": "© {year} Ataraksia. All rights reserved."
+  },
   "meta": {
     "title": "Ataraksia",
     "description": "Visceral massage, schedule, news and contacts."
@@ -242,9 +247,34 @@
       "news": "Manage news",
       "users": "Users",
       "offices": "Offices",
+      "siteSettings": "Site settings",
       "services": "Services",
       "specialist": "Schedule",
       "finance": "Finance"
+    },
+    "siteSettings": {
+      "meta": {
+        "title": "Site settings"
+      },
+      "eyebrow": "MASTER",
+      "title": "Site settings",
+      "subtitle": "Manage short public text for the home, about, contact, and footer areas. This is a controlled content foundation, not a page builder.",
+      "loading": "Loading settings...",
+      "loadError": "Unable to load site settings.",
+      "ua": "Ukrainian",
+      "en": "English",
+      "footerTitle": "Footer",
+      "footerHint": "Short description shown in the footer on public pages.",
+      "homeTitle": "Home page",
+      "homeHint": "Short intro for a future managed home page block.",
+      "aboutTitle": "About",
+      "aboutHint": "Base text for a future managed About page block.",
+      "contactTitle": "Contact",
+      "contactHint": "Short text for a future managed contact block.",
+      "save": "Save settings",
+      "saving": "Saving...",
+      "saved": "Site settings updated.",
+      "saveError": "Unable to update site settings."
     },
     "news": {
       "meta": {

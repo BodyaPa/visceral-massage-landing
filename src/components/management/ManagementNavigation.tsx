@@ -29,6 +29,7 @@ export default function ManagementNavigation({locale, showNews, showUsers, showO
     const servicesHref = withLocale("/admin/services", locale);
     const scheduleHref = withLocale("/admin/schedule", locale);
     const financeHref = withLocale("/admin/finance", locale);
+    const siteSettingsHref = withLocale("/admin/site-settings", locale);
 
     return (
         <nav className="flex max-w-full gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0" aria-label={t("label")}>
@@ -57,6 +58,15 @@ export default function ManagementNavigation({locale, showNews, showUsers, showO
                     href={officesHref}
                 >
                     {t("offices")}
+                </Link>
+            ) : null}
+            {showUsers ? (
+                <Link
+                    aria-current={pathname === siteSettingsHref ? "page" : undefined}
+                    className={pathname === siteSettingsHref ? activeClassName : defaultClassName}
+                    href={siteSettingsHref}
+                >
+                    {t("siteSettings")}
                 </Link>
             ) : null}
             {showServices ? (

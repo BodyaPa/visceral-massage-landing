@@ -1,5 +1,6 @@
 import "../../styles/global.css";
 import HeaderComponent from "@/components/layout/header/HeaderComponent";
+import FooterComponent from "@/components/layout/footer/FooterComponent";
 import Providers from "./providers";
 import {ReactNode} from "react";
 import {notFound} from "next/navigation";
@@ -62,8 +63,8 @@ export default async function LocaleLayout({
             <ToastProvider>
                 <HeaderComponent />
                 <Providers>{children}</Providers>
+                <FooterComponent />
             </ToastProvider>
-            {/* <FooterComponent /> */}
         </NextIntlClientProvider>
         </body>
         </html>

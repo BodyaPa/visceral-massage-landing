@@ -53,6 +53,7 @@ export default function FooterComponent() {
                 <nav aria-label={t("navigationLabel")} className="grid min-w-0 gap-2 text-sm sm:grid-cols-2 lg:min-w-80">
                     <FooterLink href="/">{nav("home")}</FooterLink>
                     <FooterLink href="/news">{nav("news")}</FooterLink>
+                    <FooterLink href="/memberships">{nav("memberships")}</FooterLink>
                     <FooterLink href="/calendar">{nav("calendar")}</FooterLink>
                     <FooterLink href="/about">{nav("about")}</FooterLink>
                     <FooterLink href="/contact">{nav("contact")}</FooterLink>

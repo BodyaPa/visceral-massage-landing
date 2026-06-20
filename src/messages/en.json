@@ -4,6 +4,7 @@
     "about": "About",
     "contact": "Contact",
     "news": "News",
+    "memberships": "Memberships",
     "calendar": "Schedule",
     "login": "Login",
     "register": "Register",
@@ -45,6 +46,51 @@
     "page": {
       "title": "Contact",
       "subtitle": "Write to us or reach out in the way that works best for you."
+    }
+  },
+  "memberships": {
+    "meta": {
+      "title": "Memberships and certificates",
+      "description": "Ataraksia memberships and gift certificates for separate purchase."
+    },
+    "page": {
+      "eyebrow": "Memberships / certificates",
+      "title": "A separate way to buy care in advance",
+      "subtitle": "Memberships and certificates are not mixed into the booking calendar. Choose a format, review the terms, and send a request for manual setup.",
+      "manualTitle": "First stage without automated payment",
+      "manualBody": "The purchase action opens contact flow. The team confirms terms, payment, and activation manually until dedicated payment automation is planned.",
+      "price": "Price",
+      "visits": "Visits",
+      "validity": "Validity",
+      "visitCount": "{count, plural, one {# visit} other {# visits}}",
+      "certificateValue": "Face value",
+      "details": "Details",
+      "buy": "Send request",
+      "close": "Close",
+      "includedTitle": "Included",
+      "conditionsTitle": "Conditions",
+      "offers": {
+        "care-4": {"kind": "Membership", "title": "Care 4", "description": "Starter membership for regular bodywork without locking it to a specific day.", "validity": "60 days"},
+        "recovery-8": {"kind": "Membership", "title": "Recovery 8", "description": "A larger package for a consistent recovery program with a fixed number of visits.", "validity": "120 days"},
+        "gift": {"kind": "Certificate", "title": "Gift certificate", "description": "A separate gift format with a face value that can be confirmed before setup.", "validity": "90 days"}
+      },
+      "included": {
+        "individual": "Individual Ataraksia services by appointment.",
+        "office": "Available office selection during the actual booking.",
+        "support": "Manual details confirmation before activation.",
+        "priority": "Suitable for a longer regular-visit program.",
+        "giftAmount": "Face value for gift setup.",
+        "serviceChoice": "The recipient can confirm a relevant service before booking.",
+        "recipient": "Can be prepared for another person after manual confirmation."
+      },
+      "conditions": {
+        "validity60": "Valid for 60 days after manual activation.",
+        "validity120": "Valid for 120 days after manual activation.",
+        "validity90": "Valid for 90 days after manual activation.",
+        "manualPayment": "Payment is confirmed manually outside automated checkout.",
+        "personal": "Membership is personal and cannot be transferred without approval.",
+        "notCash": "Certificate is not a cash balance and is not paid out in cash."
+      }
     }
   },
   "calendar": {
@@ -107,6 +153,16 @@
         "unavailable": "Unavailable",
         "occupied": "Occupied",
         "eventsWithPlaces": "Events with places",
+        "guidedEyebrow": "Quick booking",
+        "guidedTitle": "Choose format, day, and time",
+        "guidedDescription": "This block guides booking step by step. The detailed calendar below remains available for reviewing the full schedule.",
+        "chooseIndividualMode": "Massage or individual service with a concrete available time.",
+        "chooseEventMode": "Group event or fixed session with a limited number of places.",
+        "availableDaysTitle": "Available days",
+        "availableDaysHint": "Choose a day, then review available times or events below.",
+        "noAvailableDays": "No available days match the current options. Try another service, office, or period.",
+        "selectedDayEmpty": "No available options on the selected day. Choose another day from the list.",
+        "eventsCount": "{count, plural, one {# event} other {# events}}",
         "myBookings": "My bookings",
         "nearestSlots": "Nearest available times",
         "selectedSummary": "Selected option",
@@ -502,7 +558,7 @@
           "eventsTitle": "Events / group sessions",
           "bookingsTitle": "Bookings",
           "planMode": "Day plan",
-          "agendaMode": "Agenda",
+          "allMode": "All",
           "calendarMessages": {"agenda": "List", "allDay": "All day", "date": "Date", "day": "Day", "event": "Event", "month": "Month", "next": "Next", "noEventsInRange": "No events in this range.", "previous": "Back", "showMore": "+ {count} more", "time": "Time", "today": "Today", "tomorrow": "Tomorrow", "week": "Week", "workWeek": "Work week", "yesterday": "Yesterday"},
           "specialistFilter": "Specialist",
           "allSpecialists": "All specialists",
@@ -559,6 +615,9 @@
           "eventError": "Unable to create event.",
           "eventsError": "Unable to load events.",
           "eventsEmpty": "No events in this range yet.",
+          "showingItems": "Showing {visible} of {total}",
+          "showMore": "Show more",
+          "showLess": "Collapse",
           "eventEnrollmentsTitle": "Event participants",
           "eventEnrollmentsBody": "User enrollments for your fixed events in the selected range.",
           "eventEnrollmentsError": "Unable to load event participants.",
@@ -677,7 +736,8 @@
           "CONFIRMED": "Confirmed",
           "CANCELLED": "Cancelled"
         },
-        "filters": {"status": "Status", "office": "Office", "allOffices": "All offices", "from": "From", "to": "To"},
+        "filters": {"status": "Status", "office": "Office", "allOffices": "All offices", "period": "Period", "from": "From", "to": "To"},
+        "bounded": {"showing": "Showing {visible} of {total}", "showMore": "Show more", "showLess": "Collapse"},
         "summary": {"pending": "Awaiting confirmation", "confirmed": "Confirmed in period", "income": "Gross income", "specialistEarnings": "Specialist payouts", "businessIncome": "Business share", "expenses": "Expenses in period", "result": "Estimated result"},
         "tabs": {"label": "Finance sections", "pending": "Awaiting payment", "transactions": "Transactions", "expenses": "Expenses", "reports": "Reports / tax"},
         "pending": {"title": "Awaiting manual confirmation", "subtitle": "Verify payment outside the system before confirming.", "emptyTitle": "Everything is reviewed", "empty": "There are no bookings awaiting manual confirmation."},

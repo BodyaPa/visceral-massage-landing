@@ -3,6 +3,7 @@
 import {useEffect, useMemo, useState} from "react";
 import type {ReactNode} from "react";
 import {useLocale, useTranslations} from "next-intl";
+import BoundedList from "@/components/ui/list/BoundedList";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {useCreateManualBookingMutation, useGetSpecialistFinanceOverviewQuery, useListSpecialistBookingsQuery} from "@/features/bookings/bookings.api";
 import {bookingServiceTitle} from "@/features/bookings/bookingTitles";
@@ -36,7 +37,7 @@ const views = ["month", "week", "day", "list"] as const;
 const emptyBlocks: SpecialistAvailabilityBlock[] = [];
 const defaultAppointmentBufferMinutes = 30;
 type CalendarView = typeof views[number];
-type PlannerMode = "plan" | "bookings" | "agenda";
+type PlannerMode = "plan" | "bookings" | "all";
 
 type Props = {
     canManageAllSpecialists: boolean;
@@ -133,8 +134,8 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const [updateSpecialistEvent, {isLoading: isUpdatingEvent}] = useUpdateSpecialistEventMutation();
     const [updateAvailability, {isLoading: isUpdatingAvailability}] = useUpdateAvailabilityMutation();
     const [deleteAvailability, {isLoading: isDeleting}] = useDeleteAvailabilityMutation();
-    const [selectedView, setSelectedView] = useState<CalendarView>("week");
-    const [plannerMode, setPlannerMode] = useState<PlannerMode>("agenda");
+    const [selectedView, setSelectedView] = useState<CalendarView>("day");
+    const [plannerMode, setPlannerMode] = useState<PlannerMode>("all");
     const [form, setForm] = useState<AvailabilityForm>(() => buildDefaultForm());
     const [editingBlock, setEditingBlock] = useState<SpecialistAvailabilityBlock | null>(null);
     const [editingEvent, setEditingEvent] = useState<SpecialistFixedEvent | null>(null);
@@ -162,7 +163,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 
         if (mobileQuery.matches) {
             setSelectedView("list");
-            setPlannerMode("agenda");
+            setPlannerMode("all");
         }
     }, []);
 
@@ -228,6 +229,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     }
 
     function editAvailability(block: SpecialistAvailabilityBlock) {
+        setPlannerMode("plan");
         setEditingBlock(block);
         setForm({
             officeId: block.officeId === null ? "" : String(block.officeId),
@@ -242,6 +244,12 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
         document.getElementById("availability-form")?.scrollIntoView({behavior: "smooth"});
     }
 
+    function editEvent(event: SpecialistFixedEvent) {
+        setPlannerMode("plan");
+        setEditingEvent(event);
+        window.setTimeout(() => document.getElementById("fixed-event-form")?.scrollIntoView({behavior: "smooth"}), 0);
+    }
+
     function cancelAvailabilityEdit() {
         setEditingBlock(null);
         setForm(buildDefaultForm());
@@ -254,6 +262,11 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
         } catch {
             toast.error(t("form.deleteError"));
         }
+    }
+
+    function openCreatePanel() {
+        setPlannerMode("plan");
+        window.setTimeout(() => document.getElementById("availability-form")?.scrollIntoView({behavior: "smooth"}), 0);
     }
 
     return (
@@ -286,7 +299,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 	                                    {specialistsError ? <span className="mt-1 block text-xs text-red-700">{copy.specialistsError}</span> : null}
 	                                </label>
 	                            ) : null}
-	                            <button className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-stone-700" onClick={() => document.getElementById("availability-form")?.scrollIntoView({behavior: "smooth"})} type="button">
+	                            <button className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-stone-700" onClick={openCreatePanel} type="button">
 	                                {t("actions.create")}
 	                            </button>
 	                        </div>
@@ -393,7 +406,8 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
             </div>
 
             <aside className="min-w-0 space-y-5">
-                <SpecialistFinanceOverviewPanel copy={copy} isError={financeOverviewError} isFetching={financeOverviewFetching} locale={locale} overview={financeOverview} />
+                {plannerMode === "plan" ? (
+                    <>
                 <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm 2xl:sticky 2xl:top-4" id="availability-form">
                     <div className="border-b border-stone-100 pb-3">
                         <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
@@ -526,20 +540,6 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     services={eventServices}
                     servicesFetching={servicesFetching}
                 />
-                <ManualBookingForm
-                    blocks={blocks}
-                    bookings={bookings}
-                    appointmentBufferMinutes={appointmentBufferMinutes}
-                    events={events}
-                    locale={locale}
-                    selectedSpecialistId={selectedSpecialistId}
-                    services={individualServices}
-                    servicesError={servicesError}
-                    servicesFetching={servicesFetching}
-                    copy={copy}
-                    onCreated={refetchAvailability}
-                    t={t}
-                />
                 <DayPlanTemplateForm
                     copy={copy}
                     individualServices={individualServices}
@@ -562,32 +562,71 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         return response;
                     }}
                 />
-                <EventsPanel
-                    copy={copy}
-                    events={events}
-                    isError={eventsError}
-                    isFetching={eventsFetching}
-                    locale={locale}
-                    onDeactivate={async (event) => {
-                        try {
-                            await updateSpecialistEvent({id: event.id, body: eventToInput(event, false)}).unwrap();
-                            void refetchEvents();
-                            toast.success(copy.eventUpdated);
-                        } catch {
-                            toast.error(copy.eventError);
-                        }
-                    }}
-                    onEdit={setEditingEvent}
-                />
-                <EventEnrollmentsPanel
-                    copy={copy}
-                    enrollments={eventEnrollments}
-                    isError={eventEnrollmentsError}
-                    isFetching={eventEnrollmentsFetching}
-                    locale={locale}
-                />
-                <BookingsPanel bookings={bookings} copy={copy} isError={bookingsError} isFetching={bookingsFetching} locale={locale} t={t} />
-                <PreparedPanel title={t("exceptions.title")} body={t("exceptions.body")} empty={t("exceptions.empty")} />
+                    </>
+                ) : null}
+
+                {plannerMode === "bookings" ? (
+                    <>
+                        <SpecialistFinanceOverviewPanel copy={copy} isError={financeOverviewError} isFetching={financeOverviewFetching} locale={locale} overview={financeOverview} />
+                        <ManualBookingForm
+                            blocks={blocks}
+                            bookings={bookings}
+                            appointmentBufferMinutes={appointmentBufferMinutes}
+                            events={events}
+                            locale={locale}
+                            selectedSpecialistId={selectedSpecialistId}
+                            services={individualServices}
+                            servicesError={servicesError}
+                            servicesFetching={servicesFetching}
+                            copy={copy}
+                            onCreated={refetchAvailability}
+                            t={t}
+                        />
+                        <EventEnrollmentsPanel
+                            copy={copy}
+                            enrollments={eventEnrollments}
+                            isError={eventEnrollmentsError}
+                            isFetching={eventEnrollmentsFetching}
+                            locale={locale}
+                        />
+                        <BookingsPanel bookings={bookings} copy={copy} isError={bookingsError} isFetching={bookingsFetching} locale={locale} t={t} />
+                    </>
+                ) : null}
+
+                {plannerMode !== "bookings" ? (
+                    <EventsPanel
+                        copy={copy}
+                        events={events}
+                        isError={eventsError}
+                        isFetching={eventsFetching}
+                        locale={locale}
+                        onDeactivate={async (event) => {
+                            try {
+                                await updateSpecialistEvent({id: event.id, body: eventToInput(event, false)}).unwrap();
+                                void refetchEvents();
+                                toast.success(copy.eventUpdated);
+                            } catch {
+                                toast.error(copy.eventError);
+                            }
+                        }}
+                        onEdit={editEvent}
+                    />
+                ) : null}
+
+                {plannerMode === "all" ? (
+                    <>
+                        <SpecialistFinanceOverviewPanel copy={copy} isError={financeOverviewError} isFetching={financeOverviewFetching} locale={locale} overview={financeOverview} />
+                        <EventEnrollmentsPanel
+                            copy={copy}
+                            enrollments={eventEnrollments}
+                            isError={eventEnrollmentsError}
+                            isFetching={eventEnrollmentsFetching}
+                            locale={locale}
+                        />
+                        <BookingsPanel bookings={bookings} copy={copy} isError={bookingsError} isFetching={bookingsFetching} locale={locale} t={t} />
+                        <PreparedPanel title={t("exceptions.title")} body={t("exceptions.body")} empty={t("exceptions.empty")} />
+                    </>
+                ) : null}
             </aside>
         </section>
     );
@@ -630,8 +669,8 @@ function CalendarSurface({
     const detailByEventId = new Map<string, CalendarDetail>();
     const visibleBlocks = plannerMode === "bookings" ? [] : blocks;
     const visibleBookings = plannerMode === "plan" ? [] : bookings;
-    const visibleEvents = events;
-    const visibleBuffers = plannerMode === "agenda" ? buffers : buffers.slice(0, 80);
+    const visibleEvents = plannerMode === "bookings" ? [] : events;
+    const visibleBuffers = plannerMode === "all" ? buffers.slice(0, 80) : buffers.slice(0, 40);
 
     if (selectedView === "list") {
         return (
@@ -724,7 +763,7 @@ function PlannerModeSwitch({copy, mode, onChange}: {copy: ReturnType<typeof sche
     const options: Array<{label: string; value: PlannerMode}> = [
         {label: copy.planMode, value: "plan"},
         {label: copy.bookingsTitle, value: "bookings"},
-        {label: copy.agendaMode, value: "agenda"}
+        {label: copy.allMode, value: "all"}
     ];
 
     return (
@@ -883,7 +922,7 @@ function CalendarDetailPanel({closeLabel, detail, onClose}: {closeLabel: string;
         : "border-stone-300 bg-stone-800 text-white";
 
     return (
-        <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+        <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm" id="fixed-event-form">
             <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                     <span className={`inline-flex max-w-full rounded-full border px-2.5 py-1 text-xs font-semibold ${toneClass}`}>{detail.title}</span>
@@ -934,57 +973,69 @@ function ScheduleBlockList({
                 <span className="text-xs text-stone-500">{blocks.length}</span>
             </div>
             {subtitle ? <p className="mt-1 break-words text-xs leading-5 text-stone-500">{subtitle}</p> : null}
-            <div className="mt-3 space-y-2">
-                {blocks.map((block) => (
-                    <div className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between" key={block.id}>
-                        <div className="min-w-0">
-                            <div className="flex min-w-0 flex-wrap items-center gap-2">
-                                <StatusBadge booked={block.booked} status={block.status} t={t} />
-                                <span className="rounded-full border border-stone-200 bg-white px-2 py-1 text-[10px] font-semibold text-stone-600">{scheduleBlockTypeLabel(block, copy)}</span>
-                                <span className="break-words text-sm font-medium text-stone-900">
-                                    {formatDateTime(block.startsAt, locale)} - {formatDateTime(block.endsAt, locale)}
-                                </span>
-                            </div>
-                            {block.officeName || block.serviceTitle || block.specialistName || block.notes ? (
-                                <p className="mt-1 break-words text-xs text-stone-500">
-                                    {[block.serviceTitle, block.officeName, block.specialistName, block.capacity ? `${copy.capacity}: ${block.capacity}` : null, block.notes].filter(Boolean).join(" · ")}
-                                </p>
-                            ) : null}
-                            {block.status === "AVAILABLE" && block.itemType === "OPEN_RANGE" ? (
-                                <p className="mt-1 break-words text-xs text-stone-500">{copy.availabilityCutHint}</p>
-                            ) : block.status === "AVAILABLE" ? (
-                                <p className="mt-1 break-words text-xs text-stone-500">{copy.appointmentSlotHint}</p>
-                            ) : (
-                                <p className="mt-1 break-words text-xs text-amber-700">{copy.blockCutHint}</p>
-                            )}
-                            {block.booked ? <p className="mt-1 break-words text-xs text-amber-700">{copy.bookedBlockLocked}</p> : null}
-                        </div>
-                        {!viewOnly ? (
-                            <div className="flex flex-wrap gap-2">
-                                {onEdit ? (
-                                    <button
-                                        className="w-fit rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-100"
-                                        onClick={() => onEdit(block)}
-                                        type="button"
-                                    >
-                                        {copy.editBlock}
-                                    </button>
+            <BoundedList
+                empty={<p className="mt-3 text-sm text-stone-500">{t("blocks.empty")}</p>}
+                initialCount={20}
+                items={blocks}
+                labels={{
+                    showLess: copy.showLess,
+                    showMore: copy.showMore,
+                    showing: copy.showingItems
+                }}
+                renderItems={(visibleBlocks) => (
+                    <div className="mt-3 space-y-2">
+                        {visibleBlocks.map((block) => (
+                            <div className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between" key={block.id}>
+                                <div className="min-w-0">
+                                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                        <StatusBadge booked={block.booked} status={block.status} t={t} />
+                                        <span className="rounded-full border border-stone-200 bg-white px-2 py-1 text-[10px] font-semibold text-stone-600">{scheduleBlockTypeLabel(block, copy)}</span>
+                                        <span className="break-words text-sm font-medium text-stone-900">
+                                            {formatDateTime(block.startsAt, locale)} - {formatDateTime(block.endsAt, locale)}
+                                        </span>
+                                    </div>
+                                    {block.officeName || block.serviceTitle || block.specialistName || block.notes ? (
+                                        <p className="mt-1 break-words text-xs text-stone-500">
+                                            {[block.serviceTitle, block.officeName, block.specialistName, block.capacity ? `${copy.capacity}: ${block.capacity}` : null, block.notes].filter(Boolean).join(" · ")}
+                                        </p>
+                                    ) : null}
+                                    {block.status === "AVAILABLE" && block.itemType === "OPEN_RANGE" ? (
+                                        <p className="mt-1 break-words text-xs text-stone-500">{copy.availabilityCutHint}</p>
+                                    ) : block.status === "AVAILABLE" ? (
+                                        <p className="mt-1 break-words text-xs text-stone-500">{copy.appointmentSlotHint}</p>
+                                    ) : (
+                                        <p className="mt-1 break-words text-xs text-amber-700">{copy.blockCutHint}</p>
+                                    )}
+                                    {block.booked ? <p className="mt-1 break-words text-xs text-amber-700">{copy.bookedBlockLocked}</p> : null}
+                                </div>
+                                {!viewOnly ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {onEdit ? (
+                                            <button
+                                                className="w-fit rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-100"
+                                                onClick={() => onEdit(block)}
+                                                type="button"
+                                            >
+                                                {copy.editBlock}
+                                            </button>
+                                        ) : null}
+                                        <button
+                                            className="w-fit rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300"
+                                            disabled={deleting || block.booked}
+                                            onClick={() => onDelete(block.id)}
+                                            title={block.booked ? copy.bookedBlockLocked : undefined}
+                                            type="button"
+                                        >
+                                            {t("blocks.delete")}
+                                        </button>
+                                    </div>
                                 ) : null}
-                                <button
-                                    className="w-fit rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300"
-                                    disabled={deleting || block.booked}
-                                    onClick={() => onDelete(block.id)}
-                                    title={block.booked ? copy.bookedBlockLocked : undefined}
-                                    type="button"
-                                >
-                                    {t("blocks.delete")}
-                                </button>
                             </div>
-                        ) : null}
+                        ))}
                     </div>
-                ))}
-                {blocks.length === 0 ? <p className="text-sm text-stone-500">{t("blocks.empty")}</p> : null}
-            </div>
+                )}
+                step={20}
+            />
         </div>
     );
 }
@@ -1820,7 +1871,7 @@ function scheduleCopy(t: T) {
         eventsTitle: t("schedule.eventsTitle"),
         bookingsTitle: t("schedule.bookingsTitle"),
         planMode: t("schedule.planMode"),
-        agendaMode: t("schedule.agendaMode"),
+        allMode: t("schedule.allMode"),
         specialistFilter: t("schedule.specialistFilter"),
         allSpecialists: t("schedule.allSpecialists"),
         specialistsError: t("schedule.specialistsError"),
@@ -1880,6 +1931,9 @@ function scheduleCopy(t: T) {
         eventEnrollmentsBody: t("schedule.eventEnrollmentsBody"),
         eventEnrollmentsError: t("schedule.eventEnrollmentsError"),
         eventEnrollmentsEmpty: t("schedule.eventEnrollmentsEmpty"),
+        showLess: t("schedule.showLess"),
+        showMore: t("schedule.showMore"),
+        showingItems: (visible: number, total: number) => t("schedule.showingItems", {total, visible}),
         enrollmentActive: t("schedule.enrollmentActive"),
         enrollmentCancelled: t("schedule.enrollmentCancelled"),
         noClientContact: t("schedule.noClientContact"),

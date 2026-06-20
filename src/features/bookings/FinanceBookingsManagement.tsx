@@ -2,6 +2,8 @@
 
 import {useLocale, useTranslations} from "next-intl";
 import {useEffect, useMemo, useState} from "react";
+import DateRangeField from "@/components/ui/date/DateRangeField";
+import BoundedList from "@/components/ui/list/BoundedList";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {bookingServiceTitle} from "@/features/bookings/bookingTitles";
 import {
@@ -107,7 +109,7 @@ export default function FinanceBookingsManagement() {
                         <h1 className="mt-2 break-words text-2xl font-semibold text-stone-950 sm:text-3xl">{t("title")}</h1>
                         <p className="mt-2 max-w-2xl break-words text-sm leading-6 text-stone-600">{t("subtitle")}</p>
                     </div>
-                    <div className="grid w-full gap-3 sm:grid-cols-2 xl:max-w-3xl xl:grid-cols-4">
+                    <div className="grid w-full gap-3 sm:grid-cols-2 xl:max-w-3xl xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)]">
                         <Filter label={t("filters.status")}>
                             <select className={inputClass} disabled={tab === "pending"} onChange={(event) => setStatus(event.target.value as BookingStatus | "")} value={bookingStatusFilter}>
                                 {statuses.map((item) => <option key={item || "all"} value={item}>{item ? t(`statuses.${item}`) : t("statuses.all")}</option>)}
@@ -119,8 +121,18 @@ export default function FinanceBookingsManagement() {
                                 {activeOffices.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                             </select>
                         </Filter>
-                        <Filter label={t("filters.from")}><input className={inputClass} onChange={(event) => setFrom(event.target.value)} type="date" value={from} /></Filter>
-                        <Filter label={t("filters.to")}><input className={inputClass} onChange={(event) => setTo(event.target.value)} type="date" value={to} /></Filter>
+                        <DateRangeField
+                            className="sm:col-span-2 xl:col-span-1"
+                            from={from}
+                            fromLabel={t("filters.from")}
+                            label={t("filters.period")}
+                            onChange={(range) => {
+                                setFrom(range.from);
+                                setTo(range.to);
+                            }}
+                            to={to}
+                            toLabel={t("filters.to")}
+                        />
                     </div>
                 </div>
                 <div className="mt-6 grid auto-rows-fr gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -174,17 +186,29 @@ function BookingSection({bookings, confirming, isFetching, locale, markingPayout
             <div className="mb-4"><h2 className="text-base font-semibold text-stone-950">{t(`${tab}.title`)}</h2><p className="mt-1 text-sm text-stone-500">{t(`${tab}.subtitle`)}</p></div>
             {isFetching ? <p className="py-8 text-center text-sm text-stone-500">{t("loading")}</p> : null}
             {!isFetching && bookings.length === 0 ? <EmptyState body={t(`${tab}.empty`)} title={t(`${tab}.emptyTitle`)} /> : null}
-            <div className="space-y-2 lg:hidden">
-                {bookings.map((booking) => <BookingCard booking={booking} confirming={confirming} key={booking.id} locale={locale} markingPayout={markingPayout} onConfirm={onConfirm} onMarkPayout={onMarkPayout} onSelect={onSelect} t={t} />)}
-            </div>
-            {bookings.length > 0 ? (
-                <div className="hidden overflow-x-auto rounded-lg border border-stone-200 lg:block">
-                    <table className="w-full border-collapse bg-white text-left text-sm">
-                        <thead className="bg-stone-50 text-xs uppercase tracking-wide text-stone-500"><tr><th className="px-3 py-2 font-semibold">{t("table.client")}</th><th className="px-3 py-2 font-semibold">{t("table.service")}</th><th className="px-3 py-2 font-semibold">{t("table.specialist")}</th><th className="px-3 py-2 font-semibold">{t("table.when")}</th><th className="px-3 py-2 font-semibold">{t("table.office")}</th><th className="px-3 py-2 text-right font-semibold">{t("table.amount")}</th><th className="px-3 py-2 font-semibold">{t("table.status")}</th><th className="px-3 py-2 font-semibold">{t("table.action")}</th></tr></thead>
-                        <tbody>{bookings.map((booking) => <BookingRow booking={booking} confirming={confirming} key={booking.id} locale={locale} markingPayout={markingPayout} onConfirm={onConfirm} onMarkPayout={onMarkPayout} onSelect={onSelect} t={t} />)}</tbody>
-                    </table>
-                </div>
-            ) : null}
+            <BoundedList
+                initialCount={25}
+                items={bookings}
+                labels={{
+                    showLess: t("bounded.showLess"),
+                    showMore: t("bounded.showMore"),
+                    showing: (visible, total) => t("bounded.showing", {total, visible})
+                }}
+                renderItems={(visibleBookings) => (
+                    <>
+                        <div className="space-y-2 lg:hidden">
+                            {visibleBookings.map((booking) => <BookingCard booking={booking} confirming={confirming} key={booking.id} locale={locale} markingPayout={markingPayout} onConfirm={onConfirm} onMarkPayout={onMarkPayout} onSelect={onSelect} t={t} />)}
+                        </div>
+                        <div className="hidden overflow-x-auto rounded-lg border border-stone-200 lg:block">
+                            <table className="w-full border-collapse bg-white text-left text-sm">
+                                <thead className="bg-stone-50 text-xs uppercase tracking-wide text-stone-500"><tr><th className="px-3 py-2 font-semibold">{t("table.client")}</th><th className="px-3 py-2 font-semibold">{t("table.service")}</th><th className="px-3 py-2 font-semibold">{t("table.specialist")}</th><th className="px-3 py-2 font-semibold">{t("table.when")}</th><th className="px-3 py-2 font-semibold">{t("table.office")}</th><th className="px-3 py-2 text-right font-semibold">{t("table.amount")}</th><th className="px-3 py-2 font-semibold">{t("table.status")}</th><th className="px-3 py-2 font-semibold">{t("table.action")}</th></tr></thead>
+                                <tbody>{visibleBookings.map((booking) => <BookingRow booking={booking} confirming={confirming} key={booking.id} locale={locale} markingPayout={markingPayout} onConfirm={onConfirm} onMarkPayout={onMarkPayout} onSelect={onSelect} t={t} />)}</tbody>
+                            </table>
+                        </div>
+                    </>
+                )}
+                step={25}
+            />
         </div>
     );
 }
@@ -223,7 +247,7 @@ function StatusBadge({status, t}: {status: BookingStatus; t: T}) {
 }
 
 function ExpensesSection({expenses, isError, isFetching, locale, offices, t}: {expenses: FinanceExpense[]; isError: boolean; isFetching: boolean; locale: string; offices: Office[]; t: T}) {
-    return <div className="grid min-w-0 gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_320px]"><div className="min-w-0"><h2 className="break-words text-base font-semibold text-stone-950">{t("expenses.title")}</h2><p className="mt-1 break-words text-sm text-stone-500">{t("expenses.subtitle")}</p>{isFetching ? <p className="py-8 text-center text-sm text-stone-500">{t("expenses.loading")}</p> : null}{isError ? <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("expenses.loadError")}</p> : null}{!isFetching && !isError && expenses.length === 0 ? <div className="mt-4"><EmptyState body={t("expenses.empty")} title={t("expenses.emptyTitle")} /></div> : null}{expenses.length > 0 ? <div className="mt-4 space-y-2">{expenses.map((expense) => <ExpenseRow expense={expense} key={expense.id} locale={locale} t={t} />)}</div> : null}</div><ExpenseForm offices={offices} t={t} /></div>;
+    return <div className="grid min-w-0 gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_320px]"><div className="min-w-0"><h2 className="break-words text-base font-semibold text-stone-950">{t("expenses.title")}</h2><p className="mt-1 break-words text-sm text-stone-500">{t("expenses.subtitle")}</p>{isFetching ? <p className="py-8 text-center text-sm text-stone-500">{t("expenses.loading")}</p> : null}{isError ? <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("expenses.loadError")}</p> : null}{!isFetching && !isError && expenses.length === 0 ? <div className="mt-4"><EmptyState body={t("expenses.empty")} title={t("expenses.emptyTitle")} /></div> : null}<BoundedList initialCount={20} items={expenses} labels={{showLess: t("bounded.showLess"), showMore: t("bounded.showMore"), showing: (visible, total) => t("bounded.showing", {total, visible})}} renderItems={(visibleExpenses) => <div className="mt-4 space-y-2">{visibleExpenses.map((expense) => <ExpenseRow expense={expense} key={expense.id} locale={locale} t={t} />)}</div>} step={20} /></div><ExpenseForm offices={offices} t={t} /></div>;
 }
 
 function ExpenseRow({expense, locale, t}: {expense: FinanceExpense; locale: string; t: T}) {

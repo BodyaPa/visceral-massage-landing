@@ -34,6 +34,7 @@ export default function HeaderComponent() {
         () => [
             new ButtonConfigClass(t("home"), "defaultStyle", "/"),
             new ButtonConfigClass(t("news"), "defaultStyle", "/news"),
+            new ButtonConfigClass(t("memberships"), "defaultStyle", "/memberships"),
             new ButtonConfigClass(t("about"), "defaultStyle", "/about"),
             new ButtonConfigClass(t("contact"), "defaultStyle", "/contact"),
             ...(user ? [

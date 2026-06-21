@@ -5,7 +5,7 @@
     "contact": "Contact",
     "news": "News",
     "memberships": "Memberships",
-    "calendar": "Schedule",
+    "calendar": "Schedule & booking",
     "login": "Login",
     "register": "Register",
     "admin": "Administration",
@@ -35,7 +35,13 @@
     },
     "page": {
       "title": "About",
-      "subtitle": "We created Ataraksia as a space of care, recovery, and attentive work with the body."
+      "subtitle": "We created Ataraksia as a space of care, recovery, and attentive work with the body.",
+      "detail1Title": "Individual approach",
+      "detail1Body": "We work with the real state of the person, not one universal script for everyone.",
+      "detail2Title": "Calm space",
+      "detail2Body": "Offices, schedule, and specialists are organized so booking stays clear and quiet.",
+      "detail3Title": "Gradual recovery",
+      "detail3Body": "Services, events, and future memberships support regular bodywork."
     }
   },
   "contact": {
@@ -45,7 +51,13 @@
     },
     "page": {
       "title": "Contact",
-      "subtitle": "Write to us or reach out in the way that works best for you."
+      "subtitle": "Write to us or reach out in the way that works best for you.",
+      "detail1Title": "Booking",
+      "detail1Body": "The easiest start is the schedule and booking section: available days, specialists, and formats are shown there.",
+      "detail2Title": "Questions",
+      "detail2Body": "For questions about services, events, or memberships, contact the team directly.",
+      "detail3Title": "Locations",
+      "detail3Body": "Current offices and place details are shown while choosing an available time."
     }
   },
   "memberships": {
@@ -130,6 +142,7 @@
         "chooseTime": "Choose time",
         "bookEvent": "Enroll",
         "noDescription": "Description will be added later.",
+        "venueFallbackName": "Ataraksia",
         "remaining": "{count} places left",
         "enrolled": "You are enrolled",
         "full": "Full",
@@ -144,6 +157,8 @@
         "applySaved": "Apply saved",
         "deleteSaved": "Delete saved",
         "savedActive": "Saved filters are active or ready to apply",
+        "showMore": "Show more",
+        "showLess": "Collapse",
         "mode": "Mode",
         "status": "Status",
         "all": "All",
@@ -155,18 +170,36 @@
         "eventsWithPlaces": "Events with places",
         "guidedEyebrow": "Quick booking",
         "guidedTitle": "Choose format, day, and time",
-        "guidedDescription": "This block guides booking step by step. The detailed calendar below remains available for reviewing the full schedule.",
+        "guidedDescription": "This block guides booking step by step: format, specialist, day, time, and confirmation.",
+        "chooseOfficeTitle": "Office",
+        "chooseOfficeHint": "Choose a location or keep all offices to see full availability.",
+        "allOfficesHint": "Show available services and events in all active offices.",
+        "chooseSpecialistTitle": "Specialist",
+        "chooseSpecialistHint": "Choose a specific specialist or keep all specialists to see more options.",
+        "allSpecialistsHint": "Show available times from all specialists with the current filters.",
+        "specialistAvailabilityHint": "Available with the current filters.",
+        "noSpecialistsForFilters": "No specialists with availability match the current filters.",
+        "fixedEventServicesTitle": "Events and group formats",
+        "fixedEventServicesHint": "Choose an event type or keep all events to see the full list.",
+        "allEvents": "All events",
+        "allEventsHint": "Show every event with available places.",
+        "noEventServices": "No active event types are available yet.",
         "chooseIndividualMode": "Massage or individual service with a concrete available time.",
         "chooseEventMode": "Group event or fixed session with a limited number of places.",
         "availableDaysTitle": "Available days",
         "availableDaysHint": "Choose a day, then review available times or events below.",
         "noAvailableDays": "No available days match the current options. Try another service, office, or period.",
+        "noAvailabilityDay": "No available time",
+        "previousMonth": "Previous month",
+        "nextMonth": "Next month",
+        "nearestAvailable": "Nearest available date: {date}",
         "selectedDayEmpty": "No available options on the selected day. Choose another day from the list.",
         "eventsCount": "{count, plural, one {# event} other {# events}}",
         "myBookings": "My bookings",
         "nearestSlots": "Nearest available times",
         "selectedSummary": "Selected option",
         "selectServicePrompt": "Choose a service or event above to see available times.",
+        "details": "Details",
         "select": "Select",
         "selected": "Selected",
         "noSlotsTitle": "No available time for this service with the current filters.",
@@ -276,7 +309,13 @@
     },
     "page": {
       "title": "Ataraksia",
-      "subtitle": "A space of care, recovery, and attentive work with the body."
+      "subtitle": "A space of care, recovery, and attentive work with the body.",
+      "detail1Title": "Services",
+      "detail1Body": "Individual sessions for attentive bodywork and gradual recovery.",
+      "detail2Title": "Events",
+      "detail2Body": "Fixed group or thematic formats with a concrete time and limited places.",
+      "detail3Title": "Booking",
+      "detail3Body": "Choose a format, specialist, day, and time in a simple flow without a technical calendar."
     }
   },
   "news": {

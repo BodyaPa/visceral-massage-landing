@@ -86,16 +86,6 @@ export default async function AccountPage({params}: Props) {
                                 </div>
 
                                 <aside className="space-y-4">
-                                    <section className="rounded-xl border border-stone-200 bg-white p-4">
-                                        <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">{t("rolesSection")}</h2>
-                                        <div className="mt-3 flex flex-wrap gap-2">
-                                            {user.roles.map((role) => (
-                                                <RoleBadge key={role} label={t(`roles.${role}`)} />
-                                            ))}
-                                        </div>
-                                        <p className="mt-3 text-sm text-stone-600">{t("rolesHint")}</p>
-                                    </section>
-
                                     <AccountSecuritySettings user={user} />
                                 </aside>
                             </section>
@@ -136,12 +126,4 @@ function InfoCard({label, value}: {label: string; value: string}) {
 
 function formatDate(value: string, locale: Locale) {
     return new Intl.DateTimeFormat(locale === "ua" ? "uk-UA" : "en-US", {dateStyle: "medium"}).format(new Date(`${value}T00:00:00`));
-}
-
-function RoleBadge({label}: {label: string}) {
-    return (
-        <span className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700">
-            {label}
-        </span>
-    );
 }

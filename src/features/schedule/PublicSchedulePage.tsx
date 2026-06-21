@@ -1,36 +1,31 @@
 "use client";
 
-import {useEffect, useMemo, useState, type ReactNode} from "react";
+import {useEffect, useMemo, useState} from "react";
 import {useLocale, useTranslations} from "next-intl";
 import type {Locale} from "@/i18n";
 import {useToast} from "@/components/ui/toast/ToastProvider";
-import {useCreateBookingMutation, useListMyBookingsQuery} from "@/features/bookings/bookings.api";
-import {bookingServiceTitle} from "@/features/bookings/bookingTitles";
+import {useCreateBookingMutation} from "@/features/bookings/bookings.api";
 import {useListPublicOfficesQuery} from "@/features/offices/offices.api";
 import {
     useCancelFixedEventEnrollmentMutation,
     useEnrollFixedEventMutation,
     useListPublicAvailabilityQuery,
-    useListPublicEventsQuery,
-    useListPublicUnavailableQuery
+    useListPublicEventsQuery
 } from "@/features/schedule/schedule.api";
-import AtaraksiaCalendar, {toCalendarView, type AtaraksiaCalendarEvent, type AtaraksiaCalendarMessages} from "@/features/schedule/AtaraksiaCalendar";
 import {useListServicesQuery} from "@/features/services/services.api";
 import {API_URL} from "@/shared/constants/env";
 import {withLocale} from "@/shared/lib/locale/withLocale";
-import type {Booking} from "@/types/bookings";
-import type {PublicFixedEvent, PublicScheduleAvailabilityBlock, PublicScheduleUnavailableBlock} from "@/types/schedule";
+import type {Office} from "@/types/offices";
+import type {PublicFixedEvent, PublicScheduleAvailabilityBlock} from "@/types/schedule";
 import type {PublicService} from "@/types/services";
 
-const views = ["month", "week", "day", "list"] as const;
-const periods = [7, 31] as const;
 const savedFiltersKey = "ataraksia.publicScheduleFilters";
-type CalendarView = typeof views[number];
 type BookingModeFilter = "all" | "individual" | "events";
 type StatusFilter = "all" | "available" | "unavailable" | "events" | "mine";
 type PendingBooking =
     | {type: "individual"; service: PublicService; slot: PublicScheduleAvailabilityBlock}
     | {type: "event"; event: PublicFixedEvent};
+type SpecialistOption = {id: number; name: string};
 type PaymentPrompt = {
     externalPaymentUrl: string | null;
     serviceTitleUa?: string;
@@ -53,48 +48,35 @@ export default function PublicSchedulePage() {
     const t = useTranslations("calendar.page");
     const copy = labels(t);
     const toast = useToast();
-    const [filters, setFilters] = useState<FilterState>({officeId: "", serviceId: "", specialistId: "", mode: "all", status: "all", period: 7});
-    const [selectedView, setSelectedView] = useState<CalendarView>("list");
+    const [filters, setFilters] = useState<FilterState>({officeId: "", serviceId: "", specialistId: "", mode: "all", status: "all", period: 31});
     const [currentDate, setCurrentDate] = useState(() => new Date());
     const [reminderOptIn, setReminderOptIn] = useState(false);
     const [pendingBooking, setPendingBooking] = useState<PendingBooking | null>(null);
     const [selectedEventDetails, setSelectedEventDetails] = useState<PublicFixedEvent | null>(null);
     const [slotForServiceChoice, setSlotForServiceChoice] = useState<PublicScheduleAvailabilityBlock | null>(null);
-    const [savedFilters, setSavedFilters] = useState<FilterState | null>(null);
     const [paymentPrompt, setPaymentPrompt] = useState<PaymentPrompt | null>(null);
-    const [filtersOpen, setFiltersOpen] = useState(true);
-    const range = useMemo(() => buildRange(currentDate, selectedView, filters.period), [currentDate, selectedView, filters.period]);
+    const guidedRange = useMemo(() => buildMonthRange(currentDate), [currentDate]);
 
     const {data: officesData} = useListPublicOfficesQuery({size: 100});
     const {data: servicesData} = useListServicesQuery({lang: locale, size: 100});
     const individualServiceId = filters.serviceId !== "" && selectedService(servicesData?.content ?? [], filters.serviceId)?.bookingMode === "INDIVIDUAL_APPOINTMENT"
         ? filters.serviceId
         : "";
-    const {data: slotsData = [], isFetching: slotsFetching, isError: slotsError, refetch: refetchSlots} = useListPublicAvailabilityQuery({
-        from: range.from,
-        to: range.to,
+    const {data: guidedSlotsData = [], isError: slotsError, refetch: refetchSlots} = useListPublicAvailabilityQuery({
+        from: guidedRange.from,
+        to: guidedRange.to,
         officeId: filters.officeId,
         serviceId: individualServiceId,
         specialistId: filters.specialistId
     });
-    const {data: eventsData = [], isFetching: eventsFetching, refetch: refetchEvents} = useListPublicEventsQuery({
-        from: range.from,
-        to: range.to,
+    const {data: guidedEventsData = [], refetch: refetchEvents} = useListPublicEventsQuery({
+        from: guidedRange.from,
+        to: guidedRange.to,
         officeId: filters.officeId,
         serviceId: eventServiceId(servicesData?.content ?? [], filters.serviceId),
         specialistId: filters.specialistId,
         lang: locale
     });
-    const {data: unavailableData = []} = useListPublicUnavailableQuery({
-        from: range.from,
-        to: range.to,
-        officeId: filters.officeId,
-        specialistId: filters.specialistId
-    });
-    const {data: myBookingsData, isFetching: myBookingsFetching} = useListMyBookingsQuery(
-        {page: 0, size: 100},
-        {skip: filters.status !== "mine"}
-    );
     const [createBooking, {isLoading: bookingLoading}] = useCreateBookingMutation();
     const [enrollEvent, {isLoading: enrollmentLoading}] = useEnrollFixedEventMutation();
     const [cancelEventEnrollment, {isLoading: cancelEnrollmentLoading}] = useCancelFixedEventEnrollmentMutation();
@@ -102,32 +84,23 @@ export default function PublicSchedulePage() {
     const offices = officesData?.content ?? [];
     const services = servicesData?.content ?? [];
     const individualServices = services.filter((service) => service.bookingMode === "INDIVIDUAL_APPOINTMENT");
+    const eventServices = services.filter((service) => service.bookingMode === "FIXED_EVENT");
     const selected = selectedService(services, filters.serviceId);
-    const filteredEvents = useMemo(() => filterEvents(eventsData, filters), [eventsData, filters]);
-    const visibleEventUnavailableIds = useMemo(() => new Set(filteredEvents.map((event) => `event-${event.id}`)), [filteredEvents]);
-    const filteredUnavailable = useMemo(() => (
-        filters.status === "available" || filters.status === "events" || filters.status === "mine"
-            ? []
-            : unavailableData.filter((item) => !visibleEventUnavailableIds.has(item.id))
-    ), [filters.status, unavailableData, visibleEventUnavailableIds]);
-    const filteredSlots = useMemo(() => (
-        filters.mode === "events" || filters.status === "unavailable" || filters.status === "events" || filters.status === "mine" ? [] : slotsData
-    ), [filters.mode, filters.status, slotsData]);
-    const myBookings = filters.status === "mine" ? filterMyBookings(myBookingsData?.content ?? [], range) : [];
-    const nearestSlots = filteredSlots.slice(0, 6);
-    const nearestEvents = filteredEvents.filter((event) => !event.full && new Date(event.startsAt).getTime() > Date.now()).slice(0, 6);
-    const specialists = uniqueSpecialists([...slotsData, ...eventsData, ...unavailableData]);
+    const guidedSlots = useMemo(() => (
+        filters.mode === "events" || filters.status === "unavailable" || filters.status === "events" || filters.status === "mine" ? [] : guidedSlotsData
+    ), [filters.mode, filters.status, guidedSlotsData]);
+    const guidedEvents = useMemo(() => filterEvents(guidedEventsData, filters), [guidedEventsData, filters]);
+    const guidedSpecialists = uniqueSpecialists([...guidedSlots, ...guidedEvents]);
     const isSaving = bookingLoading || enrollmentLoading || cancelEnrollmentLoading;
     const selectedDateKey = dateKey(currentDate);
-    const availableDays = useMemo(() => buildAvailableDays(filteredSlots, filteredEvents, locale, copy), [copy, filteredEvents, filteredSlots, locale]);
-    const selectedDaySlots = filteredSlots.filter((slot) => dateKey(new Date(slot.startsAt)) === selectedDateKey);
-    const selectedDayEvents = filteredEvents.filter((event) => dateKey(new Date(event.startsAt)) === selectedDateKey);
+    const availableDays = useMemo(() => buildAvailableDays(guidedSlots, guidedEvents, locale, copy), [copy, guidedEvents, guidedSlots, locale]);
+    const selectedDaySlots = guidedSlots.filter((slot) => dateKey(new Date(slot.startsAt)) === selectedDateKey);
+    const selectedDayEvents = guidedEvents.filter((event) => dateKey(new Date(event.startsAt)) === selectedDateKey);
 
     useEffect(() => {
         const loaded = loadSavedFilters();
         if (loaded) {
             setFilters(loaded);
-            setSavedFilters(loaded);
         }
         const fromUrl = filtersFromUrl();
         if (fromUrl) setFilters(fromUrl);
@@ -148,7 +121,12 @@ export default function PublicSchedulePage() {
     }
 
     function chooseEventMode() {
-        setFilters((current) => ({...current, mode: "events", status: "events"}));
+        setFilters((current) => ({...current, mode: "events", serviceId: "", status: "events"}));
+        setCurrentDate(new Date());
+    }
+
+    function chooseEventService(service: PublicService) {
+        setFilters((current) => ({...current, serviceId: service.id, mode: "events", status: "events"}));
         setCurrentDate(new Date());
     }
 
@@ -162,20 +140,6 @@ export default function PublicSchedulePage() {
             return;
         }
         setSlotForServiceChoice(slot);
-    }
-
-    function resetFilters() {
-        setFilters({officeId: "", serviceId: "", specialistId: "", mode: "all", status: "all", period: 7});
-    }
-
-    function saveFilters() {
-        localStorage.setItem(savedFiltersKey, JSON.stringify(filters));
-        setSavedFilters(filters);
-    }
-
-    function deleteSavedFilters() {
-        localStorage.removeItem(savedFiltersKey);
-        setSavedFilters(null);
     }
 
     async function confirmBooking() {
@@ -220,11 +184,11 @@ export default function PublicSchedulePage() {
     }
 
     return (
-        <main className="mx-auto w-full max-w-[1440px] space-y-5 overflow-x-clip px-3 py-6 sm:px-6 lg:px-8 lg:py-10">
-            <header className="border-b border-stone-200 pb-5">
+        <main className="mx-auto w-full max-w-[1440px] space-y-5 overflow-x-clip bg-stone-50 px-3 py-6 sm:px-6 lg:px-8 lg:py-10">
+            <header className="mx-auto w-full max-w-[760px] pb-1">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">{copy.eyebrow}</p>
-                <h1 className="mt-2 text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl">{copy.title}</h1>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600 sm:text-base">{copy.subtitle}</p>
+                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950 sm:text-3xl">{copy.title}</h1>
+                <p className="mt-2 text-sm leading-6 text-stone-600">{copy.subtitle}</p>
             </header>
 
             <GuidedBookingFlow
@@ -232,86 +196,34 @@ export default function PublicSchedulePage() {
                 copy={copy}
                 currentDate={currentDate}
                 events={selectedDayEvents}
+                eventServices={eventServices}
                 filters={filters}
                 individualServices={individualServices}
                 locale={locale}
+                offices={offices}
                 onChooseDate={(date) => {
                     setCurrentDate(date);
-                    setSelectedView("day");
                 }}
+                onChooseOffice={(officeId) => updateFilter("officeId", officeId)}
+                onChooseMonth={(date) => {
+                    setCurrentDate(date);
+                }}
+                onChooseSpecialist={(specialistId) => updateFilter("specialistId", specialistId)}
                 onChooseEvent={chooseEvent}
                 onChooseEventMode={chooseEventMode}
                 onChooseService={chooseIndividualService}
+                onChooseEventService={chooseEventService}
                 onChooseSlot={chooseSlot}
+                selectedEventService={selected?.bookingMode === "FIXED_EVENT" ? selected : undefined}
                 selectedService={selected?.bookingMode === "INDIVIDUAL_APPOINTMENT" ? selected : undefined}
+                specialists={guidedSpecialists}
                 slots={selectedDaySlots}
             />
 
-            <section className="rounded-2xl border border-stone-200 bg-white p-3 shadow-sm">
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <div className="min-w-0 flex-1">
-                        <h2 className="text-sm font-semibold text-stone-950">{copy.filtersTitle}</h2>
-                        <p className="mt-1 text-xs leading-5 text-stone-500">{copy.filtersHint}</p>
-                    </div>
-                    <button className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 transition-colors hover:bg-stone-100 md:hidden" onClick={() => setFiltersOpen((current) => !current)} type="button">
-                        {filtersOpen ? copy.hideFilters : copy.showFilters}
-                    </button>
-                </div>
-                <div className={`${filtersOpen ? "grid" : "hidden"} mt-3 gap-2 sm:grid sm:grid-cols-2 lg:grid-cols-6`}>
-                    <SelectField label={copy.mode}>
-                        <select className={compactInputClass} value={filters.mode} onChange={(event) => updateFilter("mode", event.target.value as BookingModeFilter)}>
-                            <option value="all">{copy.all}</option>
-                            <option value="individual">{copy.individual}</option>
-                            <option value="events">{copy.events}</option>
-                        </select>
-                    </SelectField>
-                    <SelectField label={copy.service}>
-                        <select className={compactInputClass} value={filters.serviceId} onChange={(event) => updateFilter("serviceId", toId(event.target.value))}>
-                            <option value="">{copy.allServices}</option>
-                            {services.map((service) => <option key={service.id} value={service.id}>{service.title}</option>)}
-                        </select>
-                    </SelectField>
-                    <SelectField label={copy.office}>
-                        <select className={compactInputClass} value={filters.officeId} onChange={(event) => updateFilter("officeId", toId(event.target.value))}>
-                            <option value="">{copy.allOffices}</option>
-                            {offices.map((office) => <option key={office.id} value={office.id}>{office.name}</option>)}
-                        </select>
-                    </SelectField>
-                    <SelectField label={copy.specialist}>
-                        <select className={compactInputClass} value={filters.specialistId} onChange={(event) => updateFilter("specialistId", toId(event.target.value))}>
-                            <option value="">{copy.allSpecialists}</option>
-                            {specialists.map((specialist) => <option key={specialist.id} value={specialist.id}>{specialist.name}</option>)}
-                        </select>
-                    </SelectField>
-                    <SelectField label={copy.status}>
-                        <select className={compactInputClass} value={filters.status} onChange={(event) => updateFilter("status", event.target.value as StatusFilter)}>
-                            <option value="all">{copy.all}</option>
-                            <option value="available">{copy.available}</option>
-                            <option value="unavailable">{copy.unavailable}</option>
-                            <option value="events">{copy.eventsWithPlaces}</option>
-                            <option value="mine">{copy.myBookings}</option>
-                        </select>
-                    </SelectField>
-                    <SelectField label={copy.period}>
-                        <select className={compactInputClass} value={filters.period} onChange={(event) => updateFilter("period", Number(event.target.value) as 7 | 31)}>
-                            {periods.map((days) => <option key={days} value={days}>{days === 7 ? copy.days7 : copy.days31}</option>)}
-                        </select>
-                    </SelectField>
-                </div>
-                <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
-                    {activeFilterChips(filters, services, offices, specialists, copy).length === 0 ? <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-500">{copy.noActiveFilters}</span> : null}
-                    {activeFilterChips(filters, services, offices, specialists, copy).map((chip) => <span className="max-w-full break-words rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-600" key={chip}>{chip}</span>)}
-                    {savedFilters ? <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800">{copy.savedActive}</span> : null}
-                    <span className="hidden grow sm:block" />
-                    <button className={compactButtonClass} onClick={saveFilters} type="button">{savedFilters ? copy.updateSaved : copy.saveFilters}</button>
-                    <button className={compactButtonClass} onClick={resetFilters} type="button">{copy.resetFilters}</button>
-                    {savedFilters ? <button className={compactButtonClass} onClick={() => setFilters(savedFilters)} type="button">{copy.applySaved}</button> : null}
-                    {savedFilters ? <button className={compactDangerButtonClass} onClick={deleteSavedFilters} type="button">{copy.deleteSaved}</button> : null}
-                </div>
-            </section>
+            {slotsError ? <p className="mx-auto max-w-[760px] rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{copy.loadError}</p> : null}
 
             {paymentPrompt ? (
-                <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+                <section className="mx-auto max-w-[760px] rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
                             <h2 className="text-base font-semibold text-emerald-950">{copy.paymentTitle}</h2>
@@ -325,112 +237,6 @@ export default function PublicSchedulePage() {
                     </div>
                 </section>
             ) : null}
-
-            <section className="grid min-w-0 gap-4 lg:grid-cols-2">
-                <BookingHighlights
-                    copy={copy}
-                    locale={locale}
-                    onChooseEvent={chooseEvent}
-                    onChooseSlot={chooseSlot}
-                    selectedService={selected?.bookingMode === "INDIVIDUAL_APPOINTMENT" ? selected : undefined}
-                    slots={nearestSlots}
-                    events={nearestEvents}
-                />
-            </section>
-
-            <section className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-                <div className="min-w-0 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
-                    <div className="flex min-w-0 flex-col gap-3 border-b border-stone-200 px-3 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="min-w-0">
-                            <h2 className="text-xl font-semibold text-stone-950">{copy.calendarTitle}</h2>
-                            <p className="mt-1 break-words text-sm text-stone-500">{formatCalendarLabel(selectedView, range, locale)}</p>
-                        </div>
-                        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-                            <div className="grid w-full min-w-0 grid-cols-3 gap-1 rounded-xl bg-stone-100 p-1 sm:w-auto">
-                                <button className={viewClass} onClick={() => setCurrentDate((date) => navigateDate(date, selectedView, filters.period, -1))} title={copy.previous} type="button">←</button>
-                                <button className={viewClass} onClick={() => setCurrentDate(new Date())} type="button">{copy.today}</button>
-                                <button className={viewClass} onClick={() => setCurrentDate((date) => navigateDate(date, selectedView, filters.period, 1))} title={copy.next} type="button">→</button>
-                            </div>
-                            <div className="grid w-full min-w-0 grid-cols-4 gap-1 rounded-xl bg-stone-100 p-1 sm:w-auto">
-                                {views.map((view) => (
-                                    <button aria-pressed={selectedView === view} className={selectedView === view ? activeViewClass : viewClass} key={view} onClick={() => setSelectedView(view)} type="button">
-                                        {copy.views[view]}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                    {slotsError ? <p className="m-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{copy.loadError}</p> : null}
-                    <PublicScheduleCalendar
-                        copy={copy}
-                        currentDate={currentDate}
-                        events={filteredEvents}
-                        locale={locale}
-                        onChooseEvent={chooseEvent}
-                        onChooseSlot={chooseSlot}
-                        onChooseUnavailable={() => toast.error(copy.unavailableClick)}
-                        onNavigate={setCurrentDate}
-                        myBookings={myBookings}
-                        selectedService={selected?.bookingMode === "INDIVIDUAL_APPOINTMENT" ? selected : undefined}
-                        slots={filteredSlots}
-                        unavailable={filteredUnavailable}
-                        view={selectedView}
-                    />
-                </div>
-
-                <aside className="min-w-0 space-y-4">
-                    <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-                        <h2 className="text-base font-semibold text-stone-950">{copy.individualServiceTitle}</h2>
-                        <p className="mt-1 text-sm leading-5 text-stone-500">{selected?.bookingMode === "INDIVIDUAL_APPOINTMENT" ? copy.selectedServiceHint : copy.individualServiceHint}</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                            {individualServices.map((service) => (
-                                <ServiceChoiceCard copy={copy} key={service.id} locale={locale} onChoose={() => chooseIndividualService(service)} selected={filters.serviceId === service.id} service={service} />
-                            ))}
-                        </div>
-                        {selected?.bookingMode === "INDIVIDUAL_APPOINTMENT" ? (
-                            <p className="mt-3 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium text-stone-800">
-                                {selected.title} · {copy.minutes(selected.durationMinutes)} · {formatAmount(selected.basePrice, locale)}
-                            </p>
-                        ) : null}
-                    </section>
-
-                    <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-                        <div className="flex items-center justify-between gap-3">
-                            <h2 className="text-base font-semibold text-stone-950">{copy.nearestSlots}</h2>
-                            <span className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-500">{slotsFetching || eventsFetching || myBookingsFetching ? copy.loading : copy.slotCount(nearestSlots.length)}</span>
-                        </div>
-                        {selected?.bookingMode !== "INDIVIDUAL_APPOINTMENT" ? <p className="mt-3 text-sm leading-6 text-stone-500">{copy.selectServicePrompt}</p> : null}
-                        {nearestSlots.length > 0 ? (
-                            <div className="mt-3 space-y-2">
-                                {nearestSlots.map((slot) => (
-                                    selected?.bookingMode === "INDIVIDUAL_APPOINTMENT"
-                                        ? <CompactSlotRow copy={copy} key={slotKey(slot)} locale={locale} onChoose={() => setPendingBooking({type: "individual", service: selected, slot})} service={selected} slot={slot} />
-                                        : <CompactOpenSlotRow copy={copy} key={slotKey(slot)} locale={locale} onChoose={() => chooseSlot(slot)} slot={slot} />
-                                ))}
-                            </div>
-                        ) : null}
-                        {nearestSlots.length === 0 && !slotsFetching ? (
-                            <div className="mt-3 rounded-xl border border-dashed border-stone-300 bg-stone-50 p-4 text-sm text-stone-600">
-                                <p>{copy.noSlotsTitle}</p>
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                    <button className={compactButtonClass} onClick={() => updateFilter("period", 31)} type="button">{copy.otherDates}</button>
-                                    <button className={compactButtonClass} onClick={resetFilters} type="button">{copy.resetFilters}</button>
-                                </div>
-                            </div>
-                        ) : null}
-                    </section>
-
-                    <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-                        <h2 className="text-base font-semibold text-stone-950">{copy.upcomingEvents}</h2>
-                        <div className="mt-3 space-y-2">
-                            {filteredEvents.slice(0, 4).map((event) => (
-                                <CompactEventRow copy={copy} event={event} key={event.id} locale={locale} onChoose={() => chooseEvent(event)} />
-                            ))}
-                            {filteredEvents.length === 0 ? <p className="text-sm text-stone-500">{copy.noEvents}</p> : null}
-                        </div>
-                    </section>
-                </aside>
-            </section>
 
             {pendingBooking ? (
                 <ConfirmationModal
@@ -479,65 +285,8 @@ export default function PublicSchedulePage() {
     );
 }
 
-const compactInputClass = "w-full rounded-lg border border-stone-300 bg-white px-2.5 py-2 text-sm text-stone-900 outline-none transition-colors focus:border-stone-800";
-const viewClass = "min-w-0 rounded-lg px-2 py-2 text-sm font-medium text-stone-600 transition-colors hover:bg-white sm:px-3";
-const activeViewClass = "min-w-0 rounded-lg bg-stone-900 px-2 py-2 text-sm font-medium text-white shadow-sm sm:px-3";
 const secondaryButtonClass = "max-w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-100";
 const compactButtonClass = "max-w-full rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100";
-const compactDangerButtonClass = "max-w-full rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100";
-
-function BookingHighlights({
-    copy,
-    events,
-    locale,
-    onChooseEvent,
-    onChooseSlot,
-    selectedService,
-    slots
-}: {
-    copy: Copy;
-    events: PublicFixedEvent[];
-    locale: string;
-    onChooseEvent: (event: PublicFixedEvent) => void;
-    onChooseSlot: (slot: PublicScheduleAvailabilityBlock) => void;
-    selectedService?: PublicService;
-    slots: PublicScheduleAvailabilityBlock[];
-}) {
-    return (
-        <>
-            <section className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-                <div className="flex min-w-0 items-start justify-between gap-3">
-                    <div className="min-w-0">
-                        <h2 className="text-base font-semibold text-stone-950">{copy.nearestSlots}</h2>
-                        <p className="mt-1 text-sm leading-5 text-stone-500">{selectedService ? copy.selectedServiceHint : copy.selectServicePrompt}</p>
-                    </div>
-                    <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800">{copy.slotCount(slots.length)}</span>
-                </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {slots.slice(0, 6).map((slot) => (
-                        selectedService
-                            ? <CompactSlotRow copy={copy} key={slotKey(slot)} locale={locale} onChoose={() => onChooseSlot(slot)} service={selectedService} slot={slot} />
-                            : <CompactOpenSlotRow copy={copy} key={slotKey(slot)} locale={locale} onChoose={() => onChooseSlot(slot)} slot={slot} />
-                    ))}
-                    {slots.length === 0 ? <p className="rounded-xl border border-dashed border-stone-200 bg-stone-50 px-4 py-5 text-sm text-stone-500 sm:col-span-2">{copy.noSlotsTitle}</p> : null}
-                </div>
-            </section>
-            <section className="min-w-0 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-                <div className="flex min-w-0 items-start justify-between gap-3">
-                    <div className="min-w-0">
-                        <h2 className="text-base font-semibold text-stone-950">{copy.upcomingEvents}</h2>
-                        <p className="mt-1 text-sm leading-5 text-stone-500">{copy.eventsWithPlaces}</p>
-                    </div>
-                    <span className="shrink-0 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-800">{events.length}</span>
-                </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {events.slice(0, 6).map((event) => <CompactEventRow copy={copy} event={event} key={event.id} locale={locale} onChoose={() => onChooseEvent(event)} />)}
-                    {events.length === 0 ? <p className="rounded-xl border border-dashed border-stone-200 bg-stone-50 px-4 py-5 text-sm text-stone-500 sm:col-span-2">{copy.noEvents}</p> : null}
-                </div>
-            </section>
-        </>
-    );
-}
 
 type AvailableDay = {
     date: Date;
@@ -552,43 +301,91 @@ function GuidedBookingFlow({
     copy,
     currentDate,
     events,
+    eventServices,
     filters,
     individualServices,
     locale,
+    offices,
     onChooseDate,
     onChooseEvent,
     onChooseEventMode,
+    onChooseOffice,
+    onChooseMonth,
+    onChooseSpecialist,
     onChooseService,
+    onChooseEventService,
     onChooseSlot,
+    selectedEventService,
     selectedService,
+    specialists,
     slots
 }: {
     availableDays: AvailableDay[];
     copy: Copy;
     currentDate: Date;
     events: PublicFixedEvent[];
+    eventServices: PublicService[];
     filters: FilterState;
     individualServices: PublicService[];
     locale: string;
+    offices: Office[];
     onChooseDate: (date: Date) => void;
     onChooseEvent: (event: PublicFixedEvent) => void;
     onChooseEventMode: () => void;
+    onChooseOffice: (officeId: number | "") => void;
+    onChooseMonth: (date: Date) => void;
+    onChooseSpecialist: (specialistId: number | "") => void;
     onChooseService: (service: PublicService) => void;
+    onChooseEventService: (service: PublicService) => void;
     onChooseSlot: (slot: PublicScheduleAvailabilityBlock) => void;
+    selectedEventService?: PublicService;
     selectedService?: PublicService;
+    specialists: SpecialistOption[];
     slots: PublicScheduleAvailabilityBlock[];
 }) {
     const selectedKey = dateKey(currentDate);
+    const [officesExpanded, setOfficesExpanded] = useState(false);
+    const [individualServicesExpanded, setIndividualServicesExpanded] = useState(false);
+    const [eventServicesExpanded, setEventServicesExpanded] = useState(false);
+    const [specialistsExpanded, setSpecialistsExpanded] = useState(false);
     const visibleDays = availableDays.slice(0, 14);
+    const visibleOffices = officesExpanded ? offices : offices.slice(0, 3);
+    const visibleIndividualServices = individualServicesExpanded ? individualServices : individualServices.slice(0, 6);
+    const visibleEventServices = eventServicesExpanded ? eventServices : eventServices.slice(0, 5);
+    const orderedSpecialists = prioritizeSelectedSpecialist(specialists, filters.specialistId);
+    const visibleSpecialists = specialistsExpanded ? orderedSpecialists : orderedSpecialists.slice(0, 5);
+    const showIndividualChoices = filters.mode === "individual";
+    const showEventChoices = filters.mode === "events";
+    const availableByDate = useMemo(() => new Map(availableDays.map((day) => [day.key, day])), [availableDays]);
+    const monthDays = useMemo(() => buildMonthPickerDays(currentDate), [currentDate]);
+    const nearestDay = availableDays.find((day) => day.date.getTime() >= startOfDay(new Date()).getTime()) ?? availableDays[0];
 
     return (
-        <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+        <section className="mx-auto w-full max-w-[760px] rounded-[28px] border border-stone-200 bg-white p-4 shadow-sm sm:p-5 lg:p-6">
+            <div className="grid gap-4">
                 <div className="min-w-0 space-y-4">
                     <div className="min-w-0">
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">{copy.guidedEyebrow}</p>
                         <h2 className="mt-2 text-xl font-semibold text-stone-950">{copy.guidedTitle}</h2>
                         <p className="mt-1 text-sm leading-6 text-stone-500">{copy.guidedDescription}</p>
+                    </div>
+                    <div className="min-w-0">
+                        <h3 className="text-sm font-semibold text-stone-950">{copy.chooseOfficeTitle}</h3>
+                        <p className="mt-1 text-xs leading-5 text-stone-500">{copy.chooseOfficeHint}</p>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                            <button className={filters.officeId === "" ? "w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white"} onClick={() => onChooseOffice("")} type="button">
+                                <span className="block text-sm font-semibold">{copy.allOffices}</span>
+                                <span className={filters.officeId === "" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.allOfficesHint}</span>
+                            </button>
+                            {visibleOffices.map((office) => (
+                                <OfficeChoiceCard copy={copy} key={office.id} office={office} onChoose={() => onChooseOffice(office.id)} selected={filters.officeId === office.id} />
+                            ))}
+                        </div>
+                        {offices.length > 3 ? (
+                            <button className={`${compactButtonClass} mt-2`} onClick={() => setOfficesExpanded((current) => !current)} type="button">
+                                {officesExpanded ? copy.showLess : copy.showMore}
+                            </button>
+                        ) : null}
                     </div>
                     <div className="grid gap-2 sm:grid-cols-2">
                         <button
@@ -612,22 +409,112 @@ function GuidedBookingFlow({
                             <span className={filters.mode === "events" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.chooseEventMode}</span>
                         </button>
                     </div>
-                    <div className="min-w-0">
+                    {showIndividualChoices ? <div className="min-w-0">
                         <h3 className="text-sm font-semibold text-stone-950">{copy.individualServiceTitle}</h3>
                         <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                            {individualServices.slice(0, 6).map((service) => (
+                            {visibleIndividualServices.map((service) => (
                                 <ServiceChoiceCard copy={copy} key={service.id} locale={locale} onChoose={() => onChooseService(service)} selected={selectedService?.id === service.id} service={service} />
                             ))}
                         </div>
+                        {individualServices.length > 6 ? (
+                            <button className={`${compactButtonClass} mt-2`} onClick={() => setIndividualServicesExpanded((current) => !current)} type="button">
+                                {individualServicesExpanded ? copy.showLess : copy.showMore}
+                            </button>
+                        ) : null}
+                    </div> : null}
+                    {showEventChoices ? <div className="min-w-0">
+                        <h3 className="text-sm font-semibold text-stone-950">{copy.fixedEventServicesTitle}</h3>
+                        <p className="mt-1 text-xs leading-5 text-stone-500">{copy.fixedEventServicesHint}</p>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                            <button className={filters.mode === "events" && filters.serviceId === "" ? "w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white"} onClick={onChooseEventMode} type="button">
+                                <span className="block text-sm font-semibold">{copy.allEvents}</span>
+                                <span className={filters.mode === "events" && filters.serviceId === "" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.allEventsHint}</span>
+                            </button>
+                            {visibleEventServices.map((service) => (
+                                <ServiceChoiceCard copy={copy} key={service.id} locale={locale} onChoose={() => onChooseEventService(service)} selected={selectedEventService?.id === service.id} service={service} />
+                            ))}
+                        </div>
+                        {eventServices.length > 5 ? (
+                            <button className={`${compactButtonClass} mt-2`} onClick={() => setEventServicesExpanded((current) => !current)} type="button">
+                                {eventServicesExpanded ? copy.showLess : copy.showMore}
+                            </button>
+                        ) : null}
+                        {eventServices.length === 0 ? <p className="mt-2 rounded-xl border border-dashed border-stone-300 bg-white px-3 py-2 text-xs leading-5 text-stone-500">{copy.noEventServices}</p> : null}
+                    </div> : null}
+                    <div className="min-w-0">
+                        <h3 className="text-sm font-semibold text-stone-950">{copy.chooseSpecialistTitle}</h3>
+                        <p className="mt-1 text-xs leading-5 text-stone-500">{copy.chooseSpecialistHint}</p>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                            <button className={filters.specialistId === "" ? "w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white"} onClick={() => onChooseSpecialist("")} type="button">
+                                <span className="block text-sm font-semibold">{copy.allSpecialists}</span>
+                                <span className={filters.specialistId === "" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.allSpecialistsHint}</span>
+                            </button>
+                            {visibleSpecialists.map((specialist) => (
+                                <SpecialistChoiceCard copy={copy} key={specialist.id} onChoose={() => onChooseSpecialist(specialist.id)} selected={filters.specialistId === specialist.id} specialist={specialist} />
+                            ))}
+                        </div>
+                        {specialists.length > 5 ? (
+                            <button className={`${compactButtonClass} mt-2`} onClick={() => setSpecialistsExpanded((current) => !current)} type="button">
+                                {specialistsExpanded ? copy.showLess : copy.showMore}
+                            </button>
+                        ) : null}
+                        {specialists.length === 0 ? <p className="mt-2 rounded-xl border border-dashed border-stone-300 bg-white px-3 py-2 text-xs leading-5 text-stone-500">{copy.noSpecialistsForFilters}</p> : null}
                     </div>
                 </div>
                 <div className="min-w-0 rounded-xl border border-stone-200 bg-stone-50 p-3">
+                    <div className="mb-3 rounded-xl border border-stone-200 bg-white p-3">
+                        <h3 className="text-sm font-semibold text-stone-950">{copy.selectedSummary}</h3>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                            {guidedSelectionChips({
+                                copy,
+                                currentDate,
+                                filters,
+                                locale,
+                                offices,
+                                selectedEventService,
+                                selectedService,
+                                specialists
+                            }).map((chip) => (
+                                <span className="max-w-full break-words rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700" key={chip}>{chip}</span>
+                            ))}
+                        </div>
+                    </div>
                     <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
                             <h3 className="text-sm font-semibold text-stone-950">{copy.availableDaysTitle}</h3>
                             <p className="mt-1 text-xs leading-5 text-stone-500">{copy.availableDaysHint}</p>
                         </div>
                         <span className="rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs font-medium text-stone-500">{copy.slotCount(availableDays.reduce((sum, day) => sum + day.slotsCount, 0))}</span>
+                    </div>
+                    <div className="mt-3 rounded-xl border border-stone-200 bg-white p-3">
+                        <div className="flex items-center justify-between gap-2">
+                            <button className={compactButtonClass} onClick={() => onChooseMonth(addMonths(currentDate, -1))} type="button">{copy.previousMonth}</button>
+                            <p className="text-sm font-semibold text-stone-950">{formatMonthLabel(currentDate, locale)}</p>
+                            <button className={compactButtonClass} onClick={() => onChooseMonth(addMonths(currentDate, 1))} type="button">{copy.nextMonth}</button>
+                        </div>
+                        <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold uppercase text-stone-400">
+                            {weekdayLabels(locale).map((label) => <span key={label}>{label}</span>)}
+                        </div>
+                        <div className="mt-1 grid grid-cols-7 gap-1">
+                            {monthDays.map((day) => {
+                                const available = availableByDate.get(day.key);
+                                const disabled = !available || !day.inCurrentMonth;
+                                return (
+                                    <button
+                                        aria-label={available ? `${day.day}. ${available.slotsCount ? copy.slotCount(available.slotsCount) : copy.eventsCount(available.eventsCount)}` : `${day.day}. ${copy.noAvailabilityDay}`}
+                                        aria-pressed={day.key === selectedKey}
+                                        className={monthDayClass(day, Boolean(available), day.key === selectedKey)}
+                                        disabled={disabled}
+                                        key={day.key}
+                                        onClick={() => available ? onChooseDate(available.date) : undefined}
+                                        type="button"
+                                    >
+                                        <span className="block text-sm font-semibold">{day.day}</span>
+                                        {available ? <span className="mx-auto mt-1 block h-1.5 w-1.5 rounded-full bg-emerald-500" /> : <span className="mx-auto mt-1 block h-1.5 w-1.5 rounded-full bg-transparent" />}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                     {visibleDays.length > 0 ? (
                         <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
@@ -644,7 +531,19 @@ function GuidedBookingFlow({
                                 </button>
                             ))}
                         </div>
-                    ) : <p className="mt-3 rounded-xl border border-dashed border-stone-300 bg-white px-4 py-5 text-sm text-stone-500">{copy.noAvailableDays}</p>}
+                    ) : (
+                        <div className="mt-3 rounded-xl border border-dashed border-stone-300 bg-white px-4 py-5 text-sm text-stone-500">
+                            <p>{copy.noAvailableDays}</p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                <button className={compactButtonClass} onClick={() => onChooseMonth(addMonths(currentDate, 1))} type="button">{copy.nextMonth}</button>
+                            </div>
+                        </div>
+                    )}
+                    {nearestDay && nearestDay.key !== selectedKey ? (
+                        <button className="mt-3 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-left text-sm font-medium text-emerald-900 transition-colors hover:bg-emerald-100" onClick={() => onChooseDate(nearestDay.date)} type="button">
+                            {copy.nearestAvailable(formatDate(nearestDay.date.toISOString(), locale))}
+                        </button>
+                    ) : null}
                     <div className="mt-4 space-y-2">
                         {slots.slice(0, 5).map((slot) => (
                             selectedService
@@ -667,6 +566,34 @@ function ServiceChoiceCard({copy, locale, onChoose, selected, service}: {copy: C
                 <span className="min-w-0">
                     <span className="block break-words text-sm font-semibold">{service.title}</span>
                     <span className={selected ? "mt-1 block break-words text-xs text-stone-200" : "mt-1 block break-words text-xs text-stone-500"}>{copy.minutes(service.durationMinutes)} · {formatAmount(service.basePrice, locale)}</span>
+                </span>
+                <span className={selected ? "shrink-0 rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-900" : "shrink-0 rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-700"}>{selected ? copy.selected : copy.select}</span>
+            </span>
+        </button>
+    );
+}
+
+function OfficeChoiceCard({copy, office, onChoose, selected}: {copy: Copy; office: Office; onChoose: () => void; selected: boolean}) {
+    return (
+        <button className={selected ? "w-full max-w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white"} onClick={onChoose} type="button">
+            <span className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+                <span className="min-w-0">
+                    <span className="block break-words text-sm font-semibold">{office.name}</span>
+                    <span className={selected ? "mt-1 line-clamp-2 block break-words text-xs leading-5 text-stone-200" : "mt-1 line-clamp-2 block break-words text-xs leading-5 text-stone-500"}>{office.address}</span>
+                </span>
+                <span className={selected ? "shrink-0 rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-900" : "shrink-0 rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-700"}>{selected ? copy.selected : copy.select}</span>
+            </span>
+        </button>
+    );
+}
+
+function SpecialistChoiceCard({copy, onChoose, selected, specialist}: {copy: Copy; onChoose: () => void; selected: boolean; specialist: SpecialistOption}) {
+    return (
+        <button className={selected ? "w-full max-w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white"} onClick={onChoose} type="button">
+            <span className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+                <span className="min-w-0">
+                    <span className="block break-words text-sm font-semibold">{specialist.name}</span>
+                    <span className={selected ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.specialistAvailabilityHint}</span>
                 </span>
                 <span className={selected ? "shrink-0 rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-900" : "shrink-0 rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-700"}>{selected ? copy.selected : copy.select}</span>
             </span>
@@ -778,93 +705,6 @@ function EventDetailsModal({copy, event, isSaving, locale, onCancelEnrollment, o
     );
 }
 
-function PublicScheduleCalendar({
-    copy,
-    currentDate,
-    events,
-    locale,
-    myBookings,
-    onChooseEvent,
-    onChooseSlot,
-    onChooseUnavailable,
-    onNavigate,
-    selectedService,
-    slots,
-    unavailable,
-    view
-}: {
-    copy: Copy;
-    currentDate: Date;
-    events: PublicFixedEvent[];
-    locale: string;
-    myBookings: Booking[];
-    onChooseEvent: (event: PublicFixedEvent) => void;
-    onChooseSlot: (slot: PublicScheduleAvailabilityBlock) => void;
-    onChooseUnavailable: () => void;
-    onNavigate: (date: Date) => void;
-    selectedService?: PublicService;
-    slots: PublicScheduleAvailabilityBlock[];
-    unavailable: PublicScheduleUnavailableBlock[];
-    view: CalendarView;
-}) {
-    const slotByEventId = new Map(slots.map((slot) => [slotKey(slot), slot]));
-    const fixedEventByEventId = new Map(events.map((event) => [`event-${event.id}`, event]));
-    const unavailableIds = new Set(unavailable.map((item) => item.id));
-    const groupedAvailability = selectedService ? [] : groupSlotsByDay(slots, locale, copy);
-    const slotCalendarEvents = selectedService
-        ? slots.map((slot) => ({
-            id: slotKey(slot),
-            badge: formatTimeRange(slot.startsAt, slot.endsAt, locale),
-            title: selectedService.title,
-            meta: [slot.specialistName, slot.officeName ?? copy.withoutOffice].join(" · "),
-            start: new Date(slot.startsAt),
-            end: new Date(slot.endsAt),
-            tone: "available" as const
-        }))
-        : groupedAvailability;
-    const calendarEvents: AtaraksiaCalendarEvent[] = [
-        ...slotCalendarEvents,
-        ...compactUnavailable(unavailable, view, locale, copy).map((item) => ({
-            id: item.id,
-            badge: item.badge,
-            meta: item.meta,
-            title: item.title,
-            start: new Date(item.startsAt),
-            end: new Date(item.endsAt),
-            tone: item.tone
-        })),
-        ...myBookings.map((booking) => ({id: `my-booking-${booking.id}`, badge: formatTimeRange(booking.startsAt, booking.endsAt, locale), title: bookingServiceTitle(booking, locale), meta: booking.specialistName, start: new Date(booking.startsAt), end: new Date(booking.endsAt), tone: "booking" as const})),
-        ...events.map((event) => ({id: `event-${event.id}`, badge: formatTimeRange(event.startsAt, event.endsAt, locale), title: event.title, meta: event.enrolled ? copy.enrolled : event.full ? copy.full : copy.remaining(event.remainingPlaces), start: new Date(event.startsAt), end: new Date(event.endsAt), tone: "event" as const}))
-    ];
-
-    if (calendarEvents.length === 0) {
-        return <div className="flex min-h-72 items-center justify-center border-t border-stone-100 p-6"><p className="max-w-md rounded-xl border border-stone-200 bg-white px-5 py-4 text-center text-sm leading-6 text-stone-500 shadow-sm">{copy.calendarEmpty}</p></div>;
-    }
-
-    return (
-        <div className="min-w-0 p-3 sm:p-6">
-            <AtaraksiaCalendar
-                culture={locale === "ua" ? "uk" : locale}
-                date={currentDate}
-                events={calendarEvents}
-                messages={copy.calendarMessages}
-                onNavigate={onNavigate}
-                onSelectEvent={(event) => {
-                    const slot = slotByEventId.get(event.id);
-                    if (slot) return onChooseSlot(slot);
-                    const fixedEvent = fixedEventByEventId.get(event.id);
-                    if (fixedEvent) return onChooseEvent(fixedEvent);
-                    if (event.id.startsWith("availability-day-") && event.start) return onNavigate(event.start);
-                    if (unavailableIds.has(event.id)) return onChooseUnavailable();
-                    return undefined;
-                }}
-                variant="booking"
-                view={toCalendarView(view)}
-            />
-        </div>
-    );
-}
-
 function ConfirmationModal({copy, isSaving, locale, onClose, onConfirm, pending, reminderOptIn, setReminderOptIn}: {copy: Copy; isSaving: boolean; locale: string; onClose: () => void; onConfirm: () => void; pending: PendingBooking; reminderOptIn: boolean; setReminderOptIn: (value: boolean) => void}) {
     const title = pending.type === "individual" ? pending.service.title : pending.event.title;
     const specialist = pending.type === "individual" ? pending.slot.specialistName : pending.event.specialistName;
@@ -925,10 +765,6 @@ function ServiceChoiceModal({copy, locale, onClose, onSelect, services, slot}: {
     );
 }
 
-function SelectField({children, label}: {children: ReactNode; label: string}) {
-    return <label className="min-w-0"><span className="mb-1.5 block break-words text-xs font-semibold uppercase tracking-wide text-stone-500">{label}</span>{children}</label>;
-}
-
 function InfoRow({label, value}: {label: string; value: string}) {
     return <div className="grid min-w-0 grid-cols-1 gap-1 sm:grid-cols-[110px_minmax(0,1fr)] sm:gap-3"><dt className="break-words text-stone-500">{label}</dt><dd className="break-words font-medium text-stone-900">{value}</dd></div>;
 }
@@ -977,25 +813,11 @@ function resolveApiMediaUrl(path: string) {
     return path.startsWith("/api/") ? `${API_URL}${path}` : path;
 }
 
-function buildRange(date: Date, view: CalendarView, days: number) {
-    const from = view === "week"
-        ? startOfWeek(date)
-        : view === "month"
-        ? firstDayOfMonth(date)
-        : new Date(date);
+function buildMonthRange(date: Date) {
+    const from = firstDayOfMonth(date);
     from.setHours(0, 0, 0, 0);
-
     const to = new Date(from);
-    if (view === "day") {
-        to.setDate(to.getDate() + 1);
-    } else if (view === "week") {
-        to.setDate(to.getDate() + 7);
-    } else if (view === "month") {
-        to.setMonth(to.getMonth() + 1);
-    } else {
-        to.setDate(to.getDate() + days);
-    }
-
+    to.setMonth(to.getMonth() + 1);
     return {from: from.toISOString(), to: to.toISOString()};
 }
 
@@ -1011,13 +833,57 @@ function firstDayOfMonth(date: Date) {
     return new Date(date.getFullYear(), date.getMonth(), 1);
 }
 
-function navigateDate(date: Date, view: CalendarView, days: number, direction: -1 | 1) {
+function startOfDay(date: Date) {
+    const value = new Date(date);
+    value.setHours(0, 0, 0, 0);
+    return value;
+}
+
+function addMonths(date: Date, amount: number) {
     const next = new Date(date);
-    if (view === "month") next.setMonth(next.getMonth() + direction);
-    else if (view === "week") next.setDate(next.getDate() + direction * 7);
-    else if (view === "day") next.setDate(next.getDate() + direction);
-    else next.setDate(next.getDate() + direction * days);
+    next.setDate(1);
+    next.setMonth(next.getMonth() + amount);
     return next;
+}
+
+type MonthPickerDay = {
+    day: number;
+    inCurrentMonth: boolean;
+    key: string;
+};
+
+function buildMonthPickerDays(date: Date): MonthPickerDay[] {
+    const first = firstDayOfMonth(date);
+    const start = startOfWeek(first);
+    const days: MonthPickerDay[] = [];
+
+    for (let index = 0; index < 42; index += 1) {
+        const current = new Date(start);
+        current.setDate(start.getDate() + index);
+        days.push({
+            day: current.getDate(),
+            inCurrentMonth: current.getMonth() === first.getMonth(),
+            key: dateKey(current)
+        });
+    }
+
+    return days;
+}
+
+function weekdayLabels(locale: string) {
+    const monday = new Date(2024, 0, 1);
+    return Array.from({length: 7}, (_, index) => {
+        const day = new Date(monday);
+        day.setDate(monday.getDate() + index);
+        return new Intl.DateTimeFormat(toLanguageTag(locale), {weekday: "short"}).format(day);
+    });
+}
+
+function monthDayClass(day: MonthPickerDay, available: boolean, selected: boolean) {
+    if (!day.inCurrentMonth) return "min-h-12 rounded-lg border border-transparent px-1 py-2 text-stone-300 opacity-40";
+    if (selected) return "min-h-12 rounded-lg border border-stone-900 bg-stone-900 px-1 py-2 text-white shadow-sm";
+    if (available) return "min-h-12 rounded-lg border border-emerald-200 bg-emerald-50 px-1 py-2 text-emerald-950 transition-colors hover:border-emerald-400 hover:bg-emerald-100";
+    return "min-h-12 cursor-not-allowed rounded-lg border border-stone-100 bg-stone-50 px-1 py-2 text-stone-400";
 }
 
 function selectedService(services: PublicService[], id: number | "") {
@@ -1036,37 +902,45 @@ function filterEvents(events: PublicFixedEvent[], filters: FilterState) {
     return events;
 }
 
-function filterMyBookings(bookings: Booking[], range: {from: string; to: string}) {
-    const from = new Date(range.from).getTime();
-    const to = new Date(range.to).getTime();
-    return bookings.filter((booking) => {
-        const startsAt = new Date(booking.startsAt).getTime();
-        return booking.status !== "CANCELLED" && startsAt >= from && startsAt <= to;
-    });
-}
-
-function uniqueSpecialists(items: Array<{specialistId: number; specialistName: string}>) {
+function uniqueSpecialists(items: Array<{specialistId: number; specialistName: string}>): SpecialistOption[] {
     const specialists = new Map<number, string>();
     for (const item of items) specialists.set(item.specialistId, item.specialistName);
     return Array.from(specialists, ([id, name]) => ({id, name}));
 }
 
-function activeFilterChips(filters: FilterState, services: PublicService[], offices: Array<{id: number; name: string}>, specialists: Array<{id: number; name: string}>, copy: Copy) {
-    const chips = [
-        filters.mode !== "all" ? (filters.mode === "individual" ? copy.individual : copy.events) : null,
-        filters.status !== "all" ? statusFilterLabel(filters.status, copy) : null
-    ];
-    const service = selectedService(services, filters.serviceId);
-    const office = filters.officeId === "" ? undefined : offices.find((item) => item.id === filters.officeId);
-    const specialist = filters.specialistId === "" ? undefined : specialists.find((item) => item.id === filters.specialistId);
-    return [...chips, service?.title, office?.name, specialist?.name].filter(Boolean) as string[];
+function prioritizeSelectedSpecialist(specialists: SpecialistOption[], selectedId: number | "") {
+    if (selectedId === "") return specialists;
+    return [...specialists].sort((first, second) => Number(second.id === selectedId) - Number(first.id === selectedId));
 }
 
-function statusFilterLabel(status: Exclude<StatusFilter, "all">, copy: Copy) {
-    if (status === "available") return copy.available;
-    if (status === "unavailable") return copy.unavailable;
-    if (status === "events") return copy.eventsWithPlaces;
-    return copy.myBookings;
+function guidedSelectionChips({
+    copy,
+    currentDate,
+    filters,
+    locale,
+    offices,
+    selectedEventService,
+    selectedService,
+    specialists
+}: {
+    copy: Copy;
+    currentDate: Date;
+    filters: FilterState;
+    locale: string;
+    offices: Office[];
+    selectedEventService?: PublicService;
+    selectedService?: PublicService;
+    specialists: SpecialistOption[];
+}) {
+    const office = filters.officeId === "" ? copy.allOffices : offices.find((item) => item.id === filters.officeId)?.name ?? copy.allOffices;
+    const mode = filters.mode === "events" ? copy.fixedEvent : filters.mode === "individual" ? copy.individual : copy.all;
+    const service = filters.mode === "individual"
+        ? selectedService?.title ?? copy.allServices
+        : filters.mode === "events"
+        ? selectedEventService?.title ?? copy.allEvents
+        : copy.allServices;
+    const specialist = filters.specialistId === "" ? copy.allSpecialists : specialists.find((item) => item.id === filters.specialistId)?.name ?? copy.allSpecialists;
+    return [office, mode, service, specialist, formatDate(currentDate.toISOString(), locale)];
 }
 
 function slotKey(slot: PublicScheduleAvailabilityBlock) {
@@ -1079,29 +953,6 @@ function serviceDurationSlot(slot: PublicScheduleAvailabilityBlock, service: Pub
     endsAt.setMinutes(endsAt.getMinutes() + service.durationMinutes);
     if (endsAt.getTime() > new Date(slot.endsAt).getTime()) return null;
     return {...slot, endsAt: endsAt.toISOString()};
-}
-
-function groupSlotsByDay(slots: PublicScheduleAvailabilityBlock[], locale: string, copy: Copy): AtaraksiaCalendarEvent[] {
-    const grouped = new Map<string, PublicScheduleAvailabilityBlock[]>();
-    for (const slot of slots) {
-        const key = slot.startsAt.slice(0, 10);
-        grouped.set(key, [...(grouped.get(key) ?? []), slot]);
-    }
-
-    return Array.from(grouped.entries()).map(([dateKey, daySlots]) => {
-        const sorted = [...daySlots].sort((first, second) => new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime());
-        const start = new Date(sorted[0].startsAt);
-        const end = new Date(sorted[sorted.length - 1].endsAt);
-        return {
-            id: `availability-day-${dateKey}`,
-            badge: copy.available,
-            title: copy.slotCount(sorted.length),
-            meta: `${formatTime(sorted[0].startsAt, locale)} · ${sorted[0].officeName ?? copy.withoutOffice}`,
-            start,
-            end,
-            tone: "available" as const
-        };
-    });
 }
 
 function buildAvailableDays(slots: PublicScheduleAvailabilityBlock[], events: PublicFixedEvent[], locale: string, copy: Copy): AvailableDay[] {
@@ -1131,43 +982,6 @@ function buildAvailableDays(slots: PublicScheduleAvailabilityBlock[], events: Pu
             label: formatShortDay(day.date, locale, copy),
             slotsCount: day.slotsCount
         }));
-}
-
-function compactUnavailable(unavailable: PublicScheduleUnavailableBlock[], view: CalendarView, locale: string, copy: Copy) {
-    if (view === "day" || view === "list") {
-        return unavailable.map((item) => ({
-            id: item.id,
-            badge: formatTimeRange(item.startsAt, item.endsAt, locale),
-            title: item.status === "BUFFER" ? copy.unavailable : item.status === "OCCUPIED" ? copy.occupied : copy.unavailable,
-            meta: [item.specialistName, item.officeName ?? copy.withoutOffice].join(" · "),
-            startsAt: item.startsAt,
-            endsAt: item.endsAt,
-            tone: item.status === "BUFFER" ? "buffer" as const : "blocked" as const
-        }));
-    }
-
-    const grouped = new Map<string, PublicScheduleUnavailableBlock[]>();
-    for (const item of unavailable) {
-        const key = item.startsAt.slice(0, 10);
-        grouped.set(key, [...(grouped.get(key) ?? []), item]);
-    }
-
-    return Array.from(grouped.entries()).map(([dateKey, items]) => {
-        const sorted = [...items].sort((first, second) => new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime());
-        return {
-            id: `unavailable-day-${dateKey}`,
-            badge: copy.unavailable,
-            title: `${items.length}`,
-            meta: formatTime(sorted[0].startsAt, locale),
-            startsAt: sorted[0].startsAt,
-            endsAt: sorted[sorted.length - 1].endsAt,
-            tone: "blocked" as const
-        };
-    });
-}
-
-function formatTimeRange(start: string, end: string, locale: string) {
-    return `${formatTime(start, locale)}–${formatTime(end, locale)}`;
 }
 
 function toId(value: string): number | "" {
@@ -1216,6 +1030,10 @@ function formatDate(value: string, locale: string) {
     return new Intl.DateTimeFormat(toLanguageTag(locale), {day: "numeric", month: "long"}).format(new Date(value));
 }
 
+function formatMonthLabel(value: Date, locale: string) {
+    return new Intl.DateTimeFormat(toLanguageTag(locale), {month: "long", year: "numeric"}).format(value);
+}
+
 function formatShortDay(value: Date, locale: string, copy: Copy) {
     const date = new Intl.DateTimeFormat(toLanguageTag(locale), {day: "numeric", month: "short"}).format(value);
     const weekday = new Intl.DateTimeFormat(toLanguageTag(locale), {weekday: "short"}).format(value);
@@ -1243,21 +1061,7 @@ function formatDateTimeRange(start: string, end: string, locale: string) {
 
 function paymentPromptTitle(prompt: PaymentPrompt, locale: string) {
     if (prompt.title) return prompt.title;
-    return bookingServiceTitle({
-        serviceTitleUa: prompt.serviceTitleUa ?? "",
-        serviceTitleEn: prompt.serviceTitleEn ?? null
-    }, locale);
-}
-
-function formatCalendarLabel(view: CalendarView, range: {from: string; to: string}, locale: string) {
-    const languageTag = toLanguageTag(locale);
-    const from = new Date(range.from);
-    const to = new Date(range.to);
-    if (view === "month") return new Intl.DateTimeFormat(languageTag, {month: "long", year: "numeric"}).format(from);
-    if (view === "day") return new Intl.DateTimeFormat(languageTag, {day: "numeric", month: "long", weekday: "long"}).format(from);
-    const labelEnd = new Date(to);
-    labelEnd.setDate(labelEnd.getDate() - 1);
-    return `${new Intl.DateTimeFormat(languageTag, {day: "numeric", month: "short"}).format(from)} – ${new Intl.DateTimeFormat(languageTag, {day: "numeric", month: "short"}).format(labelEnd)}`;
+    return locale === "en" && prompt.serviceTitleEn ? prompt.serviceTitleEn : prompt.serviceTitleUa ?? "";
 }
 
 function toLanguageTag(locale: string) {
@@ -1280,6 +1084,7 @@ function labels(t: T) {
         chooseTime: t("public.chooseTime"),
         bookEvent: t("public.bookEvent"),
         noDescription: t("public.noDescription"),
+        venueFallbackName: t("public.venueFallbackName"),
         withoutOffice: t("withoutOffice"),
         remaining: (count: number) => t("public.remaining", {count}),
         enrolled: t("public.enrolled"),
@@ -1295,6 +1100,8 @@ function labels(t: T) {
         applySaved: t("public.applySaved"),
         deleteSaved: t("public.deleteSaved"),
         savedActive: t("public.savedActive"),
+        showMore: t("public.showMore"),
+        showLess: t("public.showLess"),
         mode: t("public.mode"),
         service: t("filters.service"),
         office: t("filters.office"),
@@ -1313,11 +1120,28 @@ function labels(t: T) {
         guidedEyebrow: t("public.guidedEyebrow"),
         guidedTitle: t("public.guidedTitle"),
         guidedDescription: t("public.guidedDescription"),
+        chooseOfficeTitle: t("public.chooseOfficeTitle"),
+        chooseOfficeHint: t("public.chooseOfficeHint"),
+        allOfficesHint: t("public.allOfficesHint"),
+        chooseSpecialistTitle: t("public.chooseSpecialistTitle"),
+        chooseSpecialistHint: t("public.chooseSpecialistHint"),
+        allSpecialistsHint: t("public.allSpecialistsHint"),
+        specialistAvailabilityHint: t("public.specialistAvailabilityHint"),
+        noSpecialistsForFilters: t("public.noSpecialistsForFilters"),
+        fixedEventServicesTitle: t("public.fixedEventServicesTitle"),
+        fixedEventServicesHint: t("public.fixedEventServicesHint"),
+        allEvents: t("public.allEvents"),
+        allEventsHint: t("public.allEventsHint"),
+        noEventServices: t("public.noEventServices"),
         chooseIndividualMode: t("public.chooseIndividualMode"),
         chooseEventMode: t("public.chooseEventMode"),
         availableDaysTitle: t("public.availableDaysTitle"),
         availableDaysHint: t("public.availableDaysHint"),
         noAvailableDays: t("public.noAvailableDays"),
+        noAvailabilityDay: t("public.noAvailabilityDay"),
+        previousMonth: t("public.previousMonth"),
+        nextMonth: t("public.nextMonth"),
+        nearestAvailable: (date: string) => t("public.nearestAvailable", {date}),
         selectedDayEmpty: t("public.selectedDayEmpty"),
         myBookings: t("public.myBookings"),
         days7: t("periods.days7"),
@@ -1325,7 +1149,7 @@ function labels(t: T) {
         nearestSlots: t("public.nearestSlots"),
         eventsCount: (count: number) => t("public.eventsCount", {count}),
         selectedSummary: t("public.selectedSummary"),
-        details: t("details"),
+        details: t("public.details"),
         selectServicePrompt: t("public.selectServicePrompt"),
         slotCount: (count: number) => t("slotCount", {count}),
         minutes: (count: number) => t("summary.minutes", {count}),
@@ -1379,28 +1203,6 @@ function labels(t: T) {
         eventEnrolled: t("public.eventEnrolled"),
         eventCancelled: t("public.eventCancelled"),
         cancelEventError: t("public.cancelEventError"),
-        bookingError: t("public.bookingError"),
-        calendarMessages: calendarMessages(t)
-    };
-}
-
-function calendarMessages(t: T): AtaraksiaCalendarMessages {
-    return {
-        agenda: t("calendarMessages.agenda"),
-        allDay: t("calendarMessages.allDay"),
-        date: t("calendarMessages.date"),
-        day: t("calendarMessages.day"),
-        event: t("calendarMessages.event"),
-        month: t("calendarMessages.month"),
-        next: t("calendarMessages.next"),
-        noEventsInRange: t("calendarMessages.noEventsInRange"),
-        previous: t("calendarMessages.previous"),
-        showMore: (count) => t("calendarMessages.showMore", {count}),
-        time: t("calendarMessages.time"),
-        today: t("calendarMessages.today"),
-        tomorrow: t("calendarMessages.tomorrow"),
-        week: t("calendarMessages.week"),
-        work_week: t("calendarMessages.workWeek"),
-        yesterday: t("calendarMessages.yesterday")
+        bookingError: t("public.bookingError")
     };
 }

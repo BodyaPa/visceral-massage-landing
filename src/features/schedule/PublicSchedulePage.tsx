@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect, useMemo, useState} from "react";
+import {useEffect, useMemo, useState, type ReactNode} from "react";
 import {useLocale, useTranslations} from "next-intl";
 import type {Locale} from "@/i18n";
 import {useToast} from "@/components/ui/toast/ToastProvider";
@@ -26,6 +26,7 @@ type PendingBooking =
     | {type: "individual"; service: PublicService; slot: PublicScheduleAvailabilityBlock}
     | {type: "event"; event: PublicFixedEvent};
 type SpecialistOption = {id: number; name: string};
+type ChoiceSectionKey = "office" | "service" | "event" | "specialist";
 type PaymentPrompt = {
     externalPaymentUrl: string | null;
     serviceTitleUa?: string;
@@ -77,6 +78,21 @@ export default function PublicSchedulePage() {
         specialistId: filters.specialistId,
         lang: locale
     });
+    const {data: specialistOptionSlotsData = []} = useListPublicAvailabilityQuery({
+        from: guidedRange.from,
+        to: guidedRange.to,
+        officeId: filters.officeId,
+        serviceId: individualServiceId,
+        specialistId: ""
+    });
+    const {data: specialistOptionEventsData = []} = useListPublicEventsQuery({
+        from: guidedRange.from,
+        to: guidedRange.to,
+        officeId: filters.officeId,
+        serviceId: eventServiceId(servicesData?.content ?? [], filters.serviceId),
+        specialistId: "",
+        lang: locale
+    });
     const [createBooking, {isLoading: bookingLoading}] = useCreateBookingMutation();
     const [enrollEvent, {isLoading: enrollmentLoading}] = useEnrollFixedEventMutation();
     const [cancelEventEnrollment, {isLoading: cancelEnrollmentLoading}] = useCancelFixedEventEnrollmentMutation();
@@ -90,7 +106,9 @@ export default function PublicSchedulePage() {
         filters.mode === "events" || filters.status === "unavailable" || filters.status === "events" || filters.status === "mine" ? [] : guidedSlotsData
     ), [filters.mode, filters.status, guidedSlotsData]);
     const guidedEvents = useMemo(() => filterEvents(guidedEventsData, filters), [guidedEventsData, filters]);
-    const guidedSpecialists = uniqueSpecialists([...guidedSlots, ...guidedEvents]);
+    const specialistOptionSlots = filters.mode === "events" || filters.status === "unavailable" || filters.status === "events" || filters.status === "mine" ? [] : specialistOptionSlotsData;
+    const specialistOptionEvents = filterEvents(specialistOptionEventsData, {...filters, specialistId: ""});
+    const guidedSpecialists = uniqueSpecialists([...specialistOptionSlots, ...specialistOptionEvents]);
     const isSaving = bookingLoading || enrollmentLoading || cancelEnrollmentLoading;
     const selectedDateKey = dateKey(currentDate);
     const availableDays = useMemo(() => buildAvailableDays(guidedSlots, guidedEvents, locale, copy), [copy, guidedEvents, guidedSlots, locale]);
@@ -185,7 +203,7 @@ export default function PublicSchedulePage() {
 
     return (
         <main className="mx-auto w-full max-w-[1440px] space-y-5 overflow-x-clip bg-stone-50 px-3 py-6 sm:px-6 lg:px-8 lg:py-10">
-            <header className="mx-auto w-full max-w-[760px] pb-1">
+            <header className="mx-auto w-full max-w-[1040px] pb-1 lg:w-[72vw] xl:w-[58vw]">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">{copy.eyebrow}</p>
                 <h1 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950 sm:text-3xl">{copy.title}</h1>
                 <p className="mt-2 text-sm leading-6 text-stone-600">{copy.subtitle}</p>
@@ -220,10 +238,10 @@ export default function PublicSchedulePage() {
                 slots={selectedDaySlots}
             />
 
-            {slotsError ? <p className="mx-auto max-w-[760px] rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{copy.loadError}</p> : null}
+            {slotsError ? <p className="mx-auto w-full max-w-[1040px] rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 lg:w-[72vw] xl:w-[58vw]">{copy.loadError}</p> : null}
 
             {paymentPrompt ? (
-                <section className="mx-auto max-w-[760px] rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+                <section className="mx-auto w-full max-w-[1040px] rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm lg:w-[72vw] xl:w-[58vw]">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
                             <h2 className="text-base font-semibold text-emerald-950">{copy.paymentTitle}</h2>
@@ -296,6 +314,45 @@ type AvailableDay = {
     slotsCount: number;
 };
 
+function CollapsibleChoiceSection({
+    active,
+    children,
+    onToggle,
+    open,
+    summary,
+    title
+}: {
+    active: boolean;
+    children: ReactNode;
+    onToggle: () => void;
+    open: boolean;
+    summary: string;
+    title: string;
+}) {
+    return (
+        <section className="rounded-2xl border border-stone-200 bg-stone-50/80">
+            <button
+                aria-expanded={open}
+                className="flex w-full min-w-0 items-center justify-between gap-3 px-4 py-3 text-left"
+                onClick={onToggle}
+                type="button"
+            >
+                <span className="min-w-0">
+                    <span className="flex min-w-0 items-center gap-2">
+                        <span className={active ? "h-2 w-2 shrink-0 rounded-full bg-emerald-500" : "h-2 w-2 shrink-0 rounded-full bg-stone-300"} />
+                        <span className="truncate text-sm font-semibold text-stone-950">{title}</span>
+                    </span>
+                    <span className="mt-1 block truncate text-xs text-stone-500">{summary}</span>
+                </span>
+                <span className="shrink-0 rounded-full border border-stone-200 bg-white px-2 py-1 text-xs font-semibold text-stone-600">
+                    {open ? "−" : "+"}
+                </span>
+            </button>
+            {open ? <div className="border-t border-stone-200 px-4 py-3">{children}</div> : null}
+        </section>
+    );
+}
+
 function GuidedBookingFlow({
     availableDays,
     copy,
@@ -348,6 +405,12 @@ function GuidedBookingFlow({
     const [individualServicesExpanded, setIndividualServicesExpanded] = useState(false);
     const [eventServicesExpanded, setEventServicesExpanded] = useState(false);
     const [specialistsExpanded, setSpecialistsExpanded] = useState(false);
+    const [openSections, setOpenSections] = useState<Record<ChoiceSectionKey, boolean>>({
+        event: false,
+        office: false,
+        service: false,
+        specialist: false
+    });
     const visibleDays = availableDays.slice(0, 14);
     const visibleOffices = officesExpanded ? offices : offices.slice(0, 3);
     const visibleIndividualServices = individualServicesExpanded ? individualServices : individualServices.slice(0, 6);
@@ -359,9 +422,15 @@ function GuidedBookingFlow({
     const availableByDate = useMemo(() => new Map(availableDays.map((day) => [day.key, day])), [availableDays]);
     const monthDays = useMemo(() => buildMonthPickerDays(currentDate), [currentDate]);
     const nearestDay = availableDays.find((day) => day.date.getTime() >= startOfDay(new Date()).getTime()) ?? availableDays[0];
+    const selectedOffice = filters.officeId === "" ? undefined : offices.find((office) => office.id === filters.officeId);
+    const selectedSpecialist = filters.specialistId === "" ? undefined : specialists.find((specialist) => specialist.id === filters.specialistId);
+
+    function toggleSection(section: ChoiceSectionKey) {
+        setOpenSections((current) => ({...current, [section]: !current[section]}));
+    }
 
     return (
-        <section className="mx-auto w-full max-w-[760px] rounded-[28px] border border-stone-200 bg-white p-4 shadow-sm sm:p-5 lg:p-6">
+        <section className="mx-auto w-full max-w-[1040px] rounded-[28px] border border-stone-200 bg-white p-4 shadow-sm sm:p-5 lg:w-[72vw] lg:p-6 xl:w-[58vw]">
             <div className="grid gap-4">
                 <div className="min-w-0 space-y-4">
                     <div className="min-w-0">
@@ -369,10 +438,15 @@ function GuidedBookingFlow({
                         <h2 className="mt-2 text-xl font-semibold text-stone-950">{copy.guidedTitle}</h2>
                         <p className="mt-1 text-sm leading-6 text-stone-500">{copy.guidedDescription}</p>
                     </div>
-                    <div className="min-w-0">
-                        <h3 className="text-sm font-semibold text-stone-950">{copy.chooseOfficeTitle}</h3>
-                        <p className="mt-1 text-xs leading-5 text-stone-500">{copy.chooseOfficeHint}</p>
-                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <CollapsibleChoiceSection
+                        active={filters.officeId !== ""}
+                        open={openSections.office}
+                        summary={selectedOffice?.name ?? copy.allOffices}
+                        title={copy.chooseOfficeTitle}
+                        onToggle={() => toggleSection("office")}
+                    >
+                        <p className="text-xs leading-5 text-stone-500">{copy.chooseOfficeHint}</p>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
                             <button className={filters.officeId === "" ? "w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white"} onClick={() => onChooseOffice("")} type="button">
                                 <span className="block text-sm font-semibold">{copy.allOffices}</span>
                                 <span className={filters.officeId === "" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.allOfficesHint}</span>
@@ -386,7 +460,7 @@ function GuidedBookingFlow({
                                 {officesExpanded ? copy.showLess : copy.showMore}
                             </button>
                         ) : null}
-                    </div>
+                    </CollapsibleChoiceSection>
                     <div className="grid gap-2 sm:grid-cols-2">
                         <button
                             className={filters.mode === "individual" ? "rounded-xl border border-stone-900 bg-stone-900 p-4 text-left text-white" : "rounded-xl border border-stone-200 bg-stone-50 p-4 text-left transition-colors hover:border-stone-400 hover:bg-white"}
@@ -409,9 +483,14 @@ function GuidedBookingFlow({
                             <span className={filters.mode === "events" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.chooseEventMode}</span>
                         </button>
                     </div>
-                    {showIndividualChoices ? <div className="min-w-0">
-                        <h3 className="text-sm font-semibold text-stone-950">{copy.individualServiceTitle}</h3>
-                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    {showIndividualChoices ? <CollapsibleChoiceSection
+                        active={Boolean(selectedService)}
+                        open={openSections.service}
+                        summary={selectedService?.title ?? copy.allServices}
+                        title={copy.individualServiceTitle}
+                        onToggle={() => toggleSection("service")}
+                    >
+                        <div className="grid gap-2 sm:grid-cols-2">
                             {visibleIndividualServices.map((service) => (
                                 <ServiceChoiceCard copy={copy} key={service.id} locale={locale} onChoose={() => onChooseService(service)} selected={selectedService?.id === service.id} service={service} />
                             ))}
@@ -421,11 +500,16 @@ function GuidedBookingFlow({
                                 {individualServicesExpanded ? copy.showLess : copy.showMore}
                             </button>
                         ) : null}
-                    </div> : null}
-                    {showEventChoices ? <div className="min-w-0">
-                        <h3 className="text-sm font-semibold text-stone-950">{copy.fixedEventServicesTitle}</h3>
-                        <p className="mt-1 text-xs leading-5 text-stone-500">{copy.fixedEventServicesHint}</p>
-                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    </CollapsibleChoiceSection> : null}
+                    {showEventChoices ? <CollapsibleChoiceSection
+                        active={Boolean(selectedEventService)}
+                        open={openSections.event}
+                        summary={selectedEventService?.title ?? copy.allEvents}
+                        title={copy.fixedEventServicesTitle}
+                        onToggle={() => toggleSection("event")}
+                    >
+                        <p className="text-xs leading-5 text-stone-500">{copy.fixedEventServicesHint}</p>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
                             <button className={filters.mode === "events" && filters.serviceId === "" ? "w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white"} onClick={onChooseEventMode} type="button">
                                 <span className="block text-sm font-semibold">{copy.allEvents}</span>
                                 <span className={filters.mode === "events" && filters.serviceId === "" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.allEventsHint}</span>
@@ -440,11 +524,16 @@ function GuidedBookingFlow({
                             </button>
                         ) : null}
                         {eventServices.length === 0 ? <p className="mt-2 rounded-xl border border-dashed border-stone-300 bg-white px-3 py-2 text-xs leading-5 text-stone-500">{copy.noEventServices}</p> : null}
-                    </div> : null}
-                    <div className="min-w-0">
-                        <h3 className="text-sm font-semibold text-stone-950">{copy.chooseSpecialistTitle}</h3>
-                        <p className="mt-1 text-xs leading-5 text-stone-500">{copy.chooseSpecialistHint}</p>
-                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    </CollapsibleChoiceSection> : null}
+                    <CollapsibleChoiceSection
+                        active={filters.specialistId !== ""}
+                        open={openSections.specialist}
+                        summary={selectedSpecialist?.name ?? copy.allSpecialists}
+                        title={copy.chooseSpecialistTitle}
+                        onToggle={() => toggleSection("specialist")}
+                    >
+                        <p className="text-xs leading-5 text-stone-500">{copy.chooseSpecialistHint}</p>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
                             <button className={filters.specialistId === "" ? "w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white"} onClick={() => onChooseSpecialist("")} type="button">
                                 <span className="block text-sm font-semibold">{copy.allSpecialists}</span>
                                 <span className={filters.specialistId === "" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.allSpecialistsHint}</span>
@@ -459,7 +548,7 @@ function GuidedBookingFlow({
                             </button>
                         ) : null}
                         {specialists.length === 0 ? <p className="mt-2 rounded-xl border border-dashed border-stone-300 bg-white px-3 py-2 text-xs leading-5 text-stone-500">{copy.noSpecialistsForFilters}</p> : null}
-                    </div>
+                    </CollapsibleChoiceSection>
                 </div>
                 <div className="min-w-0 rounded-xl border border-stone-200 bg-stone-50 p-3">
                     <div className="mb-3 rounded-xl border border-stone-200 bg-white p-3">

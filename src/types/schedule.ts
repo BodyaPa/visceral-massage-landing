@@ -9,6 +9,8 @@ export interface SpecialistAvailabilityBlock {
     id: number;
     specialistId: number;
     specialistName: string;
+    specialistAvatarMediaId: string | null;
+    specialistAvatarMediaUrl: string | null;
     officeId: number | null;
     officeName: string | null;
     status: ScheduleBlockStatus;
@@ -59,6 +61,8 @@ export interface PublicFixedEvent {
     description: string | null;
     specialistId: number;
     specialistName: string;
+    specialistAvatarMediaId: string | null;
+    specialistAvatarMediaUrl: string | null;
     officeId: number | null;
     officeName: string | null;
     officeAddress: string | null;

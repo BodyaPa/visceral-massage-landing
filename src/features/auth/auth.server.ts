@@ -14,6 +14,8 @@ export type AuthenticatedUser = {
     firstName: string | null;
     lastName: string | null;
     dateOfBirth: string | null;
+    avatarMediaId: string | null;
+    avatarMediaUrl: string | null;
     roles: UserRole[];
 };
 

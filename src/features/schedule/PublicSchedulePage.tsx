@@ -25,7 +25,7 @@ type StatusFilter = "all" | "available" | "unavailable" | "events" | "mine";
 type PendingBooking =
     | {type: "individual"; service: PublicService; slot: PublicScheduleAvailabilityBlock}
     | {type: "event"; event: PublicFixedEvent};
-type SpecialistOption = {id: number; name: string};
+type SpecialistOption = {id: number; name: string; avatarMediaUrl: string | null};
 type ChoiceSectionKey = "office" | "service" | "event" | "specialist";
 type PaymentPrompt = {
     externalPaymentUrl: string | null;
@@ -317,6 +317,7 @@ type AvailableDay = {
 function CollapsibleChoiceSection({
     active,
     children,
+    state = "neutral",
     onToggle,
     open,
     summary,
@@ -324,31 +325,32 @@ function CollapsibleChoiceSection({
 }: {
     active: boolean;
     children: ReactNode;
+    state?: "neutral" | "active" | "empty";
     onToggle: () => void;
     open: boolean;
     summary: string;
     title: string;
 }) {
     return (
-        <section className="rounded-2xl border border-stone-200 bg-stone-50/80">
+        <section className={state === "empty" ? "rounded-xl border border-amber-300 bg-amber-50/85" : state === "active" ? "rounded-xl border border-emerald-200 bg-emerald-50/70" : "rounded-xl border border-stone-200 bg-stone-50/80"}>
             <button
                 aria-expanded={open}
-                className="flex w-full min-w-0 items-center justify-between gap-3 px-4 py-3 text-left"
+                className="flex w-full min-w-0 items-center justify-between gap-2 px-3 py-2 text-left"
                 onClick={onToggle}
                 type="button"
             >
                 <span className="min-w-0">
                     <span className="flex min-w-0 items-center gap-2">
-                        <span className={active ? "h-2 w-2 shrink-0 rounded-full bg-emerald-500" : "h-2 w-2 shrink-0 rounded-full bg-stone-300"} />
-                        <span className="truncate text-sm font-semibold text-stone-950">{title}</span>
+                        <span className={state === "empty" ? "h-2 w-2 shrink-0 rounded-full bg-amber-500" : active ? "h-2 w-2 shrink-0 rounded-full bg-emerald-500" : "h-2 w-2 shrink-0 rounded-full bg-stone-300"} />
+                        <span className="truncate text-xs font-semibold uppercase tracking-wide text-stone-700">{title}</span>
                     </span>
-                    <span className="mt-1 block truncate text-xs text-stone-500">{summary}</span>
+                    <span className="mt-0.5 block truncate text-xs font-medium text-stone-950">{summary}</span>
                 </span>
-                <span className="shrink-0 rounded-full border border-stone-200 bg-white px-2 py-1 text-xs font-semibold text-stone-600">
-                    {open ? "−" : "+"}
+                <span className="shrink-0 text-sm font-semibold text-stone-500">
+                    {open ? "^" : "v"}
                 </span>
             </button>
-            {open ? <div className="border-t border-stone-200 px-4 py-3">{children}</div> : null}
+            {open ? <div className="border-t border-stone-200 px-3 py-2">{children}</div> : null}
         </section>
     );
 }
@@ -438,29 +440,6 @@ function GuidedBookingFlow({
                         <h2 className="mt-2 text-xl font-semibold text-stone-950">{copy.guidedTitle}</h2>
                         <p className="mt-1 text-sm leading-6 text-stone-500">{copy.guidedDescription}</p>
                     </div>
-                    <CollapsibleChoiceSection
-                        active={filters.officeId !== ""}
-                        open={openSections.office}
-                        summary={selectedOffice?.name ?? copy.allOffices}
-                        title={copy.chooseOfficeTitle}
-                        onToggle={() => toggleSection("office")}
-                    >
-                        <p className="text-xs leading-5 text-stone-500">{copy.chooseOfficeHint}</p>
-                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                            <button className={filters.officeId === "" ? "w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white"} onClick={() => onChooseOffice("")} type="button">
-                                <span className="block text-sm font-semibold">{copy.allOffices}</span>
-                                <span className={filters.officeId === "" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.allOfficesHint}</span>
-                            </button>
-                            {visibleOffices.map((office) => (
-                                <OfficeChoiceCard copy={copy} key={office.id} office={office} onChoose={() => onChooseOffice(office.id)} selected={filters.officeId === office.id} />
-                            ))}
-                        </div>
-                        {offices.length > 3 ? (
-                            <button className={`${compactButtonClass} mt-2`} onClick={() => setOfficesExpanded((current) => !current)} type="button">
-                                {officesExpanded ? copy.showLess : copy.showMore}
-                            </button>
-                        ) : null}
-                    </CollapsibleChoiceSection>
                     <div className="grid gap-2 sm:grid-cols-2">
                         <button
                             className={filters.mode === "individual" ? "rounded-xl border border-stone-900 bg-stone-900 p-4 text-left text-white" : "rounded-xl border border-stone-200 bg-stone-50 p-4 text-left transition-colors hover:border-stone-400 hover:bg-white"}
@@ -483,74 +462,103 @@ function GuidedBookingFlow({
                             <span className={filters.mode === "events" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.chooseEventMode}</span>
                         </button>
                     </div>
-                    {showIndividualChoices ? <CollapsibleChoiceSection
-                        active={Boolean(selectedService)}
-                        open={openSections.service}
-                        summary={selectedService?.title ?? copy.allServices}
-                        title={copy.individualServiceTitle}
-                        onToggle={() => toggleSection("service")}
-                    >
-                        <div className="grid gap-2 sm:grid-cols-2">
-                            {visibleIndividualServices.map((service) => (
-                                <ServiceChoiceCard copy={copy} key={service.id} locale={locale} onChoose={() => onChooseService(service)} selected={selectedService?.id === service.id} service={service} />
-                            ))}
-                        </div>
-                        {individualServices.length > 6 ? (
-                            <button className={`${compactButtonClass} mt-2`} onClick={() => setIndividualServicesExpanded((current) => !current)} type="button">
-                                {individualServicesExpanded ? copy.showLess : copy.showMore}
-                            </button>
-                        ) : null}
-                    </CollapsibleChoiceSection> : null}
-                    {showEventChoices ? <CollapsibleChoiceSection
-                        active={Boolean(selectedEventService)}
-                        open={openSections.event}
-                        summary={selectedEventService?.title ?? copy.allEvents}
-                        title={copy.fixedEventServicesTitle}
-                        onToggle={() => toggleSection("event")}
-                    >
-                        <p className="text-xs leading-5 text-stone-500">{copy.fixedEventServicesHint}</p>
-                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                            <button className={filters.mode === "events" && filters.serviceId === "" ? "w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white"} onClick={onChooseEventMode} type="button">
-                                <span className="block text-sm font-semibold">{copy.allEvents}</span>
-                                <span className={filters.mode === "events" && filters.serviceId === "" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.allEventsHint}</span>
-                            </button>
-                            {visibleEventServices.map((service) => (
-                                <ServiceChoiceCard copy={copy} key={service.id} locale={locale} onChoose={() => onChooseEventService(service)} selected={selectedEventService?.id === service.id} service={service} />
-                            ))}
-                        </div>
-                        {eventServices.length > 5 ? (
-                            <button className={`${compactButtonClass} mt-2`} onClick={() => setEventServicesExpanded((current) => !current)} type="button">
-                                {eventServicesExpanded ? copy.showLess : copy.showMore}
-                            </button>
-                        ) : null}
-                        {eventServices.length === 0 ? <p className="mt-2 rounded-xl border border-dashed border-stone-300 bg-white px-3 py-2 text-xs leading-5 text-stone-500">{copy.noEventServices}</p> : null}
-                    </CollapsibleChoiceSection> : null}
-                    <CollapsibleChoiceSection
-                        active={filters.specialistId !== ""}
-                        open={openSections.specialist}
-                        summary={selectedSpecialist?.name ?? copy.allSpecialists}
-                        title={copy.chooseSpecialistTitle}
-                        onToggle={() => toggleSection("specialist")}
-                    >
-                        <p className="text-xs leading-5 text-stone-500">{copy.chooseSpecialistHint}</p>
-                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                            <button className={filters.specialistId === "" ? "w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white"} onClick={() => onChooseSpecialist("")} type="button">
-                                <span className="block text-sm font-semibold">{copy.allSpecialists}</span>
-                                <span className={filters.specialistId === "" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.allSpecialistsHint}</span>
-                            </button>
-                            {visibleSpecialists.map((specialist) => (
-                                <SpecialistChoiceCard copy={copy} key={specialist.id} onChoose={() => onChooseSpecialist(specialist.id)} selected={filters.specialistId === specialist.id} specialist={specialist} />
-                            ))}
-                        </div>
-                        {specialists.length > 5 ? (
-                            <button className={`${compactButtonClass} mt-2`} onClick={() => setSpecialistsExpanded((current) => !current)} type="button">
-                                {specialistsExpanded ? copy.showLess : copy.showMore}
-                            </button>
-                        ) : null}
-                        {specialists.length === 0 ? <p className="mt-2 rounded-xl border border-dashed border-stone-300 bg-white px-3 py-2 text-xs leading-5 text-stone-500">{copy.noSpecialistsForFilters}</p> : null}
-                    </CollapsibleChoiceSection>
                 </div>
                 <div className="min-w-0 rounded-xl border border-stone-200 bg-stone-50 p-3">
+                    <div className="mb-3 grid gap-2 lg:grid-cols-3">
+                        <CollapsibleChoiceSection
+                            active={filters.officeId !== ""}
+                            open={openSections.office}
+                            state={filterChoiceState(filters.officeId !== "", slots.length + events.length)}
+                            summary={selectedOffice?.name ?? copy.allOffices}
+                            title={copy.chooseOfficeTitle}
+                            onToggle={() => toggleSection("office")}
+                        >
+                            <p className="text-xs leading-5 text-stone-500">{copy.chooseOfficeHint}</p>
+                            <div className="mt-2 grid gap-2">
+                                <button className={filters.officeId === "" ? "w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full rounded-xl border border-stone-200 bg-white p-3 text-left transition-colors hover:border-stone-400"} onClick={() => onChooseOffice("")} type="button">
+                                    <span className="block text-sm font-semibold">{copy.allOffices}</span>
+                                    <span className={filters.officeId === "" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.allOfficesHint}</span>
+                                </button>
+                                {visibleOffices.map((office) => (
+                                    <OfficeChoiceCard copy={copy} key={office.id} office={office} onChoose={() => onChooseOffice(office.id)} selected={filters.officeId === office.id} />
+                                ))}
+                            </div>
+                            {offices.length > 3 ? (
+                                <button className={`${compactButtonClass} mt-2`} onClick={() => setOfficesExpanded((current) => !current)} type="button">
+                                    {officesExpanded ? copy.showLess : copy.showMore}
+                                </button>
+                            ) : null}
+                        </CollapsibleChoiceSection>
+                        {showIndividualChoices ? <CollapsibleChoiceSection
+                            active={Boolean(selectedService)}
+                            open={openSections.service}
+                            state={filterChoiceState(Boolean(selectedService), slots.length + events.length)}
+                            summary={selectedService?.title ?? copy.allServices}
+                            title={copy.individualServiceTitle}
+                            onToggle={() => toggleSection("service")}
+                        >
+                            <div className="grid gap-2">
+                                {visibleIndividualServices.map((service) => (
+                                    <ServiceChoiceCard copy={copy} key={service.id} locale={locale} onChoose={() => onChooseService(service)} selected={selectedService?.id === service.id} service={service} />
+                                ))}
+                            </div>
+                            {individualServices.length > 6 ? (
+                                <button className={`${compactButtonClass} mt-2`} onClick={() => setIndividualServicesExpanded((current) => !current)} type="button">
+                                    {individualServicesExpanded ? copy.showLess : copy.showMore}
+                                </button>
+                            ) : null}
+                        </CollapsibleChoiceSection> : null}
+                        {showEventChoices ? <CollapsibleChoiceSection
+                            active={Boolean(selectedEventService)}
+                            open={openSections.event}
+                            state={filterChoiceState(Boolean(selectedEventService), slots.length + events.length)}
+                            summary={selectedEventService?.title ?? copy.allEvents}
+                            title={copy.fixedEventServicesTitle}
+                            onToggle={() => toggleSection("event")}
+                        >
+                            <p className="text-xs leading-5 text-stone-500">{copy.fixedEventServicesHint}</p>
+                            <div className="mt-2 grid gap-2">
+                                <button className={filters.mode === "events" && filters.serviceId === "" ? "w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full rounded-xl border border-stone-200 bg-white p-3 text-left transition-colors hover:border-stone-400"} onClick={onChooseEventMode} type="button">
+                                    <span className="block text-sm font-semibold">{copy.allEvents}</span>
+                                    <span className={filters.mode === "events" && filters.serviceId === "" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.allEventsHint}</span>
+                                </button>
+                                {visibleEventServices.map((service) => (
+                                    <ServiceChoiceCard copy={copy} key={service.id} locale={locale} onChoose={() => onChooseEventService(service)} selected={selectedEventService?.id === service.id} service={service} />
+                                ))}
+                            </div>
+                            {eventServices.length > 5 ? (
+                                <button className={`${compactButtonClass} mt-2`} onClick={() => setEventServicesExpanded((current) => !current)} type="button">
+                                    {eventServicesExpanded ? copy.showLess : copy.showMore}
+                                </button>
+                            ) : null}
+                            {eventServices.length === 0 ? <p className="mt-2 rounded-xl border border-dashed border-stone-300 bg-white px-3 py-2 text-xs leading-5 text-stone-500">{copy.noEventServices}</p> : null}
+                        </CollapsibleChoiceSection> : null}
+                        <CollapsibleChoiceSection
+                            active={filters.specialistId !== ""}
+                            open={openSections.specialist}
+                            state={filterChoiceState(filters.specialistId !== "", slots.length + events.length)}
+                            summary={selectedSpecialist?.name ?? copy.allSpecialists}
+                            title={copy.chooseSpecialistTitle}
+                            onToggle={() => toggleSection("specialist")}
+                        >
+                            <p className="text-xs leading-5 text-stone-500">{copy.chooseSpecialistHint}</p>
+                            <div className="mt-2 grid gap-2">
+                                <button className={filters.specialistId === "" ? "w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full rounded-xl border border-stone-200 bg-white p-3 text-left transition-colors hover:border-stone-400"} onClick={() => onChooseSpecialist("")} type="button">
+                                    <span className="block text-sm font-semibold">{copy.allSpecialists}</span>
+                                    <span className={filters.specialistId === "" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.allSpecialistsHint}</span>
+                                </button>
+                                {visibleSpecialists.map((specialist) => (
+                                    <SpecialistChoiceCard copy={copy} key={specialist.id} onChoose={() => onChooseSpecialist(specialist.id)} selected={filters.specialistId === specialist.id} specialist={specialist} />
+                                ))}
+                            </div>
+                            {specialists.length > 5 ? (
+                                <button className={`${compactButtonClass} mt-2`} onClick={() => setSpecialistsExpanded((current) => !current)} type="button">
+                                    {specialistsExpanded ? copy.showLess : copy.showMore}
+                                </button>
+                            ) : null}
+                            {specialists.length === 0 ? <p className="mt-2 rounded-xl border border-dashed border-stone-300 bg-white px-3 py-2 text-xs leading-5 text-stone-500">{copy.noSpecialistsForFilters}</p> : null}
+                        </CollapsibleChoiceSection>
+                    </div>
                     <div className="mb-3 rounded-xl border border-stone-200 bg-white p-3">
                         <h3 className="text-sm font-semibold text-stone-950">{copy.selectedSummary}</h3>
                         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -679,15 +687,29 @@ function OfficeChoiceCard({copy, office, onChoose, selected}: {copy: Copy; offic
 function SpecialistChoiceCard({copy, onChoose, selected, specialist}: {copy: Copy; onChoose: () => void; selected: boolean; specialist: SpecialistOption}) {
     return (
         <button className={selected ? "w-full max-w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white"} onClick={onChoose} type="button">
-            <span className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-                <span className="min-w-0">
+            <span className="flex min-w-0 items-start justify-between gap-3">
+                <span className="flex min-w-0 items-start gap-2">
+                    <SpecialistAvatar name={specialist.name} selected={selected} url={specialist.avatarMediaUrl} />
+                    <span className="min-w-0">
                     <span className="block break-words text-sm font-semibold">{specialist.name}</span>
                     <span className={selected ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.specialistAvailabilityHint}</span>
+                    </span>
                 </span>
                 <span className={selected ? "shrink-0 rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-900" : "shrink-0 rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-700"}>{selected ? copy.selected : copy.select}</span>
             </span>
         </button>
     );
+}
+
+function SpecialistAvatar({name, selected, url}: {name: string; selected: boolean; url: string | null}) {
+    const initials = name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "S";
+    const className = selected
+        ? "grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full border border-white/30 bg-white text-xs font-semibold text-stone-900"
+        : "grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full border border-stone-200 bg-stone-100 text-xs font-semibold text-stone-600";
+    if (url) {
+        return <span aria-hidden className={className} style={{backgroundImage: `url(${resolveApiMediaUrl(url)})`, backgroundPosition: "center", backgroundSize: "cover"}} />;
+    }
+    return <span className={className}>{initials}</span>;
 }
 
 function CompactOpenSlotRow({copy, locale, onChoose, slot}: {copy: Copy; locale: string; onChoose: () => void; slot: PublicScheduleAvailabilityBlock}) {
@@ -991,15 +1013,26 @@ function filterEvents(events: PublicFixedEvent[], filters: FilterState) {
     return events;
 }
 
-function uniqueSpecialists(items: Array<{specialistId: number; specialistName: string}>): SpecialistOption[] {
-    const specialists = new Map<number, string>();
-    for (const item of items) specialists.set(item.specialistId, item.specialistName);
-    return Array.from(specialists, ([id, name]) => ({id, name}));
+function uniqueSpecialists(items: Array<{specialistId: number; specialistName: string; specialistAvatarMediaUrl?: string | null}>): SpecialistOption[] {
+    const specialists = new Map<number, SpecialistOption>();
+    for (const item of items) {
+        specialists.set(item.specialistId, {
+            id: item.specialistId,
+            name: item.specialistName,
+            avatarMediaUrl: item.specialistAvatarMediaUrl ?? specialists.get(item.specialistId)?.avatarMediaUrl ?? null
+        });
+    }
+    return Array.from(specialists.values());
 }
 
 function prioritizeSelectedSpecialist(specialists: SpecialistOption[], selectedId: number | "") {
     if (selectedId === "") return specialists;
     return [...specialists].sort((first, second) => Number(second.id === selectedId) - Number(first.id === selectedId));
+}
+
+function filterChoiceState(active: boolean, resultCount: number): "neutral" | "active" | "empty" {
+    if (!active) return "neutral";
+    return resultCount > 0 ? "active" : "empty";
 }
 
 function guidedSelectionChips({

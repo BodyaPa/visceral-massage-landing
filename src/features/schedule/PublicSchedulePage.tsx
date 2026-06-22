@@ -427,8 +427,7 @@ function GuidedBookingFlow({
     const visibleOffices = officesExpanded ? offices : offices.slice(0, 3);
     const visibleIndividualServices = individualServicesExpanded ? individualServices : individualServices.slice(0, 6);
     const visibleEventServices = eventServicesExpanded ? eventServices : eventServices.slice(0, 5);
-    const orderedSpecialists = prioritizeSelectedSpecialist(specialists, filters.specialistId);
-    const visibleSpecialists = specialistsExpanded ? orderedSpecialists : orderedSpecialists.slice(0, 5);
+    const visibleSpecialists = specialistsExpanded ? specialists : specialists.slice(0, 5);
     const showIndividualChoices = filters.mode === "individual";
     const showEventChoices = filters.mode === "events";
     const availableByDate = useMemo(() => new Map(availableDays.map((day) => [day.key, day])), [availableDays]);
@@ -1054,11 +1053,6 @@ function uniqueSpecialists(items: Array<{specialistId: number; specialistName: s
         });
     }
     return Array.from(specialists.values());
-}
-
-function prioritizeSelectedSpecialist(specialists: SpecialistOption[], selectedId: number | "") {
-    if (selectedId === "") return specialists;
-    return [...specialists].sort((first, second) => Number(second.id === selectedId) - Number(first.id === selectedId));
 }
 
 function filterChoiceState(active: boolean, resultCount: number): "neutral" | "active" | "empty" {

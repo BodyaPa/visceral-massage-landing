@@ -207,6 +207,28 @@ button {
   box-shadow: 0 0 0 2px #fff, 0 0 0 4px #292524;
 }
 
+@keyframes ataraksia-booking-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.35rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ataraksia-booking-enter {
+  animation: ataraksia-booking-enter 180ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ataraksia-booking-enter {
+    animation: none;
+  }
+}
+
 .management-workspace {
   max-width: min(1680px, calc(100vw - 1.5rem));
   view-transition-name: management-workspace;

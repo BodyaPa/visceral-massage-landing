@@ -228,6 +228,7 @@ export default function PublicSchedulePage() {
                 }}
                 onChooseSpecialist={(specialistId) => updateFilter("specialistId", specialistId)}
                 onChooseEvent={chooseEvent}
+                onEnrollEvent={(event) => setPendingBooking({type: "event", event})}
                 onChooseEventMode={chooseEventMode}
                 onChooseService={chooseIndividualService}
                 onChooseEventService={chooseEventService}
@@ -382,6 +383,7 @@ function GuidedBookingFlow({
     offices,
     onChooseDate,
     onChooseEvent,
+    onEnrollEvent,
     onChooseEventMode,
     onChooseOffice,
     onChooseMonth,
@@ -405,6 +407,7 @@ function GuidedBookingFlow({
     offices: Office[];
     onChooseDate: (date: Date) => void;
     onChooseEvent: (event: PublicFixedEvent) => void;
+    onEnrollEvent: (event: PublicFixedEvent) => void;
     onChooseEventMode: () => void;
     onChooseOffice: (officeId: number | "") => void;
     onChooseMonth: (date: Date) => void;
@@ -423,6 +426,7 @@ function GuidedBookingFlow({
     const [eventServicesExpanded, setEventServicesExpanded] = useState(false);
     const [specialistsExpanded, setSpecialistsExpanded] = useState(false);
     const [openSection, setOpenSection] = useState<ChoiceSectionKey | null>(null);
+    const [visibleResultCount, setVisibleResultCount] = useState(10);
     const visibleDays = availableDays.slice(0, 14);
     const visibleOffices = officesExpanded ? offices : offices.slice(0, 3);
     const visibleIndividualServices = individualServicesExpanded ? individualServices : individualServices.slice(0, 6);
@@ -435,11 +439,19 @@ function GuidedBookingFlow({
     const nearestDay = availableDays.find((day) => day.date.getTime() >= startOfDay(new Date()).getTime()) ?? availableDays[0];
     const selectedOffice = filters.officeId === "" ? undefined : offices.find((office) => office.id === filters.officeId);
     const selectedSpecialist = filters.specialistId === "" ? undefined : specialists.find((specialist) => specialist.id === filters.specialistId);
+    const visibleSlots = slots.slice(0, visibleResultCount);
+    const visibleEvents = events.slice(0, Math.max(visibleResultCount - visibleSlots.length, 0));
+    const selectedDayResultCount = slots.length + events.length;
+    const visibleSelectedDayResultCount = visibleSlots.length + visibleEvents.length;
 
     useEffect(() => {
         if (openSection === "service" && !showIndividualChoices) setOpenSection(null);
         if (openSection === "event" && !showEventChoices) setOpenSection(null);
     }, [openSection, showEventChoices, showIndividualChoices]);
+
+    useEffect(() => {
+        setVisibleResultCount(10);
+    }, [selectedKey, filters.officeId, filters.serviceId, filters.specialistId, filters.mode]);
 
     function toggleSection(section: ChoiceSectionKey) {
         setOpenSection((current) => current === section ? null : section);
@@ -644,7 +656,7 @@ function GuidedBookingFlow({
                         </div>
                     </div>
                     {visibleDays.length > 0 ? (
-                        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                        <div className="ataraksia-booking-enter mt-3 flex gap-2 overflow-x-auto pb-1">
                             {visibleDays.map((day) => (
                                 <button
                                     aria-pressed={day.key === selectedKey}
@@ -659,7 +671,7 @@ function GuidedBookingFlow({
                             ))}
                         </div>
                     ) : (
-                        <div className="mt-3 rounded-xl border border-dashed border-stone-300 bg-white px-4 py-5 text-sm text-stone-500">
+                        <div className="ataraksia-booking-enter mt-3 rounded-xl border border-dashed border-stone-300 bg-white px-4 py-5 text-sm text-stone-500">
                             <p>{copy.noAvailableDays}</p>
                             <div className="mt-3 flex flex-wrap gap-2">
                                 <button className={compactButtonClass} onClick={() => onChooseMonth(addMonths(currentDate, 1))} type="button">{copy.nextMonth}</button>
@@ -667,18 +679,23 @@ function GuidedBookingFlow({
                         </div>
                     )}
                     {nearestDay && nearestDay.key !== selectedKey ? (
-                        <button className="mt-3 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-left text-sm font-medium text-emerald-900 transition-colors hover:bg-emerald-100" onClick={() => onChooseDate(nearestDay.date)} type="button">
+                        <button className="ataraksia-booking-enter mt-3 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-left text-sm font-medium text-emerald-900 transition-colors hover:bg-emerald-100" onClick={() => onChooseDate(nearestDay.date)} type="button">
                             {copy.nearestAvailable(formatDate(nearestDay.date.toISOString(), locale))}
                         </button>
                     ) : null}
                     <div className="mt-4 space-y-2">
-                        {slots.slice(0, 5).map((slot) => (
+                        {visibleSlots.map((slot) => (
                             selectedService
                                 ? <CompactSlotRow copy={copy} key={slotKey(slot)} locale={locale} onChoose={() => onChooseSlot(slot)} service={selectedService} slot={slot} />
                                 : <CompactOpenSlotRow copy={copy} key={slotKey(slot)} locale={locale} onChoose={() => onChooseSlot(slot)} slot={slot} />
                         ))}
-                        {events.slice(0, 5).map((event) => <CompactEventRow copy={copy} event={event} key={event.id} locale={locale} onChoose={() => onChooseEvent(event)} />)}
-                        {slots.length === 0 && events.length === 0 && visibleDays.length > 0 ? <p className="rounded-xl border border-dashed border-stone-300 bg-white px-4 py-5 text-sm text-stone-500">{copy.selectedDayEmpty}</p> : null}
+                        {visibleEvents.map((event) => <CompactEventRow copy={copy} event={event} key={event.id} locale={locale} onDetails={() => onChooseEvent(event)} onEnroll={() => onEnrollEvent(event)} />)}
+                        {selectedDayResultCount > visibleSelectedDayResultCount ? (
+                            <button className="ataraksia-booking-enter w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100" onClick={() => setVisibleResultCount((current) => current + 10)} type="button">
+                                {copy.showMore}
+                            </button>
+                        ) : null}
+                        {slots.length === 0 && events.length === 0 && visibleDays.length > 0 ? <p className="ataraksia-booking-enter rounded-xl border border-dashed border-stone-300 bg-white px-4 py-5 text-sm text-stone-500">{copy.selectedDayEmpty}</p> : null}
                     </div>
                 </div>
             </div>
@@ -744,44 +761,44 @@ function SpecialistAvatar({name, selected, url}: {name: string; selected: boolea
 
 function CompactOpenSlotRow({copy, locale, onChoose, slot}: {copy: Copy; locale: string; onChoose: () => void; slot: PublicScheduleAvailabilityBlock}) {
     return (
-        <article className="w-full max-w-full rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-            <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+        <article className="ataraksia-booking-enter w-full max-w-full rounded-xl border border-emerald-200 bg-emerald-50 p-3 transition-[border-color,box-shadow,transform] duration-200 hover:border-emerald-300 hover:shadow-sm motion-reduce:transition-none">
+            <div className="min-w-0">
                 <div className="min-w-0">
                     <p className="break-words text-sm font-semibold text-stone-950">{formatDate(slot.startsAt, locale)} · {formatTime(slot.startsAt, locale)}</p>
                     <p className="mt-1 break-words text-xs text-stone-600">{slot.specialistName} · {slot.officeName ?? copy.withoutOffice}</p>
                 </div>
-                <button className="shrink-0 rounded-full bg-white px-2 py-1 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100" onClick={onChoose} type="button">{copy.chooseTime}</button>
             </div>
             <OfficeDetailsInline copy={copy} details={slot} />
+            <button className="mt-3 w-full rounded-xl bg-emerald-800 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700" onClick={onChoose} type="button">{copy.chooseTime}</button>
         </article>
     );
 }
 
 function CompactSlotRow({copy, locale, onChoose, service, slot}: {copy: Copy; locale: string; onChoose: () => void; service: PublicService; slot: PublicScheduleAvailabilityBlock}) {
     return (
-        <article className="w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3">
-            <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+        <article className="ataraksia-booking-enter w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3 transition-[border-color,box-shadow,transform] duration-200 hover:border-stone-300 hover:shadow-sm motion-reduce:transition-none">
+            <div className="min-w-0">
                 <div className="min-w-0">
                     <p className="break-words text-sm font-semibold text-stone-950">{formatDate(slot.startsAt, locale)} · {formatTime(slot.startsAt, locale)}</p>
                     <p className="mt-1 break-words text-xs text-stone-500">{slot.specialistName} · {slot.officeName ?? copy.withoutOffice}</p>
                 </div>
-                <button className="shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100" onClick={onChoose} type="button">{copy.select}</button>
             </div>
             <p className="mt-2 break-words text-xs text-stone-600">{service.title} · {copy.minutes(service.durationMinutes)} · {formatAmount(service.basePrice, locale)}</p>
             <OfficeDetailsInline copy={copy} details={slot} />
+            <button className="mt-3 w-full rounded-xl bg-stone-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-stone-700" onClick={onChoose} type="button">{copy.bookingAction}</button>
         </article>
     );
 }
 
-function CompactEventRow({copy, event, locale, onChoose}: {copy: Copy; event: PublicFixedEvent; locale: string; onChoose: () => void}) {
+function CompactEventRow({copy, event, locale, onDetails, onEnroll}: {copy: Copy; event: PublicFixedEvent; locale: string; onDetails: () => void; onEnroll: () => void}) {
+    const canEnroll = !event.enrolled && !event.full && new Date(event.startsAt).getTime() > Date.now();
     return (
-        <article className="w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3">
-            <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+        <article className="ataraksia-booking-enter w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3 transition-[border-color,box-shadow,transform] duration-200 hover:border-stone-300 hover:shadow-sm motion-reduce:transition-none">
+            <div className="min-w-0">
                 <div className="min-w-0">
                     <p className="break-words text-sm font-semibold text-stone-950">{event.title}</p>
                     <p className="mt-1 break-words text-xs text-stone-500">{formatDateTimeRange(event.startsAt, event.endsAt, locale)}</p>
                 </div>
-                <button className="shrink-0 rounded-full bg-white px-2 py-1 text-xs font-semibold text-stone-800 transition-colors hover:bg-stone-100" onClick={onChoose} type="button">{copy.details}</button>
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
                 <span className={event.full ? "rounded-full bg-red-50 px-2 py-1 text-red-700" : "rounded-full bg-emerald-50 px-2 py-1 text-emerald-700"}>{event.enrolled ? copy.enrolled : event.full ? copy.full : copy.remaining(event.remainingPlaces)}</span>
@@ -789,6 +806,12 @@ function CompactEventRow({copy, event, locale, onChoose}: {copy: Copy; event: Pu
                 <span className="rounded-full bg-white px-2 py-1 text-stone-700">{event.officeName ?? copy.withoutOffice}</span>
             </div>
             <OfficeDetailsInline copy={copy} details={event} />
+            <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <button className="w-full rounded-xl bg-stone-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={!canEnroll} onClick={onEnroll} type="button">
+                    {event.enrolled ? copy.enrolled : event.full ? copy.full : copy.bookEvent}
+                </button>
+                <button className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100 sm:w-fit" onClick={onDetails} type="button">{copy.details}</button>
+            </div>
         </article>
     );
 }
@@ -1021,10 +1044,11 @@ function weekdayLabels(locale: string) {
 }
 
 function monthDayClass(day: MonthPickerDay, available: boolean, selected: boolean) {
-    if (!day.inCurrentMonth) return "min-h-12 rounded-lg border border-transparent px-1 py-2 text-stone-300 opacity-40";
-    if (selected) return "min-h-12 rounded-lg border border-stone-900 bg-stone-900 px-1 py-2 text-white shadow-sm";
-    if (available) return "min-h-12 rounded-lg border border-emerald-200 bg-emerald-50 px-1 py-2 text-emerald-950 transition-colors hover:border-emerald-400 hover:bg-emerald-100";
-    return "min-h-12 cursor-not-allowed rounded-lg border border-stone-100 bg-stone-50 px-1 py-2 text-stone-400";
+    const base = "min-h-12 rounded-lg border px-1 py-2 transition-[border-color,background-color,box-shadow,color,transform] duration-200 motion-reduce:transition-none";
+    if (!day.inCurrentMonth) return `${base} border-transparent text-stone-300 opacity-40`;
+    if (selected) return `${base} border-stone-900 bg-stone-900 text-white shadow-sm`;
+    if (available) return `${base} border-emerald-200 bg-emerald-50 text-emerald-950 hover:border-emerald-400 hover:bg-emerald-100`;
+    return `${base} cursor-not-allowed border-stone-100 bg-stone-50 text-stone-400`;
 }
 
 function selectedService(services: PublicService[], id: number | "") {
@@ -1336,6 +1360,7 @@ function labels(t: T) {
         officeMap: t("public.officeMap"),
         reminder: t("booking.reminderOptIn"),
         reminderHint: t("booking.reminderHint"),
+        bookingAction: t("booking.action"),
         cancel: t("public.cancel"),
         close: t("public.close"),
         cancelEnrollment: t("public.cancelEnrollment"),

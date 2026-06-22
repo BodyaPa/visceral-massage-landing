@@ -8,7 +8,7 @@ import {withLocale} from "@/shared/lib/locale/withLocale";
 import LanguageSwitcher from "@/components/common/LanguageSwitcher";
 import AuthSessionPanel from "@/features/auth/AuthSessionPanel";
 import AccountBookingsPanel from "@/features/account/AccountBookingsPanel";
-import AccountProfileForm from "@/features/account/AccountProfileForm";
+import AccountProfilePanel from "@/features/account/AccountProfilePanel";
 import AccountSecuritySettings from "@/features/account/AccountSecuritySettings";
 
 type Props = {
@@ -70,13 +70,7 @@ export default async function AccountPage({params}: Props) {
 
                             <section className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
                                 <div className="space-y-4">
-                                    <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
-                                        <p className="text-sm font-medium text-stone-500">{t("profileSection")}</p>
-                                        <p className="mt-2 text-xl font-semibold text-stone-950">{displayName}</p>
-                                        <p className="mt-1 break-words text-sm text-stone-600">{contactValue}</p>
-                                    </div>
-
-                                    <AccountProfileForm user={user} />
+                                    <AccountProfilePanel contactValue={contactValue} dateOfBirth={dateOfBirth} displayName={displayName} user={user} />
 
                                     <div className="grid gap-3 sm:grid-cols-2">
                                         <InfoCard label={t("phone")} value={user.phone ?? t("notProvided")} />

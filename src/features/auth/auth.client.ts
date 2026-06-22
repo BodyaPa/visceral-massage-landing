@@ -135,6 +135,42 @@ async function putAuth<T>(path: string, body?: unknown): Promise<T> {
     return response.json() as Promise<T>;
 }
 
+async function postAuthForm<T>(path: string, body: FormData): Promise<T> {
+    let response = await fetch(`${API_URL}/api/auth/${path}`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+            [CSRF_HEADER_NAME]: await getCsrfToken()
+        },
+        body
+    });
+
+    if (response.status === 403) {
+        clearCsrfToken();
+        response = await fetch(`${API_URL}/api/auth/${path}`, {
+            method: "POST",
+            credentials: "include",
+            headers: {
+                [CSRF_HEADER_NAME]: await getCsrfToken()
+            },
+            body
+        });
+    }
+
+    if (!response.ok) {
+        let serverMessage: string | null = null;
+        try {
+            const data = await response.json() as {message?: string};
+            serverMessage = data.message ?? null;
+        } catch {
+            // Responses without JSON still map to the generic UI message.
+        }
+        throw new AuthRequestError(serverMessage);
+    }
+
+    return response.json() as Promise<T>;
+}
+
 export function login(request: LoginRequest) {
     return postAuth<AuthenticatedUser>("login", request);
 }
@@ -161,6 +197,12 @@ export function logout() {
 
 export function updateProfile(request: ProfileUpdateRequest) {
     return putAuth<AuthenticatedUser>("me", request);
+}
+
+export function uploadAvatar(file: File) {
+    const body = new FormData();
+    body.append("file", file);
+    return postAuthForm<AuthenticatedUser>("me/avatar", body);
 }
 
 export function requestContactChange(request: ContactChangeRequest) {

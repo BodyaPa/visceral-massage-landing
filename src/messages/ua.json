@@ -281,6 +281,8 @@
       "noOffice": "Без офісу",
       "noAppointments": "Індивідуальних записів ще немає.",
       "noEvents": "Записів на події ще немає.",
+      "showMore": "Показати ще {count}",
+      "showLess": "Згорнути список",
       "officeDetails": "Деталі офісу",
       "officeAddress": "Адреса",
       "officeDirections": "Як знайти",

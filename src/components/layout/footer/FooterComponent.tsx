@@ -8,6 +8,7 @@ import {API_URL} from "@/shared/constants/env";
 import type {Locale} from "@/i18n";
 import type {SiteSettings} from "@/types/siteSettings";
 import {useEffect, useState} from "react";
+import {getCurrentUser, type AuthenticatedUser} from "@/features/auth/auth.client";
 
 const hiddenSegments = ["/admin", "/account", "/auth", "/login", "/register"];
 
@@ -17,6 +18,7 @@ export default function FooterComponent() {
     const locale = useLocale() as Locale;
     const pathname = usePathname();
     const [settings, setSettings] = useState<SiteSettings | null>(null);
+    const [user, setUser] = useState<AuthenticatedUser | null>(null);
     const pathWithoutLocale = pathname.replace(/^\/(ua|en)(?=\/|$)/, "") || "/";
     const shouldHide = hiddenSegments.some((segment) => pathWithoutLocale === segment || pathWithoutLocale.startsWith(`${segment}/`));
     const body = locale === "ua"
@@ -38,6 +40,20 @@ export default function FooterComponent() {
         };
     }, []);
 
+    useEffect(() => {
+        let active = true;
+        getCurrentUser()
+            .then((currentUser) => {
+                if (active) setUser(currentUser);
+            })
+            .catch(() => {
+                if (active) setUser(null);
+            });
+        return () => {
+            active = false;
+        };
+    }, [pathname]);
+
     if (shouldHide) {
         return null;
     }
@@ -53,8 +69,8 @@ export default function FooterComponent() {
                 <nav aria-label={t("navigationLabel")} className="grid min-w-0 gap-2 text-sm sm:grid-cols-2 lg:min-w-80">
                     <FooterLink href="/">{nav("home")}</FooterLink>
                     <FooterLink href="/news">{nav("news")}</FooterLink>
-                    <FooterLink href="/memberships">{nav("memberships")}</FooterLink>
-                    <FooterLink href="/calendar">{nav("calendar")}</FooterLink>
+                    {user ? <FooterLink href="/memberships">{nav("memberships")}</FooterLink> : null}
+                    {user ? <FooterLink href="/calendar">{nav("calendar")}</FooterLink> : null}
                     <FooterLink href="/about">{nav("about")}</FooterLink>
                     <FooterLink href="/contact">{nav("contact")}</FooterLink>
                 </nav>

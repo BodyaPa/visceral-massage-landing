@@ -25,6 +25,9 @@ type StatusFilter = "all" | "available" | "unavailable" | "events" | "mine";
 type PendingBooking =
     | {type: "individual"; service: PublicService; slot: PublicScheduleAvailabilityBlock}
     | {type: "event"; event: PublicFixedEvent};
+type SelectedDayItem =
+    | {type: "slot"; startsAt: string; slot: PublicScheduleAvailabilityBlock}
+    | {type: "event"; startsAt: string; event: PublicFixedEvent};
 type SpecialistOption = {id: number; name: string; avatarMediaUrl: string | null};
 type ChoiceSectionKey = "office" | "specialist";
 type PaymentPrompt = {
@@ -209,6 +212,11 @@ export default function PublicSchedulePage() {
                 onChooseMonth={(date) => {
                     setCurrentDate(date);
                 }}
+                onResetFilters={() => {
+                    setFilters({officeId: "", specialistId: "", mode: "all", status: "all", period: 31});
+                    setCurrentDate(new Date());
+                    setPaymentPrompt(null);
+                }}
                 onChooseSpecialist={(specialistId) => updateFilter("specialistId", specialistId)}
                 onChooseEvent={chooseEvent}
                 onEnrollEvent={(event) => setPendingBooking({type: "event", event})}
@@ -269,7 +277,6 @@ export default function PublicSchedulePage() {
                         const appointmentSlot = serviceDurationSlot(slotForServiceChoice, service);
                         if (!appointmentSlot) {
                             toast.error(copy.slotTooShort);
-                            setSlotForServiceChoice(null);
                             return;
                         }
                         setFilters((current) => ({...current, mode: "individual", status: "available"}));
@@ -366,6 +373,7 @@ function GuidedBookingFlow({
     onChooseIndividualMode,
     onChooseOffice,
     onChooseMonth,
+    onResetFilters,
     onChooseSpecialist,
     onChooseSlot,
     specialists,
@@ -385,6 +393,7 @@ function GuidedBookingFlow({
     onChooseIndividualMode: () => void;
     onChooseOffice: (officeId: number | "") => void;
     onChooseMonth: (date: Date) => void;
+    onResetFilters: () => void;
     onChooseSpecialist: (specialistId: number | "") => void;
     onChooseSlot: (slot: PublicScheduleAvailabilityBlock) => void;
     specialists: SpecialistOption[];
@@ -403,10 +412,11 @@ function GuidedBookingFlow({
     const nearestDay = availableDays.find((day) => day.date.getTime() >= startOfDay(new Date()).getTime()) ?? availableDays[0];
     const selectedOffice = filters.officeId === "" ? undefined : offices.find((office) => office.id === filters.officeId);
     const selectedSpecialist = filters.specialistId === "" ? undefined : specialists.find((specialist) => specialist.id === filters.specialistId);
-    const visibleSlots = slots.slice(0, visibleResultCount);
-    const visibleEvents = events.slice(0, Math.max(visibleResultCount - visibleSlots.length, 0));
-    const selectedDayResultCount = slots.length + events.length;
-    const visibleSelectedDayResultCount = visibleSlots.length + visibleEvents.length;
+    const selectedDayItems = useMemo(() => buildSelectedDayItems(slots, events), [events, slots]);
+    const visibleSelectedDayItems = selectedDayItems.slice(0, visibleResultCount);
+    const selectedDayCountLabel = availabilityCountLabel({slotsCount: slots.length, eventsCount: events.length}, copy);
+    const totalAvailableSlots = availableDays.reduce((sum, day) => sum + day.slotsCount, 0);
+    const totalAvailableEvents = availableDays.reduce((sum, day) => sum + day.eventsCount, 0);
 
     useEffect(() => {
         setVisibleResultCount(10);
@@ -526,7 +536,10 @@ function GuidedBookingFlow({
                             <h3 className="text-sm font-semibold text-stone-950">{copy.availableDaysTitle}</h3>
                             <p className="mt-1 text-xs leading-5 text-stone-500">{copy.availableDaysHint}</p>
                         </div>
-                        <span className="rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs font-medium text-stone-500">{copy.slotCount(availableDays.reduce((sum, day) => sum + day.slotsCount, 0))}</span>
+                        <div className="flex flex-wrap justify-end gap-1.5">
+                            {totalAvailableSlots > 0 || totalAvailableEvents === 0 ? <span className="rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs font-medium text-stone-500">{copy.slotCount(totalAvailableSlots)}</span> : null}
+                            {totalAvailableEvents > 0 ? <span className="rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs font-medium text-stone-500">{copy.eventsCount(totalAvailableEvents)}</span> : null}
+                        </div>
                     </div>
                     <div className="mt-3 rounded-xl border border-stone-200 bg-white p-3">
                         <div className="flex items-center justify-between gap-2">
@@ -543,7 +556,7 @@ function GuidedBookingFlow({
                                 const disabled = !available || !day.inCurrentMonth;
                                 return (
                                     <button
-                                        aria-label={available ? `${day.day}. ${available.slotsCount ? copy.slotCount(available.slotsCount) : copy.eventsCount(available.eventsCount)}` : `${day.day}. ${copy.noAvailabilityDay}`}
+                                        aria-label={available ? `${day.day}. ${availabilityCountLabel(available, copy)}` : `${day.day}. ${copy.noAvailabilityDay}`}
                                         aria-pressed={day.key === selectedKey}
                                         className={monthDayClass(day, Boolean(available), day.key === selectedKey)}
                                         disabled={disabled}
@@ -569,7 +582,7 @@ function GuidedBookingFlow({
                                     type="button"
                                 >
                                     <span className="block text-sm font-semibold text-stone-950">{day.label}</span>
-                                    <span className="mt-1 block text-xs text-stone-500">{day.slotsCount ? copy.slotCount(day.slotsCount) : copy.eventsCount(day.eventsCount)}</span>
+                                    <span className="mt-1 block text-xs text-stone-500">{availabilityCountLabel(day, copy)}</span>
                                 </button>
                             ))}
                         </div>
@@ -577,6 +590,7 @@ function GuidedBookingFlow({
                         <div className="ataraksia-booking-enter mt-3 rounded-xl border border-dashed border-stone-300 bg-white px-4 py-5 text-sm text-stone-500">
                             <p>{copy.noAvailableDays}</p>
                             <div className="mt-3 flex flex-wrap gap-2">
+                                <button className={compactButtonClass} onClick={onResetFilters} type="button">{copy.resetFilters}</button>
                                 <button className={compactButtonClass} onClick={() => onChooseMonth(addMonths(currentDate, 1))} type="button">{copy.nextMonth}</button>
                             </div>
                         </div>
@@ -587,16 +601,23 @@ function GuidedBookingFlow({
                         </button>
                     ) : null}
                     <div className="mt-4 space-y-2">
-                        {visibleSlots.map((slot) => (
-                            <CompactOpenSlotRow copy={copy} key={slotKey(slot)} locale={locale} onChoose={() => onChooseSlot(slot)} slot={slot} />
+                        {selectedDayItems.length > 0 ? (
+                            <div className="ataraksia-booking-enter flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-stone-200 bg-white px-3 py-2">
+                                <h3 className="break-words text-sm font-semibold text-stone-950">{formatDate(currentDate.toISOString(), locale)}</h3>
+                                <span className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-600">{selectedDayCountLabel}</span>
+                            </div>
+                        ) : null}
+                        {visibleSelectedDayItems.map((item) => item.type === "slot" ? (
+                            <CompactOpenSlotRow copy={copy} key={slotKey(item.slot)} locale={locale} onChoose={() => onChooseSlot(item.slot)} slot={item.slot} />
+                        ) : (
+                            <CompactEventRow copy={copy} event={item.event} key={`event-${item.event.id}`} locale={locale} onDetails={() => onChooseEvent(item.event)} onEnroll={() => onEnrollEvent(item.event)} />
                         ))}
-                        {visibleEvents.map((event) => <CompactEventRow copy={copy} event={event} key={event.id} locale={locale} onDetails={() => onChooseEvent(event)} onEnroll={() => onEnrollEvent(event)} />)}
-                        {selectedDayResultCount > visibleSelectedDayResultCount ? (
+                        {selectedDayItems.length > visibleSelectedDayItems.length ? (
                             <button className="ataraksia-booking-enter w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100" onClick={() => setVisibleResultCount((current) => current + 10)} type="button">
                                 {copy.showMore}
                             </button>
                         ) : null}
-                        {slots.length === 0 && events.length === 0 && visibleDays.length > 0 ? <p className="ataraksia-booking-enter rounded-xl border border-dashed border-stone-300 bg-white px-4 py-5 text-sm text-stone-500">{copy.selectedDayEmpty}</p> : null}
+                        {selectedDayItems.length === 0 && visibleDays.length > 0 ? <p className="ataraksia-booking-enter rounded-xl border border-dashed border-stone-300 bg-white px-4 py-5 text-sm text-stone-500">{copy.selectedDayEmpty}</p> : null}
                     </div>
                 </div>
             </div>
@@ -649,7 +670,8 @@ function SpecialistAvatar({name, selected, url}: {name: string; selected: boolea
 function CompactOpenSlotRow({copy, locale, onChoose, slot}: {copy: Copy; locale: string; onChoose: () => void; slot: PublicScheduleAvailabilityBlock}) {
     return (
         <article className="ataraksia-booking-enter w-full max-w-full rounded-xl border border-emerald-200 bg-emerald-50 p-3 transition-[border-color,box-shadow,transform] duration-200 hover:border-emerald-300 hover:shadow-sm motion-reduce:transition-none">
-            <div className="min-w-0">
+            <div className="flex min-w-0 items-start gap-3">
+                <SpecialistAvatar name={slot.specialistName} selected={false} url={slot.specialistAvatarMediaUrl} />
                 <div className="min-w-0">
                     <p className="break-words text-sm font-semibold text-stone-950">{formatDate(slot.startsAt, locale)} · {formatTime(slot.startsAt, locale)}</p>
                     <p className="mt-1 break-words text-xs text-stone-600">{slot.specialistName} · {slot.officeName ?? copy.withoutOffice}</p>
@@ -665,10 +687,11 @@ function CompactEventRow({copy, event, locale, onDetails, onEnroll}: {copy: Copy
     const canEnroll = !event.enrolled && !event.full && new Date(event.startsAt).getTime() > Date.now();
     return (
         <article className="ataraksia-booking-enter w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3 transition-[border-color,box-shadow,transform] duration-200 hover:border-stone-300 hover:shadow-sm motion-reduce:transition-none">
-            <div className="min-w-0">
+            <div className="flex min-w-0 items-start gap-3">
+                <SpecialistAvatar name={event.specialistName} selected={false} url={event.specialistAvatarMediaUrl} />
                 <div className="min-w-0">
                     <p className="break-words text-sm font-semibold text-stone-950">{event.title}</p>
-                    <p className="mt-1 break-words text-xs text-stone-500">{formatDateTimeRange(event.startsAt, event.endsAt, locale)}</p>
+                    <p className="mt-1 break-words text-xs text-stone-500">{event.specialistName} · {formatDateTimeRange(event.startsAt, event.endsAt, locale)}</p>
                 </div>
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
@@ -779,18 +802,25 @@ function ConfirmationModal({copy, isSaving, locale, onClose, onConfirm, pending,
 }
 
 function ServiceChoiceModal({copy, locale, onClose, onSelect, services, slot}: {copy: Copy; locale: string; onClose: () => void; onSelect: (service: PublicService) => void; services: PublicService[]; slot: PublicScheduleAvailabilityBlock}) {
+    const fittingServices = services.filter((service) => Boolean(serviceDurationSlot(slot, service)));
+
     return (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6">
             <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5">
                 <h2 className="break-words text-xl font-semibold text-stone-950">{copy.chooseServiceForTime}</h2>
                 <p className="mt-2 break-words text-sm leading-6 text-stone-500">{formatDateTimeRange(slot.startsAt, slot.endsAt, locale)} · {slot.specialistName} · {slot.officeName ?? copy.withoutOffice}</p>
+                {fittingServices.length === 0 ? <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-800">{copy.slotTooShort}</p> : null}
                 <div className="mt-5 space-y-2">
-                    {services.map((service) => (
-                        <button className="block w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white" key={service.id} onClick={() => onSelect(service)} type="button">
-                            <span className="block break-words text-sm font-semibold text-stone-950">{service.title}</span>
-                            <span className="mt-1 block break-words text-xs text-stone-500">{copy.minutes(service.durationMinutes)} · {formatAmount(service.basePrice, locale)}</span>
-                        </button>
-                    ))}
+                    {services.map((service) => {
+                        const fitsSlot = Boolean(serviceDurationSlot(slot, service));
+                        return (
+                            <button className={fitsSlot ? "block w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white" : "block w-full max-w-full cursor-not-allowed rounded-xl border border-stone-200 bg-stone-100 p-3 text-left opacity-60"} disabled={!fitsSlot} key={service.id} onClick={() => onSelect(service)} type="button">
+                                <span className="block break-words text-sm font-semibold text-stone-950">{service.title}</span>
+                                <span className="mt-1 block break-words text-xs text-stone-500">{copy.minutes(service.durationMinutes)} · {formatAmount(service.basePrice, locale)}</span>
+                                {!fitsSlot ? <span className="mt-2 block break-words text-xs font-medium text-amber-800">{copy.slotTooShort}</span> : null}
+                            </button>
+                        );
+                    })}
                 </div>
                 <div className="mt-6 flex justify-end">
                     <button className={secondaryButtonClass} onClick={onClose} type="button">{copy.cancel}</button>
@@ -1006,6 +1036,20 @@ function buildAvailableDays(slots: PublicScheduleAvailabilityBlock[], events: Pu
             label: formatShortDay(day.date, locale, copy),
             slotsCount: day.slotsCount
         }));
+}
+
+function buildSelectedDayItems(slots: PublicScheduleAvailabilityBlock[], events: PublicFixedEvent[]): SelectedDayItem[] {
+    return [
+        ...slots.map((slot) => ({type: "slot" as const, startsAt: slot.startsAt, slot})),
+        ...events.map((event) => ({type: "event" as const, startsAt: event.startsAt, event}))
+    ].sort((first, second) => new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime());
+}
+
+function availabilityCountLabel(day: Pick<AvailableDay, "eventsCount" | "slotsCount">, copy: Copy) {
+    const parts = [];
+    if (day.slotsCount > 0) parts.push(copy.slotCount(day.slotsCount));
+    if (day.eventsCount > 0) parts.push(copy.eventsCount(day.eventsCount));
+    return parts.join(" · ");
 }
 
 function toId(value: string): number | "" {

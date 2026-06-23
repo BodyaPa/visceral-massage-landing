@@ -35,6 +35,7 @@ function isProtectedInternalPath(url: string | undefined) {
 
     return url === "/account"
         || url === "/calendar"
+        || url === "/memberships"
         || url === "/admin"
         || url.startsWith("/admin/");
 }

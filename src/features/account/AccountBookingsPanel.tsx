@@ -12,6 +12,7 @@ import type {Booking} from "@/types/bookings";
 import type {PublicFixedEvent} from "@/types/schedule";
 
 type AccountBookingFilter = "upcoming" | "history" | "cancelled" | "all";
+const INITIAL_VISIBLE_ITEMS = 6;
 
 export default function AccountBookingsPanel({locale}: {locale: Locale}) {
     const t = useTranslations("accountPage.bookings");
@@ -81,6 +82,10 @@ const filterClass = "flex min-w-0 items-center justify-center gap-2 rounded-lg p
 const activeFilterClass = "flex min-w-0 items-center justify-center gap-2 rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white shadow-sm";
 
 function BookingList({bookings, cancelling, copy, isError, locale, onCancel}: {bookings: Booking[]; cancelling: boolean; copy: Copy; isError: boolean; locale: Locale; onCancel: (id: number) => void}) {
+    const [expanded, setExpanded] = useState(false);
+    const visibleBookings = expanded ? bookings : bookings.slice(0, INITIAL_VISIBLE_ITEMS);
+    const hiddenCount = Math.max(0, bookings.length - visibleBookings.length);
+
     return (
         <div>
             <div className="flex items-center justify-between gap-3">
@@ -89,14 +94,23 @@ function BookingList({bookings, cancelling, copy, isError, locale, onCancel}: {b
             </div>
             {isError ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{copy.loadError}</p> : null}
             <div className="mt-3 space-y-2">
-                {bookings.map((booking) => <BookingCard booking={booking} cancelling={cancelling} copy={copy} key={booking.id} locale={locale} onCancel={onCancel} />)}
+                {visibleBookings.map((booking) => <BookingCard booking={booking} cancelling={cancelling} copy={copy} key={booking.id} locale={locale} onCancel={onCancel} />)}
                 {bookings.length === 0 && !isError ? <p className="rounded-lg border border-dashed border-stone-200 bg-stone-50 px-3 py-4 text-center text-sm text-stone-500">{copy.noAppointments}</p> : null}
+                {bookings.length > INITIAL_VISIBLE_ITEMS ? (
+                    <button className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-50" onClick={() => setExpanded((current) => !current)} type="button">
+                        {expanded ? copy.showLess : copy.showMore(hiddenCount)}
+                    </button>
+                ) : null}
             </div>
         </div>
     );
 }
 
 function EventList({cancelling, copy, events, isError, locale, onCancel}: {cancelling: boolean; copy: Copy; events: PublicFixedEvent[]; isError: boolean; locale: Locale; onCancel: (id: number) => void}) {
+    const [expanded, setExpanded] = useState(false);
+    const visibleEvents = expanded ? events : events.slice(0, INITIAL_VISIBLE_ITEMS);
+    const hiddenCount = Math.max(0, events.length - visibleEvents.length);
+
     return (
         <div>
             <div className="flex items-center justify-between gap-3">
@@ -105,8 +119,13 @@ function EventList({cancelling, copy, events, isError, locale, onCancel}: {cance
             </div>
             {isError ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{copy.loadError}</p> : null}
             <div className="mt-3 space-y-2">
-                {events.map((event) => <EventCard cancelling={cancelling} copy={copy} event={event} key={event.id} locale={locale} onCancel={onCancel} />)}
+                {visibleEvents.map((event) => <EventCard cancelling={cancelling} copy={copy} event={event} key={event.id} locale={locale} onCancel={onCancel} />)}
                 {events.length === 0 && !isError ? <p className="rounded-lg border border-dashed border-stone-200 bg-stone-50 px-3 py-4 text-center text-sm text-stone-500">{copy.noEvents}</p> : null}
+                {events.length > INITIAL_VISIBLE_ITEMS ? (
+                    <button className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-50" onClick={() => setExpanded((current) => !current)} type="button">
+                        {expanded ? copy.showLess : copy.showMore(hiddenCount)}
+                    </button>
+                ) : null}
             </div>
         </div>
     );
@@ -298,6 +317,8 @@ function labels(t: T) {
         noOffice: t("noOffice"),
         noAppointments: t("noAppointments"),
         noEvents: t("noEvents"),
+        showMore: (count: number) => t("showMore", {count}),
+        showLess: t("showLess"),
         filters: {
             upcoming: t("filters.upcoming"),
             history: t("filters.history"),

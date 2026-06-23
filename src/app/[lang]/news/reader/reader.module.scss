@@ -149,10 +149,12 @@
 
 .markdown blockquote {
   margin: 18px 0;
-  padding: 12px 16px;
-  border-left: 4px solid #111;
-  background: rgba(0,0,0,0.04);
-  border-radius: 8px;
+  padding: 14px 16px;
+  border: 1px solid rgba(120, 113, 108, 0.24);
+  border-left: 4px solid rgba(120, 113, 108, 0.62);
+  background: #f5f5f4;
+  border-radius: 12px;
+  color: rgba(41, 37, 36, 0.9);
 }
 
 .markdown hr {
@@ -186,21 +188,31 @@
 }
 
 .markdown table {
+  display: block;
   width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
   margin: 16px 0;
+  border: 1px solid rgba(120, 113, 108, 0.24);
+  border-radius: 12px;
   font-size: 14px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(28, 25, 23, 0.05);
 }
 
 .markdown th,
 .markdown td {
-  border: 1px solid rgba(0,0,0,0.14);
+  border: 1px solid rgba(120, 113, 108, 0.18);
   padding: 10px 12px;
   text-align: left;
+  vertical-align: top;
 }
 
 .markdown th {
-  background: rgba(0,0,0,0.05);
+  background: #f5f5f4;
+  color: #292524;
+  font-weight: 650;
 }
 
 .markdown a {

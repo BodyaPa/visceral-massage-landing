@@ -28,7 +28,7 @@ export default function NewsList() {
     const contentRef = useRef<HTMLDivElement | null>(null);
     const params = useParams();
     const lang = params.lang as Locale;
-    const adminNewsT = useTranslations("admin.news.page");
+    const newsT = useTranslations("news.page");
     const {data, isLoading} = useListNewsQuery({lang, page: 0, size: 10});
     const [canCreateNews, setCanCreateNews] = useState(false);
 
@@ -70,6 +70,25 @@ export default function NewsList() {
     return (
         <div ref={contentRef} className={styles.content}>
             <div className={styles.newsLayout}>
+                <header className={styles.newsHeader}>
+                    <div className={styles.newsHeaderText}>
+                        <h1>{newsT("title")}</h1>
+                        <p>{newsT("subtitle")}</p>
+                    </div>
+                    {canCreateNews ? (
+                        <AuthenticatedLink
+                            aria-label={newsT("createAction")}
+                            className={styles.createNewsButton}
+                            fallbackHref={withLocale("/auth?mode=login", lang)}
+                            href={withLocale("/admin/news", lang)}
+                            onSessionExpired={() => setCanCreateNews(false)}
+                        >
+                            <span aria-hidden="true">+</span>
+                            <span>{newsT("createAction")}</span>
+                        </AuthenticatedLink>
+                    ) : null}
+                </header>
+
                 <div className={styles.newsBlock}>
                     {news.map((news) => {
                         const coverDisplayMode = news.coverDisplayMode ?? "FILL";
@@ -127,21 +146,6 @@ export default function NewsList() {
                         );
                     })}
                 </div>
-
-                {canCreateNews ? (
-                    <aside className={styles.adminPanel} aria-label={adminNewsT("title")}>
-                        <AuthenticatedLink
-                            aria-label={adminNewsT("createAction")}
-                            className={styles.createNewsButton}
-                            fallbackHref={withLocale("/auth?mode=login", lang)}
-                            href={withLocale("/admin/news", lang)}
-                            onSessionExpired={() => setCanCreateNews(false)}
-                        >
-                            <span aria-hidden="true">+</span>
-                            <span>{adminNewsT("createAction")}</span>
-                        </AuthenticatedLink>
-                    </aside>
-                ) : null}
             </div>
         </div>
     );

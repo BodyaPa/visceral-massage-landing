@@ -281,6 +281,8 @@
       "noOffice": "No office",
       "noAppointments": "No individual appointments yet.",
       "noEvents": "No event enrollments yet.",
+      "showMore": "Show {count} more",
+      "showLess": "Collapse list",
       "officeDetails": "Office details",
       "officeAddress": "Address",
       "officeDirections": "How to find it",

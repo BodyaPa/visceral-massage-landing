@@ -1,6 +1,7 @@
 import type {Metadata} from "next";
 import {getTranslations} from "next-intl/server";
 import type {Locale} from "@/i18n";
+import {requireAuthenticatedUser} from "@/features/auth/auth.server";
 import {getAlternates} from "@/shared/lib/seo/getAlternates";
 import PublicSchedulePage from "@/features/schedule/PublicSchedulePage";
 
@@ -18,10 +19,17 @@ export async function generateMetadata({params}: Props): Promise<Metadata> {
     return {
         title: t("title"),
         description: t("description"),
-        alternates: getAlternates("/calendar", locale)
+        alternates: getAlternates("/calendar", locale),
+        robots: {
+            index: false,
+            follow: false
+        }
     };
 }
 
-export default function CalendarPage() {
+export default async function CalendarPage({params}: Props) {
+    const {lang} = await params;
+    await requireAuthenticatedUser(lang as Locale);
+
     return <PublicSchedulePage />;
 }

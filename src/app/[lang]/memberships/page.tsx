@@ -2,6 +2,7 @@ import type {Metadata} from "next";
 import {getTranslations} from "next-intl/server";
 import MembershipsPage from "@/features/memberships/MembershipsPage";
 import type {Locale} from "@/i18n";
+import {requireAuthenticatedUser} from "@/features/auth/auth.server";
 import {getAlternates} from "@/shared/lib/seo/getAlternates";
 
 type Props = {
@@ -16,10 +17,19 @@ export async function generateMetadata({params}: Props): Promise<Metadata> {
     return {
         alternates: getAlternates("/memberships", locale),
         description: t("description"),
-        title: t("title")
+        title: t("title"),
+        robots: {
+            index: false,
+            follow: false
+        }
     };
 }
 
-export default function Page() {
+export const dynamic = "force-dynamic";
+
+export default async function Page({params}: Props) {
+    const {lang} = await params;
+    await requireAuthenticatedUser(lang as Locale);
+
     return <MembershipsPage />;
 }

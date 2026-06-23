@@ -30,6 +30,8 @@ export interface PublicScheduleAvailabilityBlock {
     id: number;
     specialistId: number;
     specialistName: string;
+    specialistAvatarMediaId: string | null;
+    specialistAvatarMediaUrl: string | null;
     officeId: number | null;
     officeName: string | null;
     officeAddress: string | null;

@@ -30,8 +30,8 @@ export default function BoundedList<T>({
     const [limit, setLimit] = useState(initialCount);
 
     useEffect(() => {
-        setLimit(initialCount);
-    }, [initialCount, items]);
+        setLimit((current) => Math.max(current, initialCount));
+    }, [initialCount]);
 
     if (items.length === 0) return <>{empty}</>;
 

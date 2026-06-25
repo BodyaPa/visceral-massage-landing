@@ -74,6 +74,7 @@ export default function ButtonComponent({
                 fallbackHref={withLocale("/auth?mode=login", lang)}
                 href={href}
                 onClick={(event) => handleNavigationClick(event, active)}
+                scroll={false}
             >
                 <span key={localeKey} className={styles.labelAnimated}>
                     {text}
@@ -83,7 +84,7 @@ export default function ButtonComponent({
     }
 
     return (
-        <Link aria-current={active ? "page" : undefined} className={resolvedClassName} href={href} onClick={(event) => handleNavigationClick(event, active)}>
+        <Link aria-current={active ? "page" : undefined} className={resolvedClassName} href={href} onClick={(event) => handleNavigationClick(event, active)} scroll={false}>
             <span key={localeKey} className={styles.labelAnimated}>
                 {text}
             </span>
@@ -122,7 +123,7 @@ function handleNavigationClick(event: MouseEvent<HTMLAnchorElement>, active: boo
         return;
     }
 
-    window.scrollTo({top: 0, left: 0, behavior: "auto"});
+    if (active) return;
 }
 
 function scrollToPublicPageContent() {

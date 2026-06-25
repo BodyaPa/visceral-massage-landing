@@ -201,6 +201,11 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                 return;
             }
 
+            if (hasRestPeriodConflict(startsAt, endsAt, bookings, events, appointmentBufferMinutes)) {
+                toast.error(copy.restConflictError);
+                return;
+            }
+
             const body = {
                 officeId: form.officeId ? Number(form.officeId) : null,
                 specialistId: selectedSpecialistId === "" ? null : selectedSpecialistId,
@@ -521,6 +526,11 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     offices={offices}
                     officesFetching={officesFetching}
                     onCreate={async (body) => {
+                        if (hasRestPeriodConflict(body.startsAt, body.endsAt, bookings, events, appointmentBufferMinutes, editingEvent?.id)) {
+                            toast.error(copy.restConflictError);
+                            return;
+                        }
+
                         try {
                             if (editingEvent) {
                                 await updateSpecialistEvent({id: editingEvent.id, body}).unwrap();
@@ -1998,6 +2008,7 @@ function scheduleCopy(t: T) {
         availabilityListHint: t("schedule.availabilityListHint"),
         blocksListHint: t("schedule.blocksListHint"),
         buffer: t("schedule.buffer"),
+        restConflictError: t("schedule.restConflictError"),
         availabilityCutHint: t("schedule.availabilityCutHint"),
         appointmentSlotHint: t("schedule.appointmentSlotHint"),
         copyTitle: t("schedule.copyTitle"),
@@ -2079,6 +2090,28 @@ function buildCalendarRange(date: Date) {
     };
 }
 
+function hasRestPeriodConflict(
+    startsAt: string,
+    endsAt: string,
+    bookings: SpecialistBooking[],
+    events: SpecialistFixedEvent[],
+    appointmentBufferMinutes: number,
+    excludedEventId?: number
+) {
+    const start = new Date(startsAt);
+    const end = new Date(endsAt);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        return false;
+    }
+
+    const activeBookings = bookings.filter((booking) => booking.status !== "CANCELLED");
+    const activeEvents = events.filter((event) => event.active && event.id !== excludedEventId);
+
+    return activeBookings.some((booking) => overlapsRestAfter(start, end, booking.endsAt, appointmentBufferMinutes))
+        || activeEvents.some((event) => overlapsRestAfter(start, end, event.endsAt, appointmentBufferMinutes));
+}
+
 function buildManualBookingSlots(
     blocks: SpecialistAvailabilityBlock[],
     bookings: SpecialistBooking[],
@@ -2148,6 +2181,13 @@ function buildManualBookingSlots(
 
 function overlaps(firstStart: Date, firstEnd: Date, secondStart: Date, secondEnd: Date) {
     return firstStart < secondEnd && secondStart < firstEnd;
+}
+
+function overlapsRestAfter(firstStart: Date, firstEnd: Date, endsAt: string, appointmentBufferMinutes: number) {
+    const restStart = new Date(endsAt);
+    const restEnd = new Date(restStart);
+    restEnd.setMinutes(restEnd.getMinutes() + appointmentBufferMinutes);
+    return overlaps(firstStart, firstEnd, restStart, restEnd);
 }
 
 function overlapsBuffered(firstStart: Date, firstEnd: Date, startsAt: string, endsAt: string, appointmentBufferMinutes: number) {

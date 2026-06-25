@@ -73,7 +73,7 @@ export default function ButtonComponent({
                 className={resolvedClassName}
                 fallbackHref={withLocale("/auth?mode=login", lang)}
                 href={href}
-                onClick={scrollToTopOnNavigation}
+                onClick={(event) => handleNavigationClick(event, active)}
             >
                 <span key={localeKey} className={styles.labelAnimated}>
                     {text}
@@ -83,7 +83,7 @@ export default function ButtonComponent({
     }
 
     return (
-        <Link aria-current={active ? "page" : undefined} className={resolvedClassName} href={href} onClick={scrollToTopOnNavigation}>
+        <Link aria-current={active ? "page" : undefined} className={resolvedClassName} href={href} onClick={(event) => handleNavigationClick(event, active)}>
             <span key={localeKey} className={styles.labelAnimated}>
                 {text}
             </span>
@@ -106,7 +106,7 @@ function normalizePath(value: string) {
     return value.length > 1 ? value.replace(/\/+$/, "") : value;
 }
 
-function scrollToTopOnNavigation(event: MouseEvent<HTMLAnchorElement>) {
+function handleNavigationClick(event: MouseEvent<HTMLAnchorElement>, active: boolean) {
     if (event.defaultPrevented
         || event.button !== 0
         || event.metaKey
@@ -116,5 +116,23 @@ function scrollToTopOnNavigation(event: MouseEvent<HTMLAnchorElement>) {
         return;
     }
 
+    if (active) {
+        event.preventDefault();
+        scrollToPublicPageContent();
+        return;
+    }
+
     window.scrollTo({top: 0, left: 0, behavior: "auto"});
+}
+
+function scrollToPublicPageContent() {
+    const content = document.getElementById("public-page-content");
+
+    if (!content) {
+        window.scrollTo({top: 0, left: 0, behavior: "smooth"});
+        return;
+    }
+
+    const top = content.getBoundingClientRect().top + window.scrollY - 24;
+    window.scrollTo({top: Math.max(top, 0), left: 0, behavior: "smooth"});
 }

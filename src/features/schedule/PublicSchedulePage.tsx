@@ -18,6 +18,7 @@ import {withLocale} from "@/shared/lib/locale/withLocale";
 import type {Office} from "@/types/offices";
 import type {PublicFixedEvent, PublicScheduleAvailabilityBlock} from "@/types/schedule";
 import type {PublicService} from "@/types/services";
+import PublicContentAutoScroll from "@/components/common/PublicContentAutoScroll";
 
 const savedFiltersKey = "ataraksia.publicScheduleFilters";
 type BookingModeFilter = "all" | "individual" | "events";
@@ -190,7 +191,8 @@ export default function PublicSchedulePage() {
     }
 
     return (
-        <main className="mx-auto w-full max-w-[1440px] space-y-5 overflow-x-clip bg-stone-50 px-3 py-6 sm:px-6 lg:px-8 lg:py-10">
+        <main className="mx-auto w-full max-w-[1440px] space-y-5 overflow-x-clip bg-stone-50 px-3 py-6 sm:px-6 lg:px-8 lg:py-10" id="public-page-content">
+            <PublicContentAutoScroll targetId="public-page-content" />
             <header className="mx-auto w-full max-w-[1040px] pb-1 lg:w-[72vw] xl:w-[58vw]">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">{copy.eyebrow}</p>
                 <h1 className="mt-2 text-2xl font-semibold tracking-tight text-stone-950 sm:text-3xl">{copy.title}</h1>

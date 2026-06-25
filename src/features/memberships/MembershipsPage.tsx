@@ -5,6 +5,7 @@ import {useLocale, useTranslations} from "next-intl";
 import {useState} from "react";
 import type {Locale} from "@/i18n";
 import {withLocale} from "@/shared/lib/locale/withLocale";
+import PublicContentAutoScroll from "@/components/common/PublicContentAutoScroll";
 
 type OfferKind = "membership" | "certificate";
 
@@ -51,7 +52,8 @@ export default function MembershipsPage() {
     const contactHref = `${withLocale("/contact", locale)}?intent=membership`;
 
     return (
-        <main className="min-h-screen bg-stone-50">
+        <main className="min-h-screen bg-stone-50" id="public-page-content">
+            <PublicContentAutoScroll targetId="public-page-content" />
             <section className="border-b border-stone-200 bg-white">
                 <div className="mx-auto grid w-full max-w-[1180px] gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:px-8">
                     <div className="min-w-0">

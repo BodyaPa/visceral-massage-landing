@@ -11,6 +11,7 @@ import styles from "./NewsComponent.module.scss";
 import {useListNewsQuery} from "@/features/news/news.api";
 import {getCurrentUser, hasRole} from "@/features/auth/auth.client";
 import AuthenticatedLink from "@/features/auth/AuthenticatedLink";
+import PublicContentAutoScroll from "@/components/common/PublicContentAutoScroll";
 
 function TextPreview({content}: { content: string }) {
     const excerpt = content
@@ -52,7 +53,8 @@ export default function NewsList() {
 
     if (isLoading) {
         return (
-            <div ref={contentRef} className={styles.content}>
+            <div ref={contentRef} className={styles.content} id="public-page-content">
+                <PublicContentAutoScroll targetId="public-page-content" />
                 <div className={styles.newsBlock}>
                     {Array.from({length: 6}).map((_, index) => (
                         <div key={index} className={`${styles.newsCard} ${styles.textCard} ${styles.newsCardSkeleton}`}>
@@ -68,7 +70,8 @@ export default function NewsList() {
     }
 
     return (
-        <div ref={contentRef} className={styles.content}>
+        <div ref={contentRef} className={styles.content} id="public-page-content">
+            <PublicContentAutoScroll targetId="public-page-content" />
             <div className={styles.newsLayout}>
                 <header className={styles.newsHeader}>
                     <div className={styles.newsHeaderText}>

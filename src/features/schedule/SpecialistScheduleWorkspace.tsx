@@ -848,6 +848,8 @@ function CalendarFilters({
     onReset: () => void;
     services: PublicService[];
 }) {
+    const activeChips = activeCalendarFilterChips(filters, offices, services, copy);
+
     return (
         <div className="border-b border-stone-200 bg-white px-4 py-3">
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
@@ -893,8 +895,59 @@ function CalendarFilters({
                     </button>
                 </div>
             </div>
+            {activeChips.length > 0 ? (
+                <div className="mt-3 flex min-w-0 flex-wrap gap-1.5">
+                    {activeChips.map((chip) => (
+                        <span className="max-w-full break-words rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700" key={chip}>{chip}</span>
+                    ))}
+                </div>
+            ) : null}
         </div>
     );
+}
+
+function activeCalendarFilterChips(
+    filters: CalendarFilterState,
+    offices: Array<{id: number; name: string}>,
+    services: PublicService[],
+    copy: ReturnType<typeof scheduleCopy>
+) {
+    const chips: string[] = [];
+    if (filters.officeId !== "") {
+        chips.push(offices.find((office) => office.id === filters.officeId)?.name ?? copy.office);
+    }
+    if (filters.serviceId !== "") {
+        chips.push(services.find((service) => service.id === filters.serviceId)?.title ?? copy.serviceFilter);
+    }
+    if (filters.itemType !== "all") {
+        chips.push(calendarItemFilterLabel(filters.itemType, copy));
+    }
+    if (filters.status !== "all") {
+        chips.push(calendarStatusFilterLabel(filters.status, copy));
+    }
+    return chips;
+}
+
+function calendarItemFilterLabel(value: CalendarFilterState["itemType"], copy: ReturnType<typeof scheduleCopy>) {
+    if (value === "APPOINTMENT_SLOT") return copy.appointmentSlot;
+    if (value === "OPEN_RANGE") return copy.openRange;
+    if (value === "BLOCK") return copy.blocksTitle;
+    if (value === "FIXED_EVENT") return copy.eventsTitle;
+    if (value === "BOOKING") return copy.bookingsTitle;
+    if (value === "BUFFER") return copy.buffer;
+    return copy.allItems;
+}
+
+function calendarStatusFilterLabel(value: CalendarFilterState["status"], copy: ReturnType<typeof scheduleCopy>) {
+    if (value === "AVAILABLE") return copy.statusAvailable;
+    if (value === "BLOCKED") return copy.statusBlocked;
+    if (value === "AWAITING_PAYMENT_CONFIRMATION") return copy.statusAwaitingPayment;
+    if (value === "CONFIRMED") return copy.statusConfirmed;
+    if (value === "CANCELLED") return copy.statusCancelled;
+    if (value === "PAST") return copy.statusPast;
+    if (value === "ACTIVE_EVENT") return copy.statusActiveEvent;
+    if (value === "INACTIVE_EVENT") return copy.statusInactiveEvent;
+    return copy.allStatuses;
 }
 
 function CompactSelect({children, label}: {children: ReactNode; label: string}) {

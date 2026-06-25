@@ -213,8 +213,8 @@ function OfficeDetails({address, copy, directions, googleMapsUrl, photoUrl, vide
     }
 
     return (
-        <div className="mt-3 border-t border-stone-200 pt-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{copy.officeDetails}</p>
+        <details className="mt-3 rounded-lg border border-stone-200 bg-white px-3 py-2">
+            <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-stone-500">{copy.officeDetails}</summary>
             <dl className="mt-2 space-y-1.5 text-xs leading-5">
                 {rows.map((row) => (
                     <div className="grid min-w-0 gap-0.5 sm:grid-cols-[96px_minmax(0,1fr)] sm:gap-2" key={row.label}>
@@ -235,7 +235,7 @@ function OfficeDetails({address, copy, directions, googleMapsUrl, photoUrl, vide
                     {googleMapsUrl ? <a className="rounded-md border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50" href={googleMapsUrl} rel="noreferrer" target="_blank">{copy.officeMap}</a> : null}
                 </div>
             ) : null}
-        </div>
+        </details>
     );
 }
 

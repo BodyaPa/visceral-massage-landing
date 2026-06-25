@@ -617,7 +617,19 @@ function GuidedBookingFlow({
                                 {copy.showMore}
                             </button>
                         ) : null}
-                        {selectedDayItems.length === 0 && visibleDays.length > 0 ? <p className="ataraksia-booking-enter rounded-xl border border-dashed border-stone-300 bg-white px-4 py-5 text-sm text-stone-500">{copy.selectedDayEmpty}</p> : null}
+                        {selectedDayItems.length === 0 && visibleDays.length > 0 ? (
+                            <div className="ataraksia-booking-enter rounded-xl border border-dashed border-stone-300 bg-white px-4 py-5 text-sm text-stone-500">
+                                <p>{copy.selectedDayEmpty}</p>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {nearestDay ? (
+                                        <button className={compactButtonClass} onClick={() => onChooseDate(nearestDay.date)} type="button">
+                                            {copy.nearestAvailable(formatDate(nearestDay.date.toISOString(), locale))}
+                                        </button>
+                                    ) : null}
+                                    <button className={compactButtonClass} onClick={onResetFilters} type="button">{copy.resetFilters}</button>
+                                </div>
+                            </div>
+                        ) : null}
                     </div>
                 </div>
             </div>

@@ -4,7 +4,7 @@
   border-radius: 999px;
   background: transparent;
   cursor: pointer;
-  color: #44403c;
+  color: inherit;
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
   font-family: "Times New Roman", Times, serif;
   font-weight: bold;
@@ -19,19 +19,45 @@
   text-decoration: none;
 }
 
-.defaultStyle:hover {
-  border-color: rgba(120, 113, 108, 0.35);
-  background: rgba(255, 255, 255, 0.86);
-  color: #1c1917;
-  box-shadow: 0 8px 20px rgba(28, 25, 23, 0.12);
+.heroNavStyle {
+  color: rgba(255, 255, 255, 0.88);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.28);
+}
+
+.heroNavStyle:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
+}
+
+.stickyNavStyle {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.stickyNavStyle:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  box-shadow: none;
 }
 
 .activeStyle,
-.activeStyle:hover {
-  border-color: rgba(28, 25, 23, 0.92);
-  background: #1c1917;
-  color: #fff;
-  box-shadow: 0 10px 24px rgba(28, 25, 23, 0.22);
+.heroNavStyle.activeStyle,
+.heroNavStyle.activeStyle:hover {
+  border-color: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.92);
+  color: #1c1917;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+  text-shadow: none;
+}
+
+.stickyNavStyle.activeStyle,
+.stickyNavStyle.activeStyle:hover {
+  border-color: rgba(255, 255, 255, 0.82);
+  background: #fff;
+  color: #1c1917;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
 }
 
 .labelAnimated {

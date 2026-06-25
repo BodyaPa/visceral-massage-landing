@@ -167,7 +167,7 @@ export default function HeaderComponent() {
                                 text={b.text}
                                 url={b.url}
                                 localeKey={locale}
-                                styleName={b.styleName}
+                                styleName={stuck ? "stickyNavStyle" : "heroNavStyle"}
                             />
                         ))}
                     </div>

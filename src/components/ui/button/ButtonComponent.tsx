@@ -6,6 +6,7 @@ import styles from './ButtonStyles.module.scss';
 import {withLocale} from '@/shared/lib/locale/withLocale';
 import type {Locale} from '@/i18n';
 import AuthenticatedLink from '@/features/auth/AuthenticatedLink';
+import type {MouseEvent} from 'react';
 
 type ButtonProps = {
     text: string;
@@ -51,9 +52,9 @@ export default function ButtonComponent({
     const lang = params.lang as Locale;
 
     const href = resolveHref(url, lang);
-    const className = styleName ? styles[styleName] : styles.defaultStyle;
+    const variantClassName = styleName && styles[styleName] ? styles[styleName] : styles.defaultStyle;
     const active = href ? isActivePath(pathname, href) : false;
-    const resolvedClassName = active ? `${className} ${styles.activeStyle}` : className;
+    const resolvedClassName = active ? `${styles.defaultStyle} ${variantClassName} ${styles.activeStyle}` : `${styles.defaultStyle} ${variantClassName}`;
 
     if (!href) {
         return (
@@ -72,6 +73,7 @@ export default function ButtonComponent({
                 className={resolvedClassName}
                 fallbackHref={withLocale("/auth?mode=login", lang)}
                 href={href}
+                onClick={scrollToTopOnNavigation}
             >
                 <span key={localeKey} className={styles.labelAnimated}>
                     {text}
@@ -81,7 +83,7 @@ export default function ButtonComponent({
     }
 
     return (
-        <Link aria-current={active ? "page" : undefined} className={resolvedClassName} href={href}>
+        <Link aria-current={active ? "page" : undefined} className={resolvedClassName} href={href} onClick={scrollToTopOnNavigation}>
             <span key={localeKey} className={styles.labelAnimated}>
                 {text}
             </span>
@@ -90,9 +92,29 @@ export default function ButtonComponent({
 }
 
 function isActivePath(pathname: string, href: string) {
-    if (href === "/" || href.endsWith("/ua") || href.endsWith("/en")) {
-        return pathname === href;
+    const normalizedPathname = normalizePath(pathname);
+    const normalizedHref = normalizePath(href);
+
+    if (normalizedHref === "/ua" || normalizedHref === "/en") {
+        return normalizedPathname === normalizedHref;
     }
 
-    return pathname === href || pathname.startsWith(`${href}/`);
+    return normalizedPathname === normalizedHref || normalizedPathname.startsWith(`${normalizedHref}/`);
+}
+
+function normalizePath(value: string) {
+    return value.length > 1 ? value.replace(/\/+$/, "") : value;
+}
+
+function scrollToTopOnNavigation(event: MouseEvent<HTMLAnchorElement>) {
+    if (event.defaultPrevented
+        || event.button !== 0
+        || event.metaKey
+        || event.ctrlKey
+        || event.shiftKey
+        || event.altKey) {
+        return;
+    }
+
+    window.scrollTo({top: 0, left: 0, behavior: "auto"});
 }

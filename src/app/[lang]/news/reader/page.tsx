@@ -1,18 +1,15 @@
 "use client";
 
-import {Suspense, useCallback, useRef} from "react";
+import {Suspense} from "react";
 import {useParams, useSearchParams} from "next/navigation";
 import {useGetNewsQuery} from "@/features/news/news.api";
 import type {Locale} from "@/i18n";
 import Markdown, {defaultUrlTransform} from "react-markdown";
 import remarkGfm from "remark-gfm";
 import styles from "./reader.module.scss";
-import {useSmartAutoScroll} from "@/shared/lib/scroll/useSmartAutoScroll";
 import {resolvePublishedMediaUrl} from "@/features/news/newsMedia";
 
 function NewsReaderContent() {
-    const contentRef = useRef<HTMLDivElement | null>(null);
-    const cardRef = useRef<HTMLElement | null>(null);
     const params = useParams();
     const lang = params.lang as Locale;
 
@@ -24,26 +21,12 @@ function NewsReaderContent() {
     const coverImageUrl = data?.coverImageUrl ?? null;
     const fitCover = data?.coverDisplayMode === "FIT";
 
-    const scrollToCard = useCallback(() => {
-        const el = cardRef.current;
-        if (!el) return;
-
-        const top = el.getBoundingClientRect().top + window.scrollY;
-        window.scrollTo({top, behavior: "smooth"});
-    }, []);
-
-    useSmartAutoScroll({
-        enabled: id !== null && !isLoading,
-        triggerKey: `${id ?? "none"}:${isLoading}`,
-        action: scrollToCard
-    });
-
-    if (id === null) return <div className={styles.content} />;
+    if (id === null) return <div className={styles.content} id="public-page-content" data-route-scroll-target />;
 
     if (isLoading) {
         return (
-            <div ref={contentRef} className={styles.content}>
-                <article ref={cardRef} className={styles.card}>
+            <div className={styles.content} id="public-page-content" data-route-scroll-target>
+                <article className={styles.card}>
                     <div className={styles.articleBody}>
                         <div className={styles.skeletonTitle} />
                         <div className={styles.skeletonLine} />
@@ -59,8 +42,8 @@ function NewsReaderContent() {
     const markdown = data?.content ?? "";
 
     return (
-        <div ref={contentRef} className={styles.content}>
-            <article ref={cardRef} className={styles.card}>
+        <div className={styles.content} id="public-page-content" data-route-scroll-target>
+            <article className={styles.card}>
                 {coverImageUrl ? (
                     <div className={`${styles.hero} ${fitCover ? styles.fitHero : styles.fillHero}`}>
                         {fitCover ? (
@@ -108,7 +91,7 @@ function NewsReaderContent() {
 
 export default function NewsReaderPage() {
     return (
-        <Suspense fallback={<div className={styles.content} />}>
+        <Suspense fallback={<div className={styles.content} id="public-page-content" data-route-scroll-target />}>
             <NewsReaderContent />
         </Suspense>
     );

@@ -1,26 +1,37 @@
 .defaultStyle {
-  margin: 10px;
-  border: none;
-  background: none;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
   cursor: pointer;
-  color: white;
-  transition: color 0.3s ease;
+  color: #44403c;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
   font-family: "Times New Roman", Times, serif;
   font-weight: bold;
   font-size: 1rem;
 
-  min-width: 110px;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 0.55rem 0.9rem;
   white-space: nowrap;
   text-decoration: none;
 }
 
 .defaultStyle:hover {
-  color: gray;
-  text-decoration: underline;
-  text-decoration-color: #515151;
+  border-color: rgba(120, 113, 108, 0.35);
+  background: rgba(255, 255, 255, 0.86);
+  color: #1c1917;
+  box-shadow: 0 8px 20px rgba(28, 25, 23, 0.12);
+}
+
+.activeStyle,
+.activeStyle:hover {
+  border-color: rgba(28, 25, 23, 0.92);
+  background: #1c1917;
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(28, 25, 23, 0.22);
 }
 
 .labelAnimated {

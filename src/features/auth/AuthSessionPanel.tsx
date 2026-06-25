@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect, useRef, useState} from "react";
-import {useRouter} from "next/navigation";
+import {usePathname, useRouter} from "next/navigation";
 import {useLocale, useTranslations} from "next-intl";
 import type {Locale} from "@/i18n";
 import {withLocale} from "@/shared/lib/locale/withLocale";
@@ -24,6 +24,7 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
     const locale = useLocale() as Locale;
     const t = useTranslations("nav");
     const router = useRouter();
+    const pathname = usePathname();
     const toast = useToast();
     const [submitting, setSubmitting] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
@@ -31,6 +32,10 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
     const displayName = user
         ? [user.firstName, user.lastName].filter(Boolean).join(" ") || t("account")
         : "";
+    const accountHref = withLocale("/account", locale);
+    const adminHref = withLocale("/admin", locale);
+    const accountActive = isActivePath(pathname, accountHref);
+    const adminActive = isActivePath(pathname, adminHref);
 
     useEffect(() => {
         function closeOnOutsideClick(event: MouseEvent) {
@@ -97,9 +102,10 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
             {menuOpen ? (
                 <div className={styles.accountDropdown} role="menu">
                     <AuthenticatedLink
-                        className={styles.accountMenuLink}
+                        aria-current={accountActive ? "page" : undefined}
+                        className={`${styles.accountMenuLink} ${accountActive ? styles.accountMenuLinkActive : ""}`}
                         fallbackHref={withLocale("/auth?mode=login", locale)}
-                        href={withLocale("/account", locale)}
+                        href={accountHref}
                         onSessionExpired={onLogout}
                         role="menuitem"
                     >
@@ -107,9 +113,10 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
                     </AuthenticatedLink>
                     {hasAdministrationSection(user) ? (
                         <AuthenticatedLink
-                            className={styles.accountMenuLink}
+                            aria-current={adminActive ? "page" : undefined}
+                            className={`${styles.accountMenuLink} ${adminActive ? styles.accountMenuLinkActive : ""}`}
                             fallbackHref={withLocale("/auth?mode=login", locale)}
-                            href={withLocale("/admin", locale)}
+                            href={adminHref}
                             onSessionExpired={onLogout}
                             role="menuitem"
                         >
@@ -129,4 +136,8 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
             ) : null}
         </div>
     );
+}
+
+function isActivePath(pathname: string, href: string) {
+    return pathname === href || pathname.startsWith(`${href}/`);
 }

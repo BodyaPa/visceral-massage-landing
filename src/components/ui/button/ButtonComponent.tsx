@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import {useParams} from 'next/navigation';
+import {useParams, usePathname} from 'next/navigation';
 import styles from './ButtonStyles.module.scss';
 import {withLocale} from '@/shared/lib/locale/withLocale';
 import type {Locale} from '@/i18n';
@@ -47,14 +47,17 @@ export default function ButtonComponent({
                                             localeKey
                                         }: ButtonProps) {
     const params = useParams();
+    const pathname = usePathname();
     const lang = params.lang as Locale;
 
     const href = resolveHref(url, lang);
     const className = styleName ? styles[styleName] : styles.defaultStyle;
+    const active = href ? isActivePath(pathname, href) : false;
+    const resolvedClassName = active ? `${className} ${styles.activeStyle}` : className;
 
     if (!href) {
         return (
-            <button type="button" className={className}>
+            <button type="button" className={resolvedClassName}>
                 <span key={localeKey} className={styles.labelAnimated}>
                     {text}
                 </span>
@@ -65,7 +68,8 @@ export default function ButtonComponent({
     if (isProtectedInternalPath(url)) {
         return (
             <AuthenticatedLink
-                className={className}
+                aria-current={active ? "page" : undefined}
+                className={resolvedClassName}
                 fallbackHref={withLocale("/auth?mode=login", lang)}
                 href={href}
             >
@@ -77,10 +81,18 @@ export default function ButtonComponent({
     }
 
     return (
-        <Link className={className} href={href}>
+        <Link aria-current={active ? "page" : undefined} className={resolvedClassName} href={href}>
             <span key={localeKey} className={styles.labelAnimated}>
                 {text}
             </span>
         </Link>
     );
+}
+
+function isActivePath(pathname: string, href: string) {
+    if (href === "/" || href.endsWith("/ua") || href.endsWith("/en")) {
+        return pathname === href;
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`);
 }

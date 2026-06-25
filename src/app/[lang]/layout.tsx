@@ -11,6 +11,7 @@ import type {Metadata} from "next";
 import {toLanguageTag} from '@/shared/lib/i18n/toLanguageTag';
 import {getAlternates} from "@/shared/lib/seo/getAlternates";
 import {ToastProvider} from "@/components/ui/toast/ToastProvider";
+import RouteScrollReset from "@/components/layout/RouteScrollReset";
 
 type Props = {
     children: ReactNode;
@@ -61,6 +62,7 @@ export default async function LocaleLayout({
         <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
             <ToastProvider>
+                <RouteScrollReset />
                 <HeaderComponent />
                 <Providers>{children}</Providers>
                 <FooterComponent />

@@ -9,6 +9,7 @@ import AuthSessionPanel from "@/features/auth/AuthSessionPanel";
 import Link from "next/link";
 import ManagementNavigation from "@/components/management/ManagementNavigation";
 import AnimatedManagementContent from "@/components/management/AnimatedManagementContent";
+import ManagementScrollReset from "@/components/management/ManagementScrollReset";
 import {hasRole} from "@/features/auth/auth.roles";
 
 type Props = {
@@ -25,7 +26,8 @@ export default async function AdminLayout({children, params}: Props) {
     const t = await getTranslations({locale, namespace: "admin"});
 
     return (
-        <main className="fixed inset-0 z-[5] overflow-y-auto overflow-x-clip p-2 sm:p-5">
+        <main className="fixed inset-0 z-[5] overflow-y-auto overflow-x-clip p-2 sm:p-5" data-management-scroll>
+            <ManagementScrollReset />
             <section className="management-workspace mx-auto flex min-h-[calc(100vh-1rem)] w-full max-w-[1680px] flex-col rounded-2xl border border-stone-200/80 bg-stone-50/95 shadow-2xl backdrop-blur-sm sm:min-h-[calc(100vh-2.5rem)]">
                 <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-stone-200 px-3 py-3 sm:gap-4 sm:px-6 sm:py-4">
                     <Link

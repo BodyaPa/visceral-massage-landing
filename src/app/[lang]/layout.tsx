@@ -58,7 +58,7 @@ export default async function LocaleLayout({
     const messages = await getMessages();
 
     return (
-        <html lang={toLanguageTag(locale)}>
+        <html lang={toLanguageTag(locale)} suppressHydrationWarning>
         <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
             <ToastProvider>

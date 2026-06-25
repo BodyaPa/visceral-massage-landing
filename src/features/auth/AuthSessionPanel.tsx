@@ -11,6 +11,7 @@ import {logout, type AuthenticatedUser} from "./auth.client";
 import {hasAdministrationSection} from "./auth.roles";
 import AuthenticatedLink from "./AuthenticatedLink";
 import Link from "next/link";
+import {API_URL} from "@/shared/constants/env";
 
 type Props = {
     user: AuthenticatedUser | null;
@@ -96,7 +97,15 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
                 onClick={() => setMenuOpen((current) => !current)}
                 type="button"
             >
-                <span className={styles.accountText}>{displayName}</span>
+                {user.avatarMediaUrl ? (
+                    <span
+                        aria-label={displayName}
+                        className={styles.accountAvatar}
+                        style={{backgroundImage: `url(${resolveApiMediaUrl(user.avatarMediaUrl)})`}}
+                    />
+                ) : (
+                    <span className={styles.accountText}>{displayName}</span>
+                )}
                 <span aria-hidden="true" className={`${styles.accountChevron} ${menuOpen ? styles.isOpen : ""}`} />
             </button>
             {menuOpen ? (
@@ -140,4 +149,8 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
 
 function isActivePath(pathname: string, href: string) {
     return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function resolveApiMediaUrl(path: string) {
+    return path.startsWith("/api/") ? `${API_URL}${path}` : path;
 }

@@ -2,7 +2,7 @@
 
 import {useRouter} from "next/navigation";
 import {useTranslations} from "next-intl";
-import {useRef, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import AccountProfileForm from "@/features/account/AccountProfileForm";
 import {API_URL} from "@/shared/constants/env";
@@ -26,14 +26,42 @@ export default function AccountProfilePanel({contactValue, dateOfBirth, displayN
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [editing, setEditing] = useState(false);
     const [avatarUrl, setAvatarUrl] = useState(user.avatarMediaUrl);
+    const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+    const [pendingAvatarPreview, setPendingAvatarPreview] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
 
-    async function onFileChange(file: File | undefined) {
+    useEffect(() => {
+        return () => {
+            if (pendingAvatarPreview) {
+                URL.revokeObjectURL(pendingAvatarPreview);
+            }
+        };
+    }, [pendingAvatarPreview]);
+
+    function onFileChange(file: File | undefined) {
         if (!file) return;
+
+        if (pendingAvatarPreview) {
+            URL.revokeObjectURL(pendingAvatarPreview);
+        }
+
+        setPendingAvatarFile(file);
+        setPendingAvatarPreview(URL.createObjectURL(file));
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+
+    async function saveAvatar() {
+        if (!pendingAvatarFile) return;
+
         setIsUploading(true);
         try {
-            const updated = await uploadAvatar(file);
+            const updated = await uploadAvatar(pendingAvatarFile);
             setAvatarUrl(updated.avatarMediaUrl);
+            setPendingAvatarFile(null);
+            if (pendingAvatarPreview) {
+                URL.revokeObjectURL(pendingAvatarPreview);
+                setPendingAvatarPreview(null);
+            }
             toast.success(t("avatarSaved"));
             router.refresh();
         } catch (error) {
@@ -43,15 +71,23 @@ export default function AccountProfilePanel({contactValue, dateOfBirth, displayN
             toast.error(message);
         } finally {
             setIsUploading(false);
-            if (fileInputRef.current) fileInputRef.current.value = "";
         }
+    }
+
+    function cancelAvatarPreview() {
+        if (pendingAvatarPreview) {
+            URL.revokeObjectURL(pendingAvatarPreview);
+        }
+        setPendingAvatarFile(null);
+        setPendingAvatarPreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
     }
 
     return (
         <section className="rounded-xl border border-stone-200 bg-stone-50 p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex min-w-0 items-start gap-3">
-                    <ProfileAvatar name={displayName} url={avatarUrl} />
+                    <ProfileAvatar name={displayName} url={pendingAvatarPreview ?? avatarUrl} />
                     <div className="min-w-0">
                         <p className="text-sm font-medium text-stone-500">{t("title")}</p>
                         <p className="mt-2 break-words text-xl font-semibold text-stone-950">{displayName}</p>
@@ -80,7 +116,7 @@ export default function AccountProfilePanel({contactValue, dateOfBirth, displayN
                                 <input
                                     accept="image/jpeg,image/png,image/webp"
                                     className="sr-only"
-                                    onChange={(event) => void onFileChange(event.target.files?.[0])}
+                                    onChange={(event) => onFileChange(event.target.files?.[0])}
                                     ref={fileInputRef}
                                     type="file"
                                 />
@@ -90,8 +126,28 @@ export default function AccountProfilePanel({contactValue, dateOfBirth, displayN
                                     onClick={() => fileInputRef.current?.click()}
                                     type="button"
                                 >
-                                    {isUploading ? t("uploading") : t("upload")}
+                                    {pendingAvatarFile ? t("chooseAnotherAvatar") : t("upload")}
                                 </button>
+                                {pendingAvatarFile ? (
+                                    <>
+                                        <button
+                                            className="w-fit rounded-lg bg-stone-900 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300"
+                                            disabled={isUploading}
+                                            onClick={() => void saveAvatar()}
+                                            type="button"
+                                        >
+                                            {isUploading ? t("uploading") : t("saveAvatar")}
+                                        </button>
+                                        <button
+                                            className="w-fit rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:text-stone-400"
+                                            disabled={isUploading}
+                                            onClick={cancelAvatarPreview}
+                                            type="button"
+                                        >
+                                            {t("cancelAvatar")}
+                                        </button>
+                                    </>
+                                ) : null}
                             </div>
                         </div>
                     </div>

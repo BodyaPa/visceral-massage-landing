@@ -259,7 +259,7 @@
     "phone": "Phone",
     "email": "Email",
     "dateOfBirth": "Date of birth",
-    "profilePanel": {"title": "Profile", "edit": "Edit", "closeEdit": "Close editing", "birthDate": "Date of birth: {date}", "avatarTitle": "Profile icon", "avatarHint": "Upload a square JPEG, PNG, or WebP image. Recommended 512x512 px or larger.", "upload": "Change icon", "uploading": "Uploading...", "avatarSaved": "Profile icon updated.", "avatarError": "Unable to update profile icon."},
+    "profilePanel": {"title": "Profile", "edit": "Edit", "closeEdit": "Close editing", "birthDate": "Date of birth: {date}", "avatarTitle": "Profile icon", "avatarHint": "Choose a square JPEG, PNG, or WebP image. The file uploads only after you save it.", "upload": "Choose icon", "chooseAnotherAvatar": "Choose another", "saveAvatar": "Save icon", "cancelAvatar": "Cancel", "uploading": "Uploading...", "avatarSaved": "Profile icon updated.", "avatarError": "Unable to update profile icon."},
     "profileForm": {"title": "Edit profile", "body": "Update your first name, last name, and date of birth.", "firstName": "First name", "lastName": "Last name", "dateOfBirth": "Date of birth", "save": "Save profile", "saving": "Saving...", "saved": "Profile updated.", "saveError": "Unable to update profile.", "contactHint": "Phone and email changes will be handled separately through contact verification."},
     "rolesSection": "Roles",
     "rolesHint": "Roles are shown for reference only. Role management is available in a separate section for users with permission.",

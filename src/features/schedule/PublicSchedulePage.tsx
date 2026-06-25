@@ -340,9 +340,9 @@ function ChoiceFilterTrigger({
 
 function AnimatedFilterPanel({children, open}: {children: ReactNode; open: boolean}) {
     return (
-        <div className={open ? "grid grid-rows-[1fr] opacity-100 transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none" : "grid grid-rows-[0fr] opacity-0 transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none"}>
+        <div className={open ? "grid grid-rows-[1fr] opacity-100 transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none" : "grid grid-rows-[0fr] opacity-0 transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none"}>
             <div className="min-h-0 overflow-hidden">
-                <div className="rounded-xl border border-stone-200 bg-white p-3 shadow-sm">
+                <div className={open ? "rounded-xl border border-stone-200 bg-white p-3 shadow-sm transition-transform duration-300 ease-out motion-reduce:transition-none" : "translate-y-[-0.25rem] rounded-xl border border-stone-200 bg-white p-3 shadow-sm transition-transform duration-300 ease-out motion-reduce:transition-none"}>
                     {children}
                 </div>
             </div>
@@ -478,7 +478,7 @@ function GuidedBookingFlow({
                             {openSection === "office" ? (
                                 <>
                                     <p className="text-xs leading-5 text-stone-500">{copy.chooseOfficeHint}</p>
-                                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                    <div className="ataraksia-booking-enter mt-2 grid gap-2 sm:grid-cols-2">
                                         <button className={filters.officeId === "" ? "w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full rounded-xl border border-stone-200 bg-white p-3 text-left transition-colors hover:border-stone-400"} onClick={() => onChooseOffice("")} type="button">
                                             <span className="block text-sm font-semibold">{copy.allOffices}</span>
                                             <span className={filters.officeId === "" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.allOfficesHint}</span>
@@ -497,7 +497,7 @@ function GuidedBookingFlow({
                             {openSection === "specialist" ? (
                                 <>
                                     <p className="text-xs leading-5 text-stone-500">{copy.chooseSpecialistHint}</p>
-                                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                    <div className="ataraksia-booking-enter mt-2 grid gap-2 sm:grid-cols-2">
                                         <button className={filters.specialistId === "" ? "w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full rounded-xl border border-stone-200 bg-white p-3 text-left transition-colors hover:border-stone-400"} onClick={() => onChooseSpecialist("")} type="button">
                                             <span className="block text-sm font-semibold">{copy.allSpecialists}</span>
                                             <span className={filters.specialistId === "" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.allSpecialistsHint}</span>

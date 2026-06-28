@@ -1,6 +1,7 @@
 import type {Metadata} from "next";
 import {getTranslations} from "next-intl/server";
-import {localizedSetting, getPublicSiteSettings} from "@/features/siteSettings/siteSettings.server";
+import PublicCmsPageContent from "@/features/siteSettings/PublicCmsPageContent";
+import {heroMediaUrls, localizedSetting, getPublicSiteSettings} from "@/features/siteSettings/siteSettings.server";
 import {getAlternates} from "@/shared/lib/seo/getAlternates";
 import type {Locale} from "@/i18n";
 
@@ -33,7 +34,7 @@ export default async function ContactPage({params}: Props) {
         namespace: "contact.page"
     });
     const settings = await getPublicSiteSettings();
-    const body = localizedSetting(settings, locale, "contactBody") ?? t("subtitle");
+    const body = localizedSetting(settings, locale, "contactBody");
     const details = [
         {title: t("detail1Title"), body: t("detail1Body")},
         {title: t("detail2Title"), body: t("detail2Body")},
@@ -45,17 +46,10 @@ export default async function ContactPage({params}: Props) {
             <section className="max-w-3xl space-y-4">
                 <h1 className="text-3xl font-bold">{t("title")}</h1>
                 <p className="whitespace-pre-line text-base text-muted-foreground">
-                    {body}
+                    {t("subtitle")}
                 </p>
             </section>
-            <section className="mt-8 grid max-w-5xl gap-3 md:grid-cols-3">
-                {details.map((item) => (
-                    <article className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm" key={item.title}>
-                        <h2 className="text-base font-semibold text-stone-950">{item.title}</h2>
-                        <p className="mt-2 text-sm leading-6 text-stone-600">{item.body}</p>
-                    </article>
-                ))}
-            </section>
+            <PublicCmsPageContent body={body} details={details} heroUrls={heroMediaUrls(settings)} />
         </main>
     );
 }

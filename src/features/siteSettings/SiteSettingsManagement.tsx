@@ -13,10 +13,13 @@ const emptyForm: SiteSettingsInput = {
     footerBodyEn: "",
     homeIntroUa: "",
     homeIntroEn: "",
+    homeBodyUa: "",
+    homeBodyEn: "",
     aboutBodyUa: "",
     aboutBodyEn: "",
     contactBodyUa: "",
-    contactBodyEn: ""
+    contactBodyEn: "",
+    heroMediaUrls: ""
 };
 
 export default function SiteSettingsManagement() {
@@ -33,10 +36,13 @@ export default function SiteSettingsManagement() {
             footerBodyEn: data.footerBodyEn ?? "",
             homeIntroUa: data.homeIntroUa ?? "",
             homeIntroEn: data.homeIntroEn ?? "",
+            homeBodyUa: data.homeBodyUa ?? "",
+            homeBodyEn: data.homeBodyEn ?? "",
             aboutBodyUa: data.aboutBodyUa ?? "",
             aboutBodyEn: data.aboutBodyEn ?? "",
             contactBodyUa: data.contactBodyUa ?? "",
-            contactBodyEn: data.contactBodyEn ?? ""
+            contactBodyEn: data.contactBodyEn ?? "",
+            heroMediaUrls: data.heroMediaUrls ?? ""
         });
     }, [data]);
 
@@ -72,6 +78,8 @@ export default function SiteSettingsManagement() {
                 <SettingsPanel title={t("homeTitle")} hint={t("homeHint")}>
                     <TextArea label={t("ua")} value={form.homeIntroUa ?? ""} onChange={(value) => updateField("homeIntroUa", value)} />
                     <TextArea label={t("en")} value={form.homeIntroEn ?? ""} onChange={(value) => updateField("homeIntroEn", value)} />
+                    <TextArea label={t("uaBody")} maxLength={12000} minHeight="min-h-44" value={form.homeBodyUa ?? ""} onChange={(value) => updateField("homeBodyUa", value)} />
+                    <TextArea label={t("enBody")} maxLength={12000} minHeight="min-h-44" value={form.homeBodyEn ?? ""} onChange={(value) => updateField("homeBodyEn", value)} />
                 </SettingsPanel>
                 <SettingsPanel title={t("aboutTitle")} hint={t("aboutHint")}>
                     <TextArea label={t("ua")} value={form.aboutBodyUa ?? ""} onChange={(value) => updateField("aboutBodyUa", value)} />
@@ -80,6 +88,9 @@ export default function SiteSettingsManagement() {
                 <SettingsPanel title={t("contactTitle")} hint={t("contactHint")}>
                     <TextArea label={t("ua")} value={form.contactBodyUa ?? ""} onChange={(value) => updateField("contactBodyUa", value)} />
                     <TextArea label={t("en")} value={form.contactBodyEn ?? ""} onChange={(value) => updateField("contactBodyEn", value)} />
+                </SettingsPanel>
+                <SettingsPanel title={t("heroMediaTitle")} hint={t("heroMediaHint")}>
+                    <TextArea label={t("heroMediaUrls")} value={form.heroMediaUrls ?? ""} onChange={(value) => updateField("heroMediaUrls", value)} />
                 </SettingsPanel>
             </div>
 
@@ -102,11 +113,11 @@ function SettingsPanel({children, hint, title}: {children: ReactNode; hint: stri
     );
 }
 
-function TextArea({label, onChange, value}: {label: string; onChange: (value: string) => void; value: string}) {
+function TextArea({label, maxLength = 4000, minHeight = "min-h-28", onChange, value}: {label: string; maxLength?: number; minHeight?: string; onChange: (value: string) => void; value: string}) {
     return (
         <label className="block min-w-0">
             <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-stone-500">{label}</span>
-            <textarea className="min-h-28 w-full resize-y rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none transition-colors focus:border-stone-800" maxLength={4000} onChange={(event) => onChange(event.target.value)} value={value} />
+            <textarea className={`${minHeight} w-full resize-y rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none transition-colors focus:border-stone-800`} maxLength={maxLength} onChange={(event) => onChange(event.target.value)} value={value} />
         </label>
     );
 }

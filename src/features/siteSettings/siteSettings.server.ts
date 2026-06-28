@@ -15,7 +15,7 @@ export async function getPublicSiteSettings() {
     }
 }
 
-export function localizedSetting(settings: SiteSettings | null, locale: "ua" | "en", field: "aboutBody" | "contactBody" | "homeIntro") {
+export function localizedSetting(settings: SiteSettings | null, locale: "ua" | "en", field: "aboutBody" | "contactBody" | "homeBody" | "homeIntro") {
     if (!settings) return null;
 
     const value = locale === "ua"
@@ -23,4 +23,11 @@ export function localizedSetting(settings: SiteSettings | null, locale: "ua" | "
         : settings[`${field}En`];
 
     return value?.trim() || null;
+}
+
+export function heroMediaUrls(settings: SiteSettings | null) {
+    return settings?.heroMediaUrls
+        ?.split("\n")
+        .map((url) => url.trim())
+        .filter(Boolean) ?? [];
 }

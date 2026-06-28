@@ -12,23 +12,38 @@ import {
     useListPublicAvailabilityQuery,
     useListPublicEventsQuery
 } from "@/features/schedule/schedule.api";
+import {
+    addMonths,
+    buildMonthPickerDays,
+    buildMonthRange,
+    buildSelectedDayItems,
+    dateKey,
+    filterScheduleEvents,
+    serviceDurationSlot,
+    startOfDay,
+    slotKey,
+    toId,
+    uniqueSpecialists,
+    type BookingModeFilter,
+    type FilterState,
+    type MonthPickerDay,
+    type SpecialistOption,
+    type StatusFilter
+} from "@/features/schedule/publicScheduleHelpers";
 import {useListServicesQuery} from "@/features/services/services.api";
-import {API_URL} from "@/shared/constants/env";
+import {formatWholeCurrencyAmount as formatAmount} from "@/shared/lib/i18n/formatNumbers";
+import {toLanguageTag} from "@/shared/lib/i18n/toLanguageTag";
 import {withLocale} from "@/shared/lib/locale/withLocale";
+import {resolveApiMediaUrl} from "@/shared/lib/media/resolveApiMediaUrl";
+import {initialsFromName} from "@/shared/lib/text/initials";
 import type {Office} from "@/types/offices";
 import type {PublicFixedEvent, PublicScheduleAvailabilityBlock} from "@/types/schedule";
 import type {PublicService} from "@/types/services";
 
 const savedFiltersKey = "ataraksia.publicScheduleFilters";
-type BookingModeFilter = "all" | "individual" | "events";
-type StatusFilter = "all" | "available" | "unavailable" | "events" | "mine";
 type PendingBooking =
     | {type: "individual"; service: PublicService; slot: PublicScheduleAvailabilityBlock}
     | {type: "event"; event: PublicFixedEvent};
-type SelectedDayItem =
-    | {type: "slot"; startsAt: string; slot: PublicScheduleAvailabilityBlock}
-    | {type: "event"; startsAt: string; event: PublicFixedEvent};
-type SpecialistOption = {id: number; name: string; avatarMediaUrl: string | null};
 type ChoiceSectionKey = "office" | "specialist";
 type PaymentPrompt = {
     externalPaymentUrl: string | null;
@@ -36,14 +51,6 @@ type PaymentPrompt = {
     serviceTitleEn?: string | null;
     title?: string;
     startsAt: string;
-};
-
-type FilterState = {
-    officeId: number | "";
-    specialistId: number | "";
-    mode: BookingModeFilter;
-    status: StatusFilter;
-    period: 7 | 31;
 };
 
 export default function PublicSchedulePage() {
@@ -102,9 +109,9 @@ export default function PublicSchedulePage() {
     const guidedSlots = useMemo(() => (
         filters.mode === "events" || filters.status === "unavailable" || filters.status === "events" || filters.status === "mine" ? [] : guidedSlotsData
     ), [filters.mode, filters.status, guidedSlotsData]);
-    const guidedEvents = useMemo(() => filterEvents(guidedEventsData, filters), [guidedEventsData, filters]);
+    const guidedEvents = useMemo(() => filterScheduleEvents(guidedEventsData, filters), [guidedEventsData, filters]);
     const specialistOptionSlots = filters.mode === "events" || filters.status === "unavailable" || filters.status === "events" || filters.status === "mine" ? [] : specialistOptionSlotsData;
-    const specialistOptionEvents = filterEvents(specialistOptionEventsData, {...filters, specialistId: ""});
+    const specialistOptionEvents = filterScheduleEvents(specialistOptionEventsData, {...filters, specialistId: ""});
     const guidedSpecialists = uniqueSpecialists([...specialistOptionSlots, ...specialistOptionEvents]);
     const isSaving = bookingLoading || enrollmentLoading || cancelEnrollmentLoading;
     const selectedDateKey = dateKey(currentDate);
@@ -669,7 +676,7 @@ function SpecialistChoiceCard({copy, onChoose, selected, specialist}: {copy: Cop
 }
 
 function SpecialistAvatar({name, selected, url}: {name: string; selected: boolean; url: string | null}) {
-    const initials = name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "S";
+    const initials = initialsFromName(name, "S");
     const className = selected
         ? "grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full border border-white/30 bg-white text-xs font-semibold text-stone-900"
         : "grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full border border-stone-200 bg-stone-100 text-xs font-semibold text-stone-600";
@@ -886,67 +893,6 @@ function OfficeDetailsBlock({compact = false, copy, details}: {compact?: boolean
     );
 }
 
-function resolveApiMediaUrl(path: string) {
-    return path.startsWith("/api/") ? `${API_URL}${path}` : path;
-}
-
-function buildMonthRange(date: Date) {
-    const from = firstDayOfMonth(date);
-    from.setHours(0, 0, 0, 0);
-    const to = new Date(from);
-    to.setMonth(to.getMonth() + 1);
-    return {from: from.toISOString(), to: to.toISOString()};
-}
-
-function startOfWeek(date: Date) {
-    const monday = new Date(date);
-    const day = monday.getDay();
-    monday.setHours(0, 0, 0, 0);
-    monday.setDate(monday.getDate() - (day === 0 ? 6 : day - 1));
-    return monday;
-}
-
-function firstDayOfMonth(date: Date) {
-    return new Date(date.getFullYear(), date.getMonth(), 1);
-}
-
-function startOfDay(date: Date) {
-    const value = new Date(date);
-    value.setHours(0, 0, 0, 0);
-    return value;
-}
-
-function addMonths(date: Date, amount: number) {
-    const next = new Date(date);
-    next.setDate(1);
-    next.setMonth(next.getMonth() + amount);
-    return next;
-}
-
-type MonthPickerDay = {
-    day: number;
-    inCurrentMonth: boolean;
-    key: string;
-};
-
-function buildMonthPickerDays(date: Date): MonthPickerDay[] {
-    const first = firstDayOfMonth(date);
-    const start = startOfWeek(first);
-    const days: MonthPickerDay[] = [];
-
-    for (let index = 0; index < 42; index += 1) {
-        const current = new Date(start);
-        current.setDate(start.getDate() + index);
-        days.push({
-            day: current.getDate(),
-            inCurrentMonth: current.getMonth() === first.getMonth(),
-            key: dateKey(current)
-        });
-    }
-
-    return days;
-}
-
 function weekdayLabels(locale: string) {
     const monday = new Date(2024, 0, 1);
     return Array.from({length: 7}, (_, index) => {
@@ -962,25 +908,6 @@ function monthDayClass(day: MonthPickerDay, available: boolean, selected: boolea
     if (selected) return `${base} border-stone-900 bg-stone-900 text-white shadow-sm`;
     if (available) return `${base} border-emerald-200 bg-emerald-50 text-emerald-950 hover:border-emerald-400 hover:bg-emerald-100`;
     return `${base} cursor-not-allowed border-stone-100 bg-stone-50 text-stone-400`;
-}
-
-function filterEvents(events: PublicFixedEvent[], filters: FilterState) {
-    if (filters.mode === "individual" || filters.status === "available" || filters.status === "unavailable") return [];
-    if (filters.status === "mine") return events.filter((event) => event.enrolled);
-    if (filters.status === "events") return events.filter((event) => !event.full);
-    return events;
-}
-
-function uniqueSpecialists(items: Array<{specialistId: number; specialistName: string; specialistAvatarMediaUrl?: string | null}>): SpecialistOption[] {
-    const specialists = new Map<number, SpecialistOption>();
-    for (const item of items) {
-        specialists.set(item.specialistId, {
-            id: item.specialistId,
-            name: item.specialistName,
-            avatarMediaUrl: item.specialistAvatarMediaUrl ?? specialists.get(item.specialistId)?.avatarMediaUrl ?? null
-        });
-    }
-    return Array.from(specialists.values());
 }
 
 function filterChoiceState(active: boolean, resultCount: number): "neutral" | "active" | "empty" {
@@ -1007,18 +934,6 @@ function guidedSelectionChips({
     const mode = filters.mode === "events" ? copy.fixedEvent : filters.mode === "individual" ? copy.individual : copy.all;
     const specialist = filters.specialistId === "" ? copy.allSpecialists : specialists.find((item) => item.id === filters.specialistId)?.name ?? copy.allSpecialists;
     return [office, mode, specialist, formatDate(currentDate.toISOString(), locale)];
-}
-
-function slotKey(slot: PublicScheduleAvailabilityBlock) {
-    return `slot-${slot.id}-${slot.startsAt}`;
-}
-
-function serviceDurationSlot(slot: PublicScheduleAvailabilityBlock, service: PublicService): PublicScheduleAvailabilityBlock | null {
-    const startsAt = new Date(slot.startsAt);
-    const endsAt = new Date(startsAt);
-    endsAt.setMinutes(endsAt.getMinutes() + service.durationMinutes);
-    if (endsAt.getTime() > new Date(slot.endsAt).getTime()) return null;
-    return {...slot, endsAt: endsAt.toISOString()};
 }
 
 function buildAvailableDays(slots: PublicScheduleAvailabilityBlock[], events: PublicFixedEvent[], locale: string, copy: Copy): AvailableDay[] {
@@ -1050,22 +965,11 @@ function buildAvailableDays(slots: PublicScheduleAvailabilityBlock[], events: Pu
         }));
 }
 
-function buildSelectedDayItems(slots: PublicScheduleAvailabilityBlock[], events: PublicFixedEvent[]): SelectedDayItem[] {
-    return [
-        ...slots.map((slot) => ({type: "slot" as const, startsAt: slot.startsAt, slot})),
-        ...events.map((event) => ({type: "event" as const, startsAt: event.startsAt, event}))
-    ].sort((first, second) => new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime());
-}
-
 function availabilityCountLabel(day: Pick<AvailableDay, "eventsCount" | "slotsCount">, copy: Copy) {
     const parts = [];
     if (day.slotsCount > 0) parts.push(copy.slotCount(day.slotsCount));
     if (day.eventsCount > 0) parts.push(copy.eventsCount(day.eventsCount));
     return parts.join(" · ");
-}
-
-function toId(value: string): number | "" {
-    return value ? Number(value) : "";
 }
 
 function loadSavedFilters(): FilterState | null {
@@ -1100,10 +1004,6 @@ function writeFiltersToUrl(filters: FilterState) {
     window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
 }
 
-function formatAmount(value: number, locale: string) {
-    return new Intl.NumberFormat(locale === "ua" ? "uk-UA" : "en-US", {currency: "UAH", maximumFractionDigits: 0, style: "currency"}).format(value);
-}
-
 function formatDate(value: string, locale: string) {
     return new Intl.DateTimeFormat(toLanguageTag(locale), {day: "numeric", month: "long"}).format(new Date(value));
 }
@@ -1116,13 +1016,6 @@ function formatShortDay(value: Date, locale: string, copy: Copy) {
     const date = new Intl.DateTimeFormat(toLanguageTag(locale), {day: "numeric", month: "short"}).format(value);
     const weekday = new Intl.DateTimeFormat(toLanguageTag(locale), {weekday: "short"}).format(value);
     return `${weekday}, ${date}${dateKey(value) === dateKey(new Date()) ? ` · ${copy.today}` : ""}`;
-}
-
-function dateKey(value: Date) {
-    const year = value.getFullYear();
-    const month = String(value.getMonth() + 1).padStart(2, "0");
-    const day = String(value.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
 }
 
 function formatTime(value: string, locale: string) {
@@ -1140,10 +1033,6 @@ function formatDateTimeRange(start: string, end: string, locale: string) {
 function paymentPromptTitle(prompt: PaymentPrompt, locale: string) {
     if (prompt.title) return prompt.title;
     return locale === "en" && prompt.serviceTitleEn ? prompt.serviceTitleEn : prompt.serviceTitleUa ?? "";
-}
-
-function toLanguageTag(locale: string) {
-    return locale === "ua" ? "uk" : locale;
 }
 
 type T = ReturnType<typeof useTranslations<"calendar.page">>;

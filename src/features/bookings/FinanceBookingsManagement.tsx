@@ -18,8 +18,16 @@ import {
     useUpdateFinanceSettingsMutation,
     useUpdateSpecialistFinanceSettingsMutation
 } from "@/features/bookings/bookings.api";
+import {
+    financeExportUrl,
+    formatAmount,
+    formatDate,
+    formatDateTime,
+    formatPercent,
+    toNextDayIso,
+    toStartOfDayIso
+} from "@/features/bookings/financeFormatting";
 import {useListPublicOfficesQuery} from "@/features/offices/offices.api";
-import {API_URL} from "@/shared/constants/env";
 import type {BookingStatus, FinanceBooking, FinanceExpense, FinanceSpecialistSettings} from "@/types/bookings";
 import type {Office} from "@/types/offices";
 
@@ -391,41 +399,4 @@ function Detail({label, value}: {label: string; value: string}) {
 
 function DetailLink({label, value}: {label: string; value: string}) {
     return <div><dt className="text-xs font-medium uppercase tracking-wide text-stone-500">{label}</dt><dd className="mt-1"><a className="break-all text-sm font-medium text-emerald-800 underline-offset-2 hover:underline" href={value} rel="noreferrer" target="_blank">{value}</a></dd></div>;
-}
-
-function formatDateTime(value: string, locale: string) {
-    return new Intl.DateTimeFormat(locale === "ua" ? "uk" : locale, {dateStyle: "medium", timeStyle: "short"}).format(new Date(value));
-}
-
-function formatDate(value: string, locale: string) {
-    return new Intl.DateTimeFormat(locale === "ua" ? "uk" : locale, {dateStyle: "medium"}).format(new Date(`${value}T00:00:00`));
-}
-
-function formatAmount(value: number, locale: string) {
-    return new Intl.NumberFormat(locale === "ua" ? "uk-UA" : "en-US", {currency: "UAH", style: "currency"}).format(value);
-}
-
-function formatPercent(value: number, locale: string) {
-    return new Intl.NumberFormat(locale === "ua" ? "uk-UA" : "en-US", {maximumFractionDigits: 2, style: "percent"}).format(value / 100);
-}
-
-function financeExportUrl(format: "pdf" | "xlsx", {from, locale, officeId, status, to}: {from: string; locale: string; officeId: string; status: BookingStatus | ""; to: string}) {
-    const params = new URLSearchParams();
-    params.set("locale", locale === "en" ? "en" : "ua");
-    if (status) params.set("status", status);
-    if (officeId) params.set("officeId", officeId);
-    if (from) params.set("from", toStartOfDayIso(from) ?? "");
-    if (to) params.set("to", toNextDayIso(to) ?? "");
-    return `${API_URL}/api/admin/finance/export/${format}?${params.toString()}`;
-}
-
-function toStartOfDayIso(value: string) {
-    return value ? new Date(`${value}T00:00:00`).toISOString() : undefined;
-}
-
-function toNextDayIso(value: string) {
-    if (!value) return undefined;
-    const date = new Date(`${value}T00:00:00`);
-    date.setDate(date.getDate() + 1);
-    return date.toISOString();
 }

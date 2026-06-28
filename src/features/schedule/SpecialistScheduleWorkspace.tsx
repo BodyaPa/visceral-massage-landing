@@ -22,6 +22,18 @@ import {
     useUpdateAvailabilityMutation,
     useUpdateSpecialistEventMutation
 } from "@/features/schedule/schedule.api";
+import {
+    buildCalendarBuffers,
+    buildManualBookingSlots,
+    filterCalendarBlocks,
+    filterCalendarBookings,
+    filterCalendarBuffers,
+    filterCalendarEvents,
+    hasRestPeriodConflict,
+    isPastRange,
+    type CalendarBuffer,
+    type CalendarFilterState
+} from "@/features/schedule/specialistScheduleLogic";
 import AtaraksiaCalendar, {
     toCalendarView,
     type AtaraksiaCalendarEvent,
@@ -32,6 +44,8 @@ import type {SpecialistBooking, SpecialistFinanceOverview} from "@/types/booking
 import type {PublicService} from "@/types/services";
 import type {AdminUser} from "@/types/users";
 import type {Locale} from "@/i18n";
+import {formatCurrencyAmount as formatAmount, formatPercentAmount as formatPercent} from "@/shared/lib/i18n/formatNumbers";
+import {toLanguageTag} from "@/shared/lib/i18n/toLanguageTag";
 
 const views = ["month", "week", "day", "list"] as const;
 const emptyBlocks: SpecialistAvailabilityBlock[] = [];
@@ -54,30 +68,10 @@ type AvailabilityForm = {
     endsAt: string;
     notes: string;
 };
-type CalendarFilterState = {
-    officeId: number | "";
-    serviceId: number | "";
-    itemType: "all" | ScheduleBlockType | "BOOKING" | "FIXED_EVENT" | "BUFFER";
-    status: "all" | ScheduleBlockStatus | SpecialistBooking["status"] | "ACTIVE_EVENT" | "INACTIVE_EVENT" | "PAST";
-};
 type CalendarDetail = {
     title: string;
     tone: "available" | "blocked" | "booking" | "event" | "buffer" | "past" | "cancelled";
     rows: Array<{label: string; value: string}>;
-};
-type CalendarBuffer = {
-    id: string;
-    startsAt: string;
-    endsAt: string;
-    specialistName: string;
-    officeId: number | null;
-    officeName: string | null;
-};
-type ManualBookingSlot = {
-    key: string;
-    block: SpecialistAvailabilityBlock;
-    startsAt: string;
-    endsAt: string;
 };
 
 export default function SpecialistScheduleWorkspace({canManageAllSpecialists, currentUserId}: Props) {
@@ -754,7 +748,7 @@ function CalendarSurface({
 
     return (
         <AtaraksiaCalendar
-            culture={locale === "ua" ? "uk" : locale}
+            culture={toLanguageTag(locale)}
             date={currentDate}
             events={calendarEvents}
             messages={copy.calendarMessages}
@@ -1711,89 +1705,6 @@ function eventToInput(event: SpecialistFixedEvent, active: boolean): SpecialistF
     };
 }
 
-function filterCalendarBlocks(blocks: SpecialistAvailabilityBlock[], filters: CalendarFilterState) {
-    return blocks.filter((block) => {
-        if (filters.officeId !== "" && block.officeId !== filters.officeId) return false;
-        if (filters.serviceId !== "" && block.serviceId !== filters.serviceId) return false;
-        if (filters.itemType !== "all" && (filters.itemType === "BOOKING" || filters.itemType === "FIXED_EVENT" || block.itemType !== filters.itemType)) return false;
-        if (filters.status === "PAST") return isPastRange(block.endsAt);
-        if (filters.status !== "all" && (filters.status === "ACTIVE_EVENT" || filters.status === "INACTIVE_EVENT" || !["AVAILABLE", "BLOCKED"].includes(filters.status) || block.status !== filters.status)) return false;
-        return true;
-    });
-}
-
-function filterCalendarEvents(events: SpecialistFixedEvent[], filters: CalendarFilterState) {
-    return events.filter((event) => {
-        if (filters.officeId !== "" && event.officeId !== filters.officeId) return false;
-        if (filters.serviceId !== "" && event.serviceId !== filters.serviceId) return false;
-        if (filters.itemType !== "all" && filters.itemType !== "FIXED_EVENT") return false;
-        if (filters.status === "PAST") return isPastRange(event.endsAt);
-        if (filters.status === "ACTIVE_EVENT" && !event.active) return false;
-        if (filters.status === "INACTIVE_EVENT" && event.active) return false;
-        if (filters.status !== "all" && filters.status !== "ACTIVE_EVENT" && filters.status !== "INACTIVE_EVENT") return false;
-        return true;
-    });
-}
-
-function filterCalendarBookings(bookings: SpecialistBooking[], filters: CalendarFilterState) {
-    return bookings.filter((booking) => {
-        if (filters.officeId !== "" && booking.officeId !== filters.officeId) return false;
-        if (filters.serviceId !== "" && booking.serviceId !== filters.serviceId) return false;
-        if (filters.itemType !== "all" && filters.itemType !== "BOOKING") return false;
-        if (filters.status === "PAST") return booking.status !== "CANCELLED" && isPastRange(booking.endsAt);
-        if (filters.status !== "all" && !["AWAITING_PAYMENT_CONFIRMATION", "CONFIRMED", "CANCELLED"].includes(filters.status)) return false;
-        if (filters.status !== "all" && booking.status !== filters.status) return false;
-        return true;
-    });
-}
-
-function filterCalendarBuffers(buffers: CalendarBuffer[], filters: CalendarFilterState) {
-    return buffers.filter((buffer) => {
-        if (filters.officeId !== "" && buffer.officeId !== filters.officeId) return false;
-        if (filters.serviceId !== "") return false;
-        if (filters.itemType !== "all" && filters.itemType !== "BUFFER") return false;
-        if (filters.status === "PAST") return isPastRange(buffer.endsAt);
-        if (filters.status !== "all") return false;
-        return true;
-    });
-}
-
-function buildCalendarBuffers(bookings: SpecialistBooking[], events: SpecialistFixedEvent[], appointmentBufferMinutes: number): CalendarBuffer[] {
-    const buffers: CalendarBuffer[] = [];
-    for (const booking of bookings.filter((item) => item.status !== "CANCELLED")) {
-        buffers.push(...bufferRanges(
-            `booking-${booking.id}`,
-            booking.startsAt,
-            booking.endsAt,
-            booking.specialistName,
-            booking.officeId,
-            booking.officeName,
-            appointmentBufferMinutes
-        ));
-    }
-    for (const event of events.filter((item) => item.active)) {
-        buffers.push(...bufferRanges(
-            `event-${event.id}`,
-            event.startsAt,
-            event.endsAt,
-            event.specialistName,
-            event.officeId,
-            event.officeName,
-            appointmentBufferMinutes
-        ));
-    }
-    return buffers;
-}
-
-function bufferRanges(idPrefix: string, startsAt: string, endsAt: string, specialistName: string, officeId: number | null, officeName: string | null, appointmentBufferMinutes: number): CalendarBuffer[] {
-    const end = new Date(endsAt);
-    const after = new Date(end);
-    after.setMinutes(after.getMinutes() + appointmentBufferMinutes);
-    return [
-        {id: `${idPrefix}-after`, startsAt: end.toISOString(), endsAt: after.toISOString(), specialistName, officeId, officeName}
-    ];
-}
-
 function calendarToneForBlock(block: SpecialistAvailabilityBlock): CalendarDetail["tone"] {
     if (isPastRange(block.endsAt)) return "past";
     if (block.booked) return "booking";
@@ -1809,10 +1720,6 @@ function calendarToneForBooking(booking: SpecialistBooking): CalendarDetail["ton
 function calendarToneForEvent(event: SpecialistFixedEvent): CalendarDetail["tone"] {
     if (isPastRange(event.endsAt)) return "past";
     return event.active ? "event" : "blocked";
-}
-
-function isPastRange(endsAt: string) {
-    return new Date(endsAt).getTime() < Date.now();
 }
 
 function blockStatusLabel(block: SpecialistAvailabilityBlock, copy: ReturnType<typeof scheduleCopy>, t: T) {
@@ -2090,115 +1997,6 @@ function buildCalendarRange(date: Date) {
     };
 }
 
-function hasRestPeriodConflict(
-    startsAt: string,
-    endsAt: string,
-    bookings: SpecialistBooking[],
-    events: SpecialistFixedEvent[],
-    appointmentBufferMinutes: number,
-    excludedEventId?: number
-) {
-    const start = new Date(startsAt);
-    const end = new Date(endsAt);
-
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-        return false;
-    }
-
-    const activeBookings = bookings.filter((booking) => booking.status !== "CANCELLED");
-    const activeEvents = events.filter((event) => event.active && event.id !== excludedEventId);
-
-    return activeBookings.some((booking) => overlapsRestAfter(start, end, booking.endsAt, appointmentBufferMinutes))
-        || activeEvents.some((event) => overlapsRestAfter(start, end, event.endsAt, appointmentBufferMinutes));
-}
-
-function buildManualBookingSlots(
-    blocks: SpecialistAvailabilityBlock[],
-    bookings: SpecialistBooking[],
-    events: SpecialistFixedEvent[],
-    appointmentBufferMinutes: number,
-    service?: PublicService
-): ManualBookingSlot[] {
-    if (!service) return [];
-
-    const now = Date.now();
-    const activeBookings = bookings.filter((booking) => booking.status !== "CANCELLED");
-    const activeEvents = events.filter((event) => event.active);
-    const blockedBlocks = blocks.filter((block) => block.status === "BLOCKED");
-    const slots: ManualBookingSlot[] = [];
-
-    for (const block of blocks) {
-        if (block.status !== "AVAILABLE") continue;
-        if (block.itemType === "APPOINTMENT_SLOT") {
-            if (block.serviceId !== service.id || block.booked) continue;
-            const slotStart = new Date(block.startsAt);
-            const slotEnd = new Date(block.endsAt);
-            const overlapsBooking = activeBookings.some((booking) => overlapsBuffered(slotStart, slotEnd, booking.startsAt, booking.endsAt, appointmentBufferMinutes));
-            const overlapsEvent = activeEvents.some((event) => overlapsBuffered(slotStart, slotEnd, event.startsAt, event.endsAt, appointmentBufferMinutes));
-            const overlapsBlocked = blockedBlocks.some((blocked) => overlaps(slotStart, slotEnd, new Date(blocked.startsAt), new Date(blocked.endsAt)));
-
-            if (slotStart.getTime() > now && !overlapsBooking && !overlapsEvent && !overlapsBlocked) {
-                slots.push({
-                    key: `${block.id}-${block.startsAt}`,
-                    block,
-                    startsAt: block.startsAt,
-                    endsAt: block.endsAt
-                });
-            }
-            continue;
-        }
-        if (block.itemType !== "OPEN_RANGE") continue;
-
-        const blockEnd = new Date(block.endsAt);
-        const slotStart = new Date(block.startsAt);
-
-        while (slotStart.getTime() < blockEnd.getTime()) {
-            const slotEnd = new Date(slotStart);
-            slotEnd.setMinutes(slotEnd.getMinutes() + service.durationMinutes);
-
-            if (slotEnd.getTime() > blockEnd.getTime()) break;
-
-            const overlapsBooking = activeBookings.some((booking) => overlapsBuffered(slotStart, slotEnd, booking.startsAt, booking.endsAt, appointmentBufferMinutes));
-            const overlapsEvent = activeEvents.some((event) => overlapsBuffered(slotStart, slotEnd, event.startsAt, event.endsAt, appointmentBufferMinutes));
-            const overlapsBlocked = blockedBlocks.some((blocked) => overlaps(slotStart, slotEnd, new Date(blocked.startsAt), new Date(blocked.endsAt)));
-
-            if (slotStart.getTime() > now && !overlapsBooking && !overlapsEvent && !overlapsBlocked) {
-                const startsAt = slotStart.toISOString();
-                slots.push({
-                    key: `${block.id}-${startsAt}`,
-                    block,
-                    startsAt,
-                    endsAt: slotEnd.toISOString()
-                });
-            }
-
-            slotStart.setMinutes(slotStart.getMinutes() + service.durationMinutes);
-        }
-    }
-
-    return slots.sort((first, second) => new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime());
-}
-
-function overlaps(firstStart: Date, firstEnd: Date, secondStart: Date, secondEnd: Date) {
-    return firstStart < secondEnd && secondStart < firstEnd;
-}
-
-function overlapsRestAfter(firstStart: Date, firstEnd: Date, endsAt: string, appointmentBufferMinutes: number) {
-    const restStart = new Date(endsAt);
-    const restEnd = new Date(restStart);
-    restEnd.setMinutes(restEnd.getMinutes() + appointmentBufferMinutes);
-    return overlaps(firstStart, firstEnd, restStart, restEnd);
-}
-
-function overlapsBuffered(firstStart: Date, firstEnd: Date, startsAt: string, endsAt: string, appointmentBufferMinutes: number) {
-    const firstBufferedEnd = new Date(firstEnd);
-    firstBufferedEnd.setMinutes(firstBufferedEnd.getMinutes() + appointmentBufferMinutes);
-    const secondStart = new Date(startsAt);
-    const secondEnd = new Date(endsAt);
-    secondEnd.setMinutes(secondEnd.getMinutes() + appointmentBufferMinutes);
-    return overlaps(firstStart, firstBufferedEnd, secondStart, secondEnd);
-}
-
 function buildDefaultForm(): AvailabilityForm {
     const start = new Date();
     start.setMinutes(0, 0, 0);
@@ -2238,7 +2036,7 @@ function toIsoDateAndTime(date: string, time: string) {
 }
 
 function formatDateTime(value: string, locale: string) {
-    const languageTag = locale === "ua" ? "uk" : locale;
+    const languageTag = toLanguageTag(locale);
 
     return new Intl.DateTimeFormat(languageTag, {
         day: "2-digit",
@@ -2249,7 +2047,7 @@ function formatDateTime(value: string, locale: string) {
 }
 
 function formatTime(value: string, locale: string) {
-    const languageTag = locale === "ua" ? "uk" : locale;
+    const languageTag = toLanguageTag(locale);
 
     return new Intl.DateTimeFormat(languageTag, {
         hour: "2-digit",
@@ -2261,14 +2059,6 @@ function formatTimeRange(start: string, end: string, locale: string) {
     return `${formatTime(start, locale)}–${formatTime(end, locale)}`;
 }
 
-function formatAmount(value: number, locale: string) {
-    return new Intl.NumberFormat(locale === "ua" ? "uk-UA" : "en-US", {currency: "UAH", style: "currency"}).format(value);
-}
-
-function formatPercent(value: number, locale: string) {
-    return new Intl.NumberFormat(locale === "ua" ? "uk-UA" : "en-US", {maximumFractionDigits: 2, style: "percent"}).format(value / 100);
-}
-
 function formatMinutes(value: number, copy: ReturnType<typeof scheduleCopy>) {
     const hours = Math.floor(value / 60);
     const minutes = value % 60;
@@ -2278,7 +2068,7 @@ function formatMinutes(value: number, copy: ReturnType<typeof scheduleCopy>) {
 }
 
 function formatCalendarTitle(view: CalendarView, currentDate: Date, locale: string) {
-    const languageTag = locale === "ua" ? "uk" : locale;
+    const languageTag = toLanguageTag(locale);
 
     if (view === "month") {
         return new Intl.DateTimeFormat(languageTag, {month: "long", year: "numeric"}).format(currentDate);

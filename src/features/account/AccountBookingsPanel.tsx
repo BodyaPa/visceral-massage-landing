@@ -3,15 +3,23 @@
 import {useMemo, useState} from "react";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
+import {
+    buildAccountRange,
+    eventStatus,
+    filterBookings,
+    filterEvents,
+    type AccountBookingFilter,
+    type AccountEventStatus
+} from "@/features/account/accountBookings";
 import {useCancelBookingMutation, useListMyBookingsQuery} from "@/features/bookings/bookings.api";
 import {bookingServiceTitle} from "@/features/bookings/bookingTitles";
 import {useCancelFixedEventEnrollmentMutation, useListMyFixedEventEnrollmentsQuery} from "@/features/schedule/schedule.api";
 import type {Locale} from "@/i18n";
-import {API_URL} from "@/shared/constants/env";
+import {toLanguageTag} from "@/shared/lib/i18n/toLanguageTag";
+import {resolveApiMediaUrl} from "@/shared/lib/media/resolveApiMediaUrl";
 import type {Booking} from "@/types/bookings";
 import type {PublicFixedEvent} from "@/types/schedule";
 
-type AccountBookingFilter = "upcoming" | "history" | "cancelled" | "all";
 const INITIAL_VISIBLE_ITEMS = 6;
 
 export default function AccountBookingsPanel({locale}: {locale: Locale}) {
@@ -192,7 +200,7 @@ function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boo
     );
 }
 
-function EventStatusBadge({copy, status}: {copy: Copy; status: "ACTIVE" | "PAST" | "CANCELLED"}) {
+function EventStatusBadge({copy, status}: {copy: Copy; status: AccountEventStatus}) {
     const className = status === "CANCELLED"
         ? "border-red-200 bg-red-50 text-red-700"
         : status === "PAST"
@@ -239,10 +247,6 @@ function OfficeDetails({address, copy, directions, googleMapsUrl, photoUrl, vide
     );
 }
 
-function resolveApiMediaUrl(path: string) {
-    return path.startsWith("/api/") ? `${API_URL}${path}` : path;
-}
-
 function BookingStatusBadge({booking, copy}: {booking: Booking; copy: Copy}) {
     const past = booking.status !== "CANCELLED" && new Date(booking.endsAt).getTime() < Date.now();
     const confirmed = booking.status === "CONFIRMED" && !past;
@@ -259,46 +263,8 @@ function BookingStatusBadge({booking, copy}: {booking: Booking; copy: Copy}) {
     return <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${className}`}>{label}</span>;
 }
 
-function filterBookings(bookings: Booking[], filter: AccountBookingFilter) {
-    return bookings.filter((booking) => {
-        const past = new Date(booking.endsAt).getTime() < Date.now();
-        if (filter === "all") return true;
-        if (filter === "cancelled") return booking.status === "CANCELLED";
-        if (filter === "history") return booking.status !== "CANCELLED" && past;
-        return booking.status !== "CANCELLED" && !past;
-    });
-}
-
-function filterEvents(events: PublicFixedEvent[], filter: AccountBookingFilter) {
-    return events.filter((event) => {
-        const status = eventStatus(event);
-        if (filter === "all") return true;
-        if (filter === "cancelled") return status === "CANCELLED";
-        if (filter === "history") return status === "PAST";
-        return status === "ACTIVE";
-    });
-}
-
-function eventStatus(event: PublicFixedEvent): "ACTIVE" | "PAST" | "CANCELLED" {
-    if (event.enrollmentStatus === "CANCELLED") return "CANCELLED";
-    if (new Date(event.endsAt).getTime() < Date.now()) return "PAST";
-    return "ACTIVE";
-}
-
-function buildAccountRange() {
-    const from = new Date();
-    from.setDate(from.getDate() - 365);
-    from.setHours(0, 0, 0, 0);
-
-    const to = new Date();
-    to.setDate(to.getDate() + 365);
-    to.setHours(23, 59, 59, 999);
-
-    return {from: from.toISOString(), to: to.toISOString()};
-}
-
 function formatDateTimeRange(start: string, end: string, locale: Locale) {
-    const languageTag = locale === "ua" ? "uk" : locale;
+    const languageTag = toLanguageTag(locale);
     const date = new Intl.DateTimeFormat(languageTag, {day: "numeric", month: "short", weekday: "short"}).format(new Date(start));
     const time = new Intl.DateTimeFormat(languageTag, {hour: "2-digit", minute: "2-digit"});
     return `${date}, ${time.format(new Date(start))}–${time.format(new Date(end))}`;

@@ -11,7 +11,7 @@ import {logout, type AuthenticatedUser} from "./auth.client";
 import {hasAdministrationSection} from "./auth.roles";
 import AuthenticatedLink from "./AuthenticatedLink";
 import Link from "next/link";
-import {API_URL} from "@/shared/constants/env";
+import {resolveApiMediaUrl} from "@/shared/lib/media/resolveApiMediaUrl";
 
 type Props = {
     user: AuthenticatedUser | null;
@@ -149,8 +149,4 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
 
 function isActivePath(pathname: string, href: string) {
     return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-function resolveApiMediaUrl(path: string) {
-    return path.startsWith("/api/") ? `${API_URL}${path}` : path;
 }

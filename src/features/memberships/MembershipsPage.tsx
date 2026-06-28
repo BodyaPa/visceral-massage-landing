@@ -4,6 +4,7 @@ import Link from "next/link";
 import {useLocale, useTranslations} from "next-intl";
 import {useState} from "react";
 import type {Locale} from "@/i18n";
+import {formatWholeCurrencyAmount as formatAmount} from "@/shared/lib/i18n/formatNumbers";
 import {withLocale} from "@/shared/lib/locale/withLocale";
 
 type OfferKind = "membership" | "certificate";
@@ -158,12 +159,4 @@ function InfoCard({label, value}: {label: string; value: string}) {
             <p className="mt-2 break-words text-sm font-semibold text-stone-950">{value}</p>
         </div>
     );
-}
-
-function formatAmount(amount: number, locale: Locale) {
-    return new Intl.NumberFormat(locale === "ua" ? "uk-UA" : "en-US", {
-        currency: "UAH",
-        maximumFractionDigits: 0,
-        style: "currency"
-    }).format(amount);
 }

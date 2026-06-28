@@ -5,7 +5,8 @@ import {useTranslations} from "next-intl";
 import {useEffect, useRef, useState} from "react";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import AccountProfileForm from "@/features/account/AccountProfileForm";
-import {API_URL} from "@/shared/constants/env";
+import {resolveApiMediaUrl} from "@/shared/lib/media/resolveApiMediaUrl";
+import {initialsFromName} from "@/shared/lib/text/initials";
 import {
     AuthRequestError,
     type AuthenticatedUser,
@@ -159,12 +160,8 @@ export default function AccountProfilePanel({contactValue, dateOfBirth, displayN
 }
 
 function ProfileAvatar({name, url}: {name: string; url: string | null}) {
-    const initials = name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "A";
+    const initials = initialsFromName(name, "A");
     const className = "grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full border border-stone-200 bg-stone-100 text-lg font-semibold text-stone-600";
     if (!url) return <span className={className}>{initials}</span>;
     return <span aria-hidden className={className} style={{backgroundImage: `url(${resolveApiMediaUrl(url)})`, backgroundPosition: "center", backgroundSize: "cover"}} />;
-}
-
-function resolveApiMediaUrl(path: string) {
-    return path.startsWith("/api/") ? `${API_URL}${path}` : path;
 }

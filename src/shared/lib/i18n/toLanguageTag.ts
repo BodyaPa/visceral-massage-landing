@@ -1,6 +1,4 @@
-import type {Locale} from '@/i18n';
-
-export function toLanguageTag(locale: Locale) {
+export function toLanguageTag(locale: string) {
     switch (locale) {
         case 'ua':
             return 'uk';

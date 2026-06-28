@@ -32,6 +32,8 @@ export interface MediaAsset {
     sizeBytes: number;
     newsId: NewsId | null;
     officeId: number | null;
+    siteSettingsId: number | null;
+    siteSliderSortOrder: number | null;
     createdAt: string;
 }
 

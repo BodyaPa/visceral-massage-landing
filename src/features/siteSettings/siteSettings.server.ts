@@ -1,4 +1,5 @@
 import {API_URL} from "@/shared/constants/env";
+import type {MediaAsset} from "@/types/news";
 import type {SiteSettings} from "@/types/siteSettings";
 
 export async function getPublicSiteSettings() {
@@ -30,4 +31,18 @@ export function heroMediaUrls(settings: SiteSettings | null) {
         ?.split("\n")
         .map((url) => url.trim())
         .filter(Boolean) ?? [];
+}
+
+export async function getPublicSiteSettingsMedia() {
+    try {
+        const response = await fetch(`${API_URL}/api/site-settings/media`, {
+            next: {revalidate: 60}
+        });
+
+        if (!response.ok) return [];
+
+        return await response.json() as MediaAsset[];
+    } catch {
+        return [];
+    }
 }

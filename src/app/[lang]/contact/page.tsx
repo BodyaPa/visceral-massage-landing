@@ -1,7 +1,7 @@
 import type {Metadata} from "next";
 import {getTranslations} from "next-intl/server";
 import PublicCmsPageContent from "@/features/siteSettings/PublicCmsPageContent";
-import {heroMediaUrls, localizedSetting, getPublicSiteSettings} from "@/features/siteSettings/siteSettings.server";
+import {localizedSetting, getPublicSiteSettings, getPublicSiteSettingsMedia} from "@/features/siteSettings/siteSettings.server";
 import {getAlternates} from "@/shared/lib/seo/getAlternates";
 import type {Locale} from "@/i18n";
 
@@ -34,6 +34,7 @@ export default async function ContactPage({params}: Props) {
         namespace: "contact.page"
     });
     const settings = await getPublicSiteSettings();
+    const media = await getPublicSiteSettingsMedia();
     const body = localizedSetting(settings, locale, "contactBody");
     const details = [
         {title: t("detail1Title"), body: t("detail1Body")},
@@ -49,7 +50,7 @@ export default async function ContactPage({params}: Props) {
                     {t("subtitle")}
                 </p>
             </section>
-            <PublicCmsPageContent body={body} details={details} heroUrls={heroMediaUrls(settings)} />
+            <PublicCmsPageContent body={body} details={details} media={media} />
         </main>
     );
 }

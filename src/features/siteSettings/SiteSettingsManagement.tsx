@@ -1,6 +1,6 @@
 "use client";
 
-import {type ChangeEvent, useEffect, useState, type ReactNode} from "react";
+import {type ChangeEvent, useEffect, useRef, useState, type ReactNode} from "react";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import NewsRichTextEditor, {type NewsEditorImageInsertion, type NewsEditorLabels} from "@/features/news/NewsRichTextEditor";
@@ -49,7 +49,10 @@ export default function SiteSettingsManagement() {
     const [activePage, setActivePage] = useState<SitePage>("home");
     const [activeLocale, setActiveLocale] = useState<ContentLocale>("ua");
     const [mediaOpen, setMediaOpen] = useState(false);
+    const [mediaVisible, setMediaVisible] = useState(false);
+    const [mediaClosing, setMediaClosing] = useState(false);
     const [imageInsertion, setImageInsertion] = useState<NewsEditorImageInsertion | null>(null);
+    const closeMediaTimer = useRef<number | null>(null);
     const activeField = pageField(activePage, activeLocale);
     const toolbarLabels: NewsEditorLabels = {
         bold: format("bold"),
@@ -88,8 +91,37 @@ export default function SiteSettingsManagement() {
         });
     }, [data]);
 
+    useEffect(() => () => {
+        if (closeMediaTimer.current) {
+            window.clearTimeout(closeMediaTimer.current);
+        }
+    }, []);
+
     function updateField(field: FieldName, value: string) {
         setForm((current) => ({...current, [field]: value}));
+    }
+
+    function openMedia() {
+        if (closeMediaTimer.current) {
+            window.clearTimeout(closeMediaTimer.current);
+            closeMediaTimer.current = null;
+        }
+        setMediaClosing(false);
+        setMediaOpen(true);
+        window.requestAnimationFrame(() => setMediaVisible(true));
+    }
+
+    function closeMedia() {
+        if (closeMediaTimer.current) {
+            window.clearTimeout(closeMediaTimer.current);
+        }
+        setMediaClosing(true);
+        setMediaVisible(false);
+        closeMediaTimer.current = window.setTimeout(() => {
+            setMediaOpen(false);
+            setMediaClosing(false);
+            closeMediaTimer.current = null;
+        }, 180);
     }
 
     async function save() {
@@ -158,7 +190,7 @@ export default function SiteSettingsManagement() {
 
     return (
         <section className="min-w-0 space-y-5">
-            <header className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+            <header className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{t("eyebrow")}</p>
                 <h1 className="mt-1 break-words text-2xl font-semibold text-stone-950">{t("title")}</h1>
                 <p className="mt-2 max-w-3xl break-words text-sm leading-6 text-stone-600">{t("subtitle")}</p>
@@ -168,62 +200,84 @@ export default function SiteSettingsManagement() {
             {isFetching ? <p className="text-sm text-stone-500">{t("loading")}</p> : null}
 
             <div className="min-w-0 space-y-4">
+                <SettingsPanel title={t("pageContentTitle")} hint={t("pageContentHint")}>
+                    <div className="grid min-w-0 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+                        <nav className="min-w-0 rounded-2xl border border-stone-200 bg-stone-50 p-2.5" aria-label={t("pageTabsLabel")}>
+                            <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">{t("pageTabsLabel")}</p>
+                            {sitePages.map((page, index) => (
+                                <button aria-pressed={activePage === page} className={activePage === page ? activePageButtonClass : pageButtonClass} key={page} onClick={() => setActivePage(page)} type="button">
+                                    <span className={activePage === page ? activePageIndexClass : pageIndexClass}>{index + 1}</span>
+                                    <span className="min-w-0">
+                                        <span className="block text-sm font-semibold">{t(`pageTabs.${page}`)}</span>
+                                        <span className="mt-1 block text-xs font-normal leading-5 text-current opacity-70">{t(`pageDescriptions.${page}`)}</span>
+                                    </span>
+                                </button>
+                            ))}
+                        </nav>
+
+                        <div className="min-w-0 rounded-2xl border border-stone-200 bg-white p-3 shadow-sm sm:p-4">
+                            <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-stone-200 bg-stone-50 p-3 transition-[background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none sm:flex-row sm:items-start sm:justify-between sm:p-4">
+                                <div className="min-w-0">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{t("editingNow")}</p>
+                                    <h3 className="mt-1 break-words text-xl font-semibold text-stone-950">{t(`pageTabs.${activePage}`)}</h3>
+                                    <p className="mt-1 break-words text-sm leading-6 text-stone-500">{t(`pageDescriptions.${activePage}`)}</p>
+                                </div>
+                                <div className="shrink-0 sm:text-right">
+                                    <button className="rounded-lg bg-stone-900 px-3 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-stone-700 motion-reduce:transition-none" onClick={openMedia} type="button">
+                                        {t("mediaOpen")}
+                                    </button>
+                                    <p className="mt-1 max-w-44 text-xs leading-5 text-stone-500">{t("mediaActionHint")}</p>
+                                </div>
+                            </div>
+
+                            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                                <div className="inline-flex rounded-lg border border-stone-200 bg-stone-50 p-1" role="tablist" aria-label={t("languageTabsLabel")}>
+                                    {locales.map((locale) => (
+                                        <button className={activeLocale === locale ? activeLocaleClass : localeClass} key={locale} onClick={() => setActiveLocale(locale)} type="button">
+                                            {t(locale)}
+                                        </button>
+                                    ))}
+                                </div>
+                                <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-600">{t("currentLanguage", {language: t(activeLocale)})}</span>
+                            </div>
+
+                            {activePage === "home" ? (
+                                <div className="mt-4 rounded-lg border border-stone-200 bg-stone-50 p-3">
+                                    <TextArea label={activeLocale === "ua" ? t("homeIntroUa") : t("homeIntroEn")} minHeight="min-h-20" value={(activeLocale === "ua" ? form.homeIntroUa : form.homeIntroEn) ?? ""} onChange={(value) => updateField(activeLocale === "ua" ? "homeIntroUa" : "homeIntroEn", value)} />
+                                </div>
+                            ) : null}
+
+                            <div className="mt-4">
+                                <NewsRichTextEditor
+                                    ariaLabel={`${t(`pageTabs.${activePage}`)} ${t(activeLocale)}`}
+                                    imageInsertion={imageInsertion}
+                                    labels={toolbarLabels}
+                                    onChange={(value) => updateField(activeField, value)}
+                                    onImageInserted={() => setImageInsertion(null)}
+                                    value={form[activeField] ?? ""}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </SettingsPanel>
+
                 <SettingsPanel title={t("footerTitle")} hint={t("footerHint")}>
                     <div className="grid gap-3 md:grid-cols-2">
                         <TextArea label={t("ua")} value={form.footerBodyUa ?? ""} onChange={(value) => updateField("footerBodyUa", value)} />
                         <TextArea label={t("en")} value={form.footerBodyEn ?? ""} onChange={(value) => updateField("footerBodyEn", value)} />
                     </div>
                 </SettingsPanel>
-
-                <SettingsPanel title={t("pageContentTitle")} hint={t("pageContentHint")}>
-                    <div className="flex flex-col gap-3 rounded-xl border border-stone-200 bg-stone-50 p-3">
-                        <div className="flex flex-wrap gap-2" role="tablist" aria-label={t("pageTabsLabel")}>
-                            {sitePages.map((page) => (
-                                <button className={activePage === page ? activeTabClass : tabClass} key={page} onClick={() => setActivePage(page)} type="button">
-                                    {t(`pageTabs.${page}`)}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="flex flex-wrap gap-2" role="tablist" aria-label={t("languageTabsLabel")}>
-                                {locales.map((locale) => (
-                                    <button className={activeLocale === locale ? activeLocaleClass : localeClass} key={locale} onClick={() => setActiveLocale(locale)} type="button">
-                                        {t(locale)}
-                                    </button>
-                                ))}
-                            </div>
-                            <button className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 transition-colors hover:bg-stone-100" onClick={() => setMediaOpen(true)} type="button">
-                                {t("mediaOpen")}
-                            </button>
-                        </div>
-                    </div>
-
-                    {activePage === "home" ? (
-                        <div className="grid gap-3 md:grid-cols-2">
-                            <TextArea label={t("homeIntroUa")} value={form.homeIntroUa ?? ""} onChange={(value) => updateField("homeIntroUa", value)} />
-                            <TextArea label={t("homeIntroEn")} value={form.homeIntroEn ?? ""} onChange={(value) => updateField("homeIntroEn", value)} />
-                        </div>
-                    ) : null}
-
-                    <NewsRichTextEditor
-                        key={`${activePage}-${activeLocale}`}
-                        ariaLabel={`${t(`pageTabs.${activePage}`)} ${t(activeLocale)}`}
-                        imageInsertion={imageInsertion}
-                        labels={toolbarLabels}
-                        onChange={(value) => updateField(activeField, value)}
-                        onImageInserted={() => setImageInsertion(null)}
-                        value={form[activeField] ?? ""}
-                    />
-                </SettingsPanel>
             </div>
 
             {mediaOpen ? (
                 <SiteMediaDialog
                     busy={isUploading || isUnlinking || isReordering}
+                    closing={mediaClosing}
                     isError={mediaError}
                     isFetching={mediaFetching}
                     media={media}
-                    onClose={() => setMediaOpen(false)}
+                    visible={mediaVisible}
+                    onClose={closeMedia}
                     onInsert={insertMedia}
                     onMove={move}
                     onRemove={remove}
@@ -233,7 +287,7 @@ export default function SiteSettingsManagement() {
             ) : null}
 
             <div className="flex justify-end">
-                <button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300 sm:w-auto" disabled={isLoading} onClick={save} type="button">
+                <button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300 motion-reduce:transition-none sm:w-auto" disabled={isLoading} onClick={save} type="button">
                     {isLoading ? t("saving") : t("save")}
                 </button>
             </div>
@@ -243,26 +297,31 @@ export default function SiteSettingsManagement() {
 
 const sitePages: SitePage[] = ["home", "about", "contact"];
 const locales: ContentLocale[] = ["ua", "en"];
-const tabClass = "rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50";
-const activeTabClass = "rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white";
-const localeClass = "rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100";
-const activeLocaleClass = "rounded-lg bg-stone-700 px-3 py-2 text-xs font-semibold text-white";
+const pageButtonClass = "mb-1 flex w-full gap-3 rounded-xl border border-transparent px-3 py-3 text-left text-stone-700 transition-[background-color,border-color,box-shadow] duration-200 hover:border-stone-200 hover:bg-white last:mb-0 motion-reduce:transition-none";
+const activePageButtonClass = "mb-1 flex w-full gap-3 rounded-xl border border-stone-900 bg-white px-3 py-3 text-left text-stone-950 shadow-sm transition-[background-color,border-color,box-shadow] duration-200 last:mb-0 motion-reduce:transition-none";
+const pageIndexClass = "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-stone-200 bg-white text-xs font-semibold text-stone-500";
+const activePageIndexClass = "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-950 text-xs font-semibold text-white";
+const localeClass = "rounded-md px-3 py-1.5 text-xs font-semibold text-stone-600 transition-[background-color,color,box-shadow] duration-200 hover:bg-white hover:text-stone-900 motion-reduce:transition-none";
+const activeLocaleClass = "rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-stone-950 shadow-sm transition-[background-color,color,box-shadow] duration-200 motion-reduce:transition-none";
 
 function pageField(page: SitePage, locale: ContentLocale): PageField {
     const suffix = locale === "ua" ? "Ua" : "En";
     return `${page}Body${suffix}` as PageField;
 }
 
-function SiteMediaDialog({busy, isError, isFetching, media, onClose, onInsert, onMove, onRemove, onUpload, t}: {busy: boolean; isError: boolean; isFetching: boolean; media: MediaAsset[]; onClose: () => void; onInsert: (asset: MediaAsset) => void; onMove: (asset: MediaAsset, direction: -1 | 1) => void; onRemove: (asset: MediaAsset) => void; onUpload: (event: ChangeEvent<HTMLInputElement>) => void; t: ReturnType<typeof useTranslations<"admin.siteSettings">>}) {
+function SiteMediaDialog({busy, closing, isError, isFetching, media, onClose, onInsert, onMove, onRemove, onUpload, t, visible}: {busy: boolean; closing: boolean; isError: boolean; isFetching: boolean; media: MediaAsset[]; onClose: () => void; onInsert: (asset: MediaAsset) => void; onMove: (asset: MediaAsset, direction: -1 | 1) => void; onRemove: (asset: MediaAsset) => void; onUpload: (event: ChangeEvent<HTMLInputElement>) => void; t: ReturnType<typeof useTranslations<"admin.siteSettings">>; visible: boolean}) {
+    const backdropState = visible && !closing ? "opacity-100" : "opacity-0";
+    const panelState = visible && !closing ? "translate-y-0 scale-100 opacity-100" : "translate-y-2 scale-[0.985] opacity-0";
+
     return (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-stone-950/40 p-3 sm:p-5" role="presentation">
-            <section aria-modal="true" className="mx-auto min-h-[min(42rem,calc(100vh-2rem))] w-full max-w-6xl rounded-2xl border border-stone-200 bg-white p-4 shadow-2xl sm:p-5" role="dialog">
+        <div className={`${backdropState} fixed inset-0 z-50 overflow-y-auto bg-stone-950/40 p-3 transition-opacity duration-200 motion-reduce:transition-none sm:p-5`} role="presentation">
+            <section aria-modal="true" className={`${panelState} mx-auto min-h-[min(42rem,calc(100vh-2rem))] w-full max-w-6xl rounded-2xl border border-stone-200 bg-white p-4 shadow-2xl transition-[opacity,transform] duration-200 motion-reduce:transition-none sm:p-5`} role="dialog">
                 <header className="flex min-w-0 flex-col gap-3 border-b border-stone-200 pb-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                         <h2 className="break-words text-xl font-semibold text-stone-950">{t("mediaTitle")}</h2>
                         <p className="mt-1 max-w-3xl break-words text-sm leading-6 text-stone-500">{t("mediaHint")}</p>
                     </div>
-                    <button className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100" onClick={onClose} type="button">
+                    <button className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-800 transition-colors duration-200 hover:bg-stone-100 motion-reduce:transition-none" onClick={onClose} type="button">
                         {t("mediaClose")}
                     </button>
                 </header>

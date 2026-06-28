@@ -199,6 +199,16 @@ export default function SiteSettingsManagement() {
             {isError ? <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("loadError")}</p> : null}
             {isFetching ? <p className="text-sm text-stone-500">{t("loading")}</p> : null}
 
+            <section className="flex min-w-0 flex-col gap-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                <div className="min-w-0">
+                    <h2 className="break-words text-base font-semibold text-stone-950">{t("mediaTitle")}</h2>
+                    <p className="mt-1 max-w-3xl break-words text-sm leading-6 text-stone-500">{t("mediaActionHint")}</p>
+                </div>
+                <button className="w-full shrink-0 rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-stone-700 motion-reduce:transition-none sm:w-auto" onClick={openMedia} type="button">
+                    {t("mediaOpen")}
+                </button>
+            </section>
+
             <div className="min-w-0 space-y-4">
                 <SettingsPanel title={t("pageContentTitle")} hint={t("pageContentHint")}>
                     <div className="grid min-w-0 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
@@ -221,12 +231,6 @@ export default function SiteSettingsManagement() {
                                     <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{t("editingNow")}</p>
                                     <h3 className="mt-1 break-words text-xl font-semibold text-stone-950">{t(`pageTabs.${activePage}`)}</h3>
                                     <p className="mt-1 break-words text-sm leading-6 text-stone-500">{t(`pageDescriptions.${activePage}`)}</p>
-                                </div>
-                                <div className="shrink-0 sm:text-right">
-                                    <button className="rounded-lg bg-stone-900 px-3 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-stone-700 motion-reduce:transition-none" onClick={openMedia} type="button">
-                                        {t("mediaOpen")}
-                                    </button>
-                                    <p className="mt-1 max-w-44 text-xs leading-5 text-stone-500">{t("mediaActionHint")}</p>
                                 </div>
                             </div>
 

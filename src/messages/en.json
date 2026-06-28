@@ -394,7 +394,7 @@
       "mediaTitle": "Hero / slider media",
       "mediaHint": "Upload photos or videos, change order, insert images into content, or remove them from pages.",
       "mediaOpen": "Media and slider",
-      "mediaActionHint": "Upload, reorder, and insert into the current editor.",
+      "mediaActionHint": "Separate photo and video management for hero/slider: upload, reorder, insert into the editor, and remove.",
       "mediaClose": "Close media",
       "mediaUpload": "Upload media",
       "mediaUploadHint": "Choose JPEG, PNG, WebP, MP4, or WebM. After upload the file appears in the slider and page media library.",

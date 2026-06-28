@@ -36,6 +36,13 @@ export const siteSettingsApi = createApi({
             },
             invalidatesTags: [{type: "SiteMedia", id: "LIST"}]
         }),
+        uploadSiteSettingsContentMedia: build.mutation<MediaAsset, File>({
+            query: (file) => {
+                const body = new FormData();
+                body.append("file", file);
+                return {url: "/admin/site-settings/content-media", method: "POST", body};
+            }
+        }),
         unlinkSiteSettingsMedia: build.mutation<MediaAsset, string>({
             query: (mediaId) => ({url: `/admin/site-settings/media/${mediaId}`, method: "DELETE"}),
             invalidatesTags: [{type: "SiteMedia", id: "LIST"}]
@@ -54,6 +61,7 @@ export const {
     useListSiteSettingsMediaQuery,
     useReorderSiteSettingsMediaMutation,
     useUnlinkSiteSettingsMediaMutation,
+    useUploadSiteSettingsContentMediaMutation,
     useUploadSiteSettingsMediaMutation,
     useUpdateSiteSettingsMutation
 } = siteSettingsApi;

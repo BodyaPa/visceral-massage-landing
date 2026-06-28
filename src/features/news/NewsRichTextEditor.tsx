@@ -1,6 +1,6 @@
 "use client";
 
-import {type ReactNode, useEffect} from "react";
+import {type ReactNode, useEffect, useRef} from "react";
 import {EditorContent, useEditor, useEditorState} from "@tiptap/react";
 import Image from "@tiptap/extension-image";
 import StarterKit from "@tiptap/starter-kit";
@@ -42,18 +42,47 @@ export type NewsEditorImageInsertion = {
     alt: string;
 };
 
+export type NewsEditorPastedImage = {
+    src: string;
+    alt: string;
+};
+
 type Props = {
     value: string;
     ariaLabel: string;
     labels: NewsEditorLabels;
     imageInsertion?: NewsEditorImageInsertion | null;
     onImageInserted?: () => void;
+    onPasteImage?: (file: File) => Promise<NewsEditorPastedImage>;
     onChange: (value: string) => void;
 };
 
-export default function NewsRichTextEditor({value, ariaLabel, labels, imageInsertion, onImageInserted, onChange}: Props) {
+export default function NewsRichTextEditor({value, ariaLabel, labels, imageInsertion, onImageInserted, onChange, onPasteImage}: Props) {
+    const editorRef = useRef<ReturnType<typeof useEditor>>(null);
     const editor = useEditor({
         immediatelyRender: false,
+        editorProps: {
+            handlePaste: (_view, event) => {
+                const currentEditor = editorRef.current;
+                if (!onPasteImage || !currentEditor) {
+                    return false;
+                }
+
+                const images = Array.from(event.clipboardData?.files ?? [])
+                    .filter((file) => file.type.startsWith("image/"));
+                if (images.length === 0) {
+                    return false;
+                }
+
+                event.preventDefault();
+                images.forEach((file) => {
+                    void onPasteImage(file).then((asset) => {
+                        currentEditor.chain().focus().setImage({src: asset.src, alt: asset.alt}).run();
+                    });
+                });
+                return true;
+            }
+        },
         extensions: [
             StarterKit.configure({
                 link: {
@@ -87,6 +116,10 @@ export default function NewsRichTextEditor({value, ariaLabel, labels, imageInser
             canRedo: currentEditor?.can().redo() ?? false
         })
     });
+
+    useEffect(() => {
+        editorRef.current = editor;
+    }, [editor]);
 
     useEffect(() => {
         if (editor && editor.getMarkdown() !== value) {

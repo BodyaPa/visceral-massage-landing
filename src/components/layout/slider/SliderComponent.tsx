@@ -1,39 +1,78 @@
 "use client";
 
 import styles from "./SliderStyles.module.scss";
-import Image from "next/image";
 import React, {useEffect, useMemo, useRef, useState} from "react";
 import SliderButtons from "@/components/layout/slider/sliderButtons/SliderButtons";
-import PhotoConfigClass from "@/components/layout/header/classes/PhotoConfigClass";
+import {API_URL} from "@/shared/constants/env";
+import type {MediaAsset} from "@/types/news";
 
 type Props = {
     background?: boolean;
 };
 
+type Slide = {
+    src: string;
+    alt: string;
+};
+
 export default function SliderComponent({background = false}: Props) {
     const [activeIndex, setActiveIndex] = useState(0);
+    const [managedSlides, setManagedSlides] = useState<Slide[]>([]);
 
-    const photoConfig = useMemo(
+    const fallbackSlides = useMemo<Slide[]>(
         () => [
-            new PhotoConfigClass("/images/1.jpg"),
-            new PhotoConfigClass("/images/2.jpg"),
-            new PhotoConfigClass("/images/3.jpg"),
+            {src: "/images/1.jpg", alt: ""},
+            {src: "/images/2.jpg", alt: ""},
+            {src: "/images/3.jpg", alt: ""}
         ],
         []
     );
+    const slides = managedSlides.length > 0 ? managedSlides : fallbackSlides;
 
     useEffect(() => {
+        let active = true;
+
+        fetch(`${API_URL}/api/site-settings/media`)
+            .then((response) => response.ok ? response.json() as Promise<MediaAsset[]> : [])
+            .then((assets) => {
+                if (!active) return;
+                setManagedSlides(
+                    assets
+                        .filter((asset) => asset.contentType.startsWith("image/"))
+                        .map((asset) => ({
+                            src: `${API_URL}/api/site-settings/media/${asset.id}/content`,
+                            alt: asset.originalFilename
+                        }))
+                );
+            })
+            .catch(() => {
+                if (active) setManagedSlides([]);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (activeIndex < 0) {
+            setActiveIndex(slides.length - 1);
+        } else if (activeIndex >= slides.length) {
+            setActiveIndex(0);
+        }
+    }, [activeIndex, slides.length]);
+
+    useEffect(() => {
+        if (slides.length <= 1) {
+            return;
+        }
+
         const timer = window.setInterval(() => {
-            setActiveIndex((i) => (i === photoConfig.length - 1 ? 0 : i + 1));
+            setActiveIndex((i) => (i === slides.length - 1 ? 0 : i + 1));
         }, 10000);
 
-        if (activeIndex < 0) {
-            setActiveIndex(photoConfig.length - 1)
-        } else if (activeIndex >= photoConfig.length) {
-            setActiveIndex(0)
-        }
         return () => window.clearInterval(timer);
-    }, [photoConfig.length, activeIndex]);
+    }, [slides.length]);
 
     const layerRef = useRef<HTMLDivElement | null>(null);
 
@@ -57,16 +96,15 @@ export default function SliderComponent({background = false}: Props) {
 
             <div className={styles.stage}>
                 <div ref={layerRef} className={styles.parallaxLayer}>
-                    {photoConfig.map((content, index) => (
-                        <Image
+                    {slides.map((content, index) => (
+                        // eslint-disable-next-line @next/next/no-img-element -- slider images may come from the public API media endpoint.
+                        <img
                             key={index}
                             className={`${styles.photo} ${index === activeIndex ? styles.photoActive : ""}`}
                             src={content.src}
-                            alt=""
-                            fill
+                            alt={content.alt}
                             draggable={false}
-                            priority={index === 0}
-                            sizes="100vw"
+                            loading={index === 0 ? "eager" : "lazy"}
                         />
                     ))}
                 </div>

@@ -2,7 +2,7 @@ import type {Metadata} from "next";
 import {getTranslations} from "next-intl/server";
 import type {Locale} from "@/i18n";
 import PublicCmsPageContent from "@/features/siteSettings/PublicCmsPageContent";
-import {localizedSetting, getPublicSiteSettings, getPublicSiteSettingsMedia} from "@/features/siteSettings/siteSettings.server";
+import {localizedSetting, getPublicSiteSettings} from "@/features/siteSettings/siteSettings.server";
 import {getAlternates} from "@/shared/lib/seo/getAlternates";
 
 type Props = {
@@ -33,7 +33,6 @@ export default async function HomePage({params}: Props) {
         namespace: "home.page"
     });
     const settings = await getPublicSiteSettings();
-    const media = await getPublicSiteSettingsMedia();
     const intro = localizedSetting(settings, locale, "homeIntro") ?? t("subtitle");
     const body = localizedSetting(settings, locale, "homeBody");
     const details = [
@@ -50,7 +49,7 @@ export default async function HomePage({params}: Props) {
                     {intro}
                 </p>
             </section>
-            <PublicCmsPageContent body={body} details={details} media={media} />
+            <PublicCmsPageContent body={body} details={details} />
         </main>
     );
 }

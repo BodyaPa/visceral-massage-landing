@@ -3,13 +3,14 @@
 import {type ChangeEvent, useEffect, useRef, useState, type ReactNode} from "react";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
-import NewsRichTextEditor, {type NewsEditorImageInsertion, type NewsEditorLabels} from "@/features/news/NewsRichTextEditor";
+import NewsRichTextEditor, {type NewsEditorLabels, type NewsEditorPastedImage} from "@/features/news/NewsRichTextEditor";
 import {
     useGetAdminSiteSettingsQuery,
     useListAdminSiteSettingsMediaQuery,
     useReorderSiteSettingsMediaMutation,
     useUnlinkSiteSettingsMediaMutation,
     useUpdateSiteSettingsMutation,
+    useUploadSiteSettingsContentMediaMutation,
     useUploadSiteSettingsMediaMutation
 } from "@/features/siteSettings/siteSettings.api";
 import {createAdminSiteMediaUrl, createSiteMediaPath} from "@/features/siteSettings/siteSettingsMedia";
@@ -43,6 +44,7 @@ export default function SiteSettingsManagement() {
     const {data: media = [], isFetching: mediaFetching, isError: mediaError} = useListAdminSiteSettingsMediaQuery();
     const [updateSettings, {isLoading}] = useUpdateSiteSettingsMutation();
     const [uploadMedia, {isLoading: isUploading}] = useUploadSiteSettingsMediaMutation();
+    const [uploadContentMedia] = useUploadSiteSettingsContentMediaMutation();
     const [unlinkMedia, {isLoading: isUnlinking}] = useUnlinkSiteSettingsMediaMutation();
     const [reorderMedia, {isLoading: isReordering}] = useReorderSiteSettingsMediaMutation();
     const [form, setForm] = useState<SiteSettingsInput>(emptyForm);
@@ -51,7 +53,6 @@ export default function SiteSettingsManagement() {
     const [mediaOpen, setMediaOpen] = useState(false);
     const [mediaVisible, setMediaVisible] = useState(false);
     const [mediaClosing, setMediaClosing] = useState(false);
-    const [imageInsertion, setImageInsertion] = useState<NewsEditorImageInsertion | null>(null);
     const closeMediaTimer = useRef<number | null>(null);
     const activeField = pageField(activePage, activeLocale);
     const toolbarLabels: NewsEditorLabels = {
@@ -139,29 +140,24 @@ export default function SiteSettingsManagement() {
         if (!file) return;
 
         try {
-            const asset = await uploadMedia(file).unwrap();
-            if (asset.contentType.startsWith("image/")) {
-                insertMedia(asset);
-            }
+            await uploadMedia(file).unwrap();
             toast.success(t("mediaUploaded"));
         } catch {
             toast.error(t("mediaUploadError"));
         }
     }
 
-    function insertMedia(asset: MediaAsset) {
-        if (asset.contentType.startsWith("image/")) {
-            setImageInsertion({
-                key: Date.now(),
+    async function uploadPastedImage(file: File): Promise<NewsEditorPastedImage> {
+        try {
+            const asset = await uploadContentMedia(file).unwrap();
+            toast.success(t("contentImageUploaded"));
+            return {
                 src: createSiteMediaPath(asset.id),
                 alt: asset.originalFilename
-            });
-            return;
-        }
-
-        if (asset.contentType.startsWith("video/")) {
-            const videoLink = `\n\n[${asset.originalFilename}](${createSiteMediaPath(asset.id)})\n\n`;
-            setForm((current) => ({...current, [activeField]: `${current[activeField] ?? ""}${videoLink}`}));
+            };
+        } catch {
+            toast.error(t("contentImageUploadError"));
+            throw new Error("Unable to upload pasted image");
         }
     }
 
@@ -201,7 +197,7 @@ export default function SiteSettingsManagement() {
 
             <section className="flex min-w-0 flex-col gap-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
                 <div className="min-w-0">
-                    <h2 className="break-words text-base font-semibold text-stone-950">{t("mediaTitle")}</h2>
+                                    <h2 className="break-words text-base font-semibold text-stone-950">{t("mediaTitle")}</h2>
                     <p className="mt-1 max-w-3xl break-words text-sm leading-6 text-stone-500">{t("mediaActionHint")}</p>
                 </div>
                 <button className="w-full shrink-0 rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-stone-700 motion-reduce:transition-none sm:w-auto" onClick={openMedia} type="button">
@@ -254,10 +250,9 @@ export default function SiteSettingsManagement() {
                             <div className="mt-4">
                                 <NewsRichTextEditor
                                     ariaLabel={`${t(`pageTabs.${activePage}`)} ${t(activeLocale)}`}
-                                    imageInsertion={imageInsertion}
                                     labels={toolbarLabels}
                                     onChange={(value) => updateField(activeField, value)}
-                                    onImageInserted={() => setImageInsertion(null)}
+                                    onPasteImage={uploadPastedImage}
                                     value={form[activeField] ?? ""}
                                 />
                             </div>
@@ -282,7 +277,6 @@ export default function SiteSettingsManagement() {
                     media={media}
                     visible={mediaVisible}
                     onClose={closeMedia}
-                    onInsert={insertMedia}
                     onMove={move}
                     onRemove={remove}
                     onUpload={upload}
@@ -313,7 +307,7 @@ function pageField(page: SitePage, locale: ContentLocale): PageField {
     return `${page}Body${suffix}` as PageField;
 }
 
-function SiteMediaDialog({busy, closing, isError, isFetching, media, onClose, onInsert, onMove, onRemove, onUpload, t, visible}: {busy: boolean; closing: boolean; isError: boolean; isFetching: boolean; media: MediaAsset[]; onClose: () => void; onInsert: (asset: MediaAsset) => void; onMove: (asset: MediaAsset, direction: -1 | 1) => void; onRemove: (asset: MediaAsset) => void; onUpload: (event: ChangeEvent<HTMLInputElement>) => void; t: ReturnType<typeof useTranslations<"admin.siteSettings">>; visible: boolean}) {
+function SiteMediaDialog({busy, closing, isError, isFetching, media, onClose, onMove, onRemove, onUpload, t, visible}: {busy: boolean; closing: boolean; isError: boolean; isFetching: boolean; media: MediaAsset[]; onClose: () => void; onMove: (asset: MediaAsset, direction: -1 | 1) => void; onRemove: (asset: MediaAsset) => void; onUpload: (event: ChangeEvent<HTMLInputElement>) => void; t: ReturnType<typeof useTranslations<"admin.siteSettings">>; visible: boolean}) {
     const backdropState = visible && !closing ? "opacity-100" : "opacity-0";
     const panelState = visible && !closing ? "translate-y-0 scale-100 opacity-100" : "translate-y-2 scale-[0.985] opacity-0";
 
@@ -334,7 +328,7 @@ function SiteMediaDialog({busy, closing, isError, isFetching, media, onClose, on
                     <label className="flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-lg bg-white px-4 py-6 text-center text-sm font-semibold text-stone-800 shadow-sm hover:bg-stone-100">
                         <span>{busy ? t("mediaBusy") : t("mediaUpload")}</span>
                         <span className="mt-2 text-xs font-normal leading-5 text-stone-500">{t("mediaUploadHint")}</span>
-                        <input accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" className="sr-only" disabled={busy} onChange={onUpload} type="file" />
+                        <input accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={busy} onChange={onUpload} type="file" />
                     </label>
                 </div>
 
@@ -359,7 +353,6 @@ function SiteMediaDialog({busy, closing, isError, isFetching, media, onClose, on
                                 <div className="flex flex-wrap gap-2">
                                     <button className={smallButtonClass} disabled={busy || index === 0} onClick={() => onMove(asset, -1)} type="button">{t("mediaMoveUp")}</button>
                                     <button className={smallButtonClass} disabled={busy || index === media.length - 1} onClick={() => onMove(asset, 1)} type="button">{t("mediaMoveDown")}</button>
-                                    <button className={smallButtonClass} disabled={busy} onClick={() => onInsert(asset)} type="button">{t("mediaInsert")}</button>
                                     <button className={dangerButtonClass} disabled={busy} onClick={() => onRemove(asset)} type="button">{t("mediaRemove")}</button>
                                 </div>
                             </div>

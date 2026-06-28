@@ -201,7 +201,9 @@
 }
 
 .newsCardSkeleton {
+  min-height: 96px;
   background: #fff;
+  animation: none;
 }
 
 .skeletonTitle,
@@ -227,6 +229,20 @@
   height: 14px;
   width: 92%;
   margin-bottom: 10px;
+}
+
+.skeletonLineShort {
+  height: 14px;
+  width: 68%;
+  border-radius: 10px;
+  background: linear-gradient(
+                  90deg,
+                  rgba(120, 113, 108, 0.10) 0%,
+                  rgba(120, 113, 108, 0.18) 35%,
+                  rgba(120, 113, 108, 0.10) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
 }
 
 .adminActions {

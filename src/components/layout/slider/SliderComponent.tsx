@@ -1,7 +1,7 @@
 "use client";
 
 import styles from "./SliderStyles.module.scss";
-import React, {useEffect, useMemo, useRef, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {usePathname} from "next/navigation";
 import SliderButtons from "@/components/layout/slider/sliderButtons/SliderButtons";
 import {API_URL} from "@/shared/constants/env";
@@ -22,22 +22,20 @@ export default function SliderComponent({background = false}: Props) {
     const [activeIndex, setActiveIndex] = useState(0);
     const [managedSlides, setManagedSlides] = useState<Slide[]>([]);
 
-    const fallbackSlides = useMemo<Slide[]>(
-        () => [
-            {src: "/images/1.jpg", alt: ""},
-            {src: "/images/2.jpg", alt: ""},
-            {src: "/images/3.jpg", alt: ""}
-        ],
-        []
-    );
-    const slides = managedSlides.length > 0 ? managedSlides : fallbackSlides;
+    const slides = managedSlides;
 
     useEffect(() => {
         let active = true;
 
         const loadSlides = () => {
             fetch(`${API_URL}/api/site-settings/media`, {cache: "no-store"})
-                .then((response) => response.ok ? response.json() as Promise<MediaAsset[]> : [])
+                .then((response) => {
+                    if (!response.ok) {
+                        console.warn("Unable to load managed site slider media", response.status);
+                        return [];
+                    }
+                    return response.json() as Promise<MediaAsset[]>;
+                })
                 .then((assets) => {
                     if (!active) return;
                     setManagedSlides(
@@ -49,7 +47,8 @@ export default function SliderComponent({background = false}: Props) {
                             }))
                     );
                 })
-                .catch(() => {
+                .catch((error) => {
+                    console.warn("Unable to load managed site slider media", error);
                     if (active) setManagedSlides([]);
                 });
         };

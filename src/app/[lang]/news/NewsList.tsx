@@ -50,23 +50,6 @@ export default function NewsList() {
 
     const news = data?.content ?? [];
 
-    if (isLoading) {
-        return (
-            <div ref={contentRef} className={styles.content} id="public-page-content">
-                <div className={styles.newsBlock}>
-                    {Array.from({length: 6}).map((_, index) => (
-                        <div key={index} className={`${styles.newsCard} ${styles.textCard} ${styles.newsCardSkeleton}`}>
-                            <div className={styles.textCardContent}>
-                                <div className={styles.skeletonTitle} />
-                                <div className={styles.skeletonLine} />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div ref={contentRef} className={styles.content} id="public-page-content">
             <div className={styles.newsLayout}>
@@ -90,7 +73,17 @@ export default function NewsList() {
                 </header>
 
                 <div className={styles.newsBlock}>
-                    {news.map((news) => {
+                    {isLoading ? (
+                        Array.from({length: 6}).map((_, index) => (
+                            <div key={index} className={`${styles.newsCard} ${styles.textCard} ${styles.newsCardSkeleton}`}>
+                                <div className={styles.textCardContent}>
+                                    <div className={styles.skeletonTitle} />
+                                    <div className={styles.skeletonLine} />
+                                    <div className={styles.skeletonLineShort} />
+                                </div>
+                            </div>
+                        ))
+                    ) : news.map((news) => {
                         const coverDisplayMode = news.coverDisplayMode ?? "FILL";
                         const fitCover = news.coverImageUrl && coverDisplayMode === "FIT";
 

@@ -28,11 +28,16 @@ import {
     toStartOfDayIso
 } from "@/features/bookings/financeFormatting";
 import {useListPublicOfficesQuery} from "@/features/offices/offices.api";
+import {
+    useConfirmMembershipPaymentMutation,
+    useListFinanceMembershipPurchasesQuery
+} from "@/features/memberships/memberships.api";
 import type {BookingStatus, FinanceBooking, FinanceExpense, FinanceSpecialistSettings} from "@/types/bookings";
+import type {MembershipPurchase} from "@/types/memberships";
 import type {Office} from "@/types/offices";
 
 const statuses: Array<BookingStatus | ""> = ["", "AWAITING_PAYMENT_CONFIRMATION", "CONFIRMED", "CANCELLED"];
-const tabs = ["pending", "transactions", "expenses", "reports"] as const;
+const tabs = ["pending", "memberships", "transactions", "expenses", "reports"] as const;
 type FinanceTab = typeof tabs[number];
 
 export default function FinanceBookingsManagement() {
@@ -67,10 +72,15 @@ export default function FinanceBookingsManagement() {
         from: from || undefined,
         to: to || undefined
     });
+    const {data: membershipPurchasesData, isFetching: membershipPurchasesFetching, isError: membershipPurchasesError} = useListFinanceMembershipPurchasesQuery({
+        status: "AWAITING_PAYMENT_CONFIRMATION"
+    });
     const [confirmPayment, {isLoading: isConfirming}] = useConfirmPaymentMutation();
+    const [confirmMembershipPayment, {isLoading: isConfirmingMembership}] = useConfirmMembershipPaymentMutation();
     const [markPayoutPaid, {isLoading: isMarkingPayout}] = useMarkSpecialistPayoutPaidMutation();
     const allBookings = useMemo(() => data?.content ?? [], [data?.content]);
     const expenses = useMemo(() => expensesData?.content ?? [], [expensesData?.content]);
+    const membershipPurchases = useMemo(() => membershipPurchasesData?.content ?? [], [membershipPurchasesData?.content]);
     const bookings = allBookings;
     const pendingCount = summary?.pendingCount ?? 0;
     const confirmedCount = summary?.confirmedCount ?? 0;
@@ -105,6 +115,15 @@ export default function FinanceBookingsManagement() {
             toast.success(t("payout.markedPaid"));
         } catch {
             toast.error(t("payout.markError"));
+        }
+    }
+
+    async function confirmMembership(purchaseId: number) {
+        try {
+            await confirmMembershipPayment(purchaseId).unwrap();
+            toast.success(t("memberships.confirmed"));
+        } catch {
+            toast.error(t("memberships.confirmError"));
         }
     }
 
@@ -164,6 +183,7 @@ export default function FinanceBookingsManagement() {
                 {tab === "pending" || tab === "transactions" ? (
                     <BookingSection bookings={bookings} confirming={isConfirming} isFetching={isFetching} locale={locale} markingPayout={isMarkingPayout} onConfirm={requestConfirm} onMarkPayout={markPayout} onSelect={setSelectedBooking} tab={tab} t={t} />
                 ) : null}
+                {tab === "memberships" ? <MembershipFinanceSection confirming={isConfirmingMembership} isError={membershipPurchasesError} isFetching={membershipPurchasesFetching} locale={locale} onConfirm={confirmMembership} purchases={membershipPurchases} t={t} /> : null}
                 {tab === "expenses" ? <ExpensesSection expenses={expenses} isError={expensesError} isFetching={expensesFetching} locale={locale} offices={activeOffices} t={t} /> : null}
                 {tab === "reports" ? <ReportsSection businessIncome={businessIncome} estimatedTax={estimatedTax} expenses={expenseTotal} income={income} locale={locale} officeId={officeId} quarterlyTaxPercent={quarterlyTaxPercent} result={result} specialistEarnings={specialistEarnings} status={status} taxableIncome={taxableIncome} t={t} to={to} from={from} /> : null}
             </section>
@@ -252,6 +272,14 @@ function FinanceAction({booking, confirming, markingPayout, onConfirm, onMarkPay
 function StatusBadge({status, t}: {status: BookingStatus; t: T}) {
     const tone = status === "CONFIRMED" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : status === "AWAITING_PAYMENT_CONFIRMATION" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-stone-200 bg-stone-100 text-stone-600";
     return <span className={`inline-flex max-w-full break-words rounded-full border px-2.5 py-1 text-xs font-medium ${tone}`}>{t(`statuses.${status}`)}</span>;
+}
+
+function MembershipFinanceSection({confirming, isError, isFetching, locale, onConfirm, purchases, t}: {confirming: boolean; isError: boolean; isFetching: boolean; locale: string; onConfirm: (id: number) => void; purchases: MembershipPurchase[]; t: T}) {
+    return <div className="p-4 sm:p-5"><div className="mb-4"><h2 className="text-base font-semibold text-stone-950">{t("memberships.title")}</h2><p className="mt-1 text-sm text-stone-500">{t("memberships.subtitle")}</p></div>{isError ? <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("memberships.loadError")}</p> : null}{isFetching ? <p className="py-8 text-center text-sm text-stone-500">{t("memberships.loading")}</p> : null}{!isFetching && purchases.length === 0 ? <EmptyState body={t("memberships.empty")} title={t("memberships.emptyTitle")} /> : null}<BoundedList initialCount={25} items={purchases} labels={{showLess: t("bounded.showLess"), showMore: t("bounded.showMore"), showing: (visible, total) => t("bounded.showing", {total, visible})}} renderItems={(visiblePurchases) => <div className="grid gap-3 lg:grid-cols-2">{visiblePurchases.map((purchase) => <MembershipFinanceCard confirming={confirming} key={purchase.id} locale={locale} onConfirm={onConfirm} purchase={purchase} t={t} />)}</div>} step={25} /></div>;
+}
+
+function MembershipFinanceCard({confirming, locale, onConfirm, purchase, t}: {confirming: boolean; locale: string; onConfirm: (id: number) => void; purchase: MembershipPurchase; t: T}) {
+    return <article className="rounded-xl border border-stone-200 bg-white p-4"><div className="flex min-w-0 items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{purchase.offerKind === "CERTIFICATE" ? t("memberships.certificate") : t("memberships.membership")}</p><h3 className="mt-1 break-words text-base font-semibold text-stone-950">{locale === "ua" ? purchase.titleUa : purchase.titleEn}</h3><p className="mt-1 break-words text-xs text-stone-500">ID {purchase.id} · {t(`memberships.statuses.${purchase.status}`)}</p></div><strong className="shrink-0 text-sm text-stone-950">{formatAmount(purchase.priceSnapshot, locale)}</strong></div><dl className="mt-4 grid gap-2 text-sm text-stone-600"><Detail label={t("memberships.user")} value={`ID ${purchase.userId}`} /><Detail label={t("memberships.visits")} value={purchase.visitsRemaining == null ? t("memberships.certificate") : String(purchase.visitsRemaining)} /><Detail label={t("memberships.createdAt")} value={formatDateTime(purchase.createdAt, locale)} /></dl><button className="mt-4 rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={confirming} onClick={() => onConfirm(purchase.id)} type="button">{confirming ? t("confirming") : t("memberships.confirm")}</button></article>;
 }
 
 function ExpensesSection({expenses, isError, isFetching, locale, offices, t}: {expenses: FinanceExpense[]; isError: boolean; isFetching: boolean; locale: string; offices: Office[]; t: T}) {

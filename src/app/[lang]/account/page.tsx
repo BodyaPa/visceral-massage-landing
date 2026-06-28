@@ -8,6 +8,7 @@ import {withLocale} from "@/shared/lib/locale/withLocale";
 import LanguageSwitcher from "@/components/common/LanguageSwitcher";
 import AuthSessionPanel from "@/features/auth/AuthSessionPanel";
 import AccountBookingsPanel from "@/features/account/AccountBookingsPanel";
+import AccountMembershipsPanel from "@/features/account/AccountMembershipsPanel";
 import AccountProfilePanel from "@/features/account/AccountProfilePanel";
 import AccountSecuritySettings from "@/features/account/AccountSecuritySettings";
 
@@ -83,6 +84,8 @@ export default async function AccountPage({params}: Props) {
                                     <AccountSecuritySettings user={user} />
                                 </aside>
                             </section>
+
+                            <AccountMembershipsPanel locale={locale} />
 
                             <AccountBookingsPanel locale={locale} />
 

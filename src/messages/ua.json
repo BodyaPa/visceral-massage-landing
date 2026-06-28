@@ -403,6 +403,7 @@
       "mediaLoadError": "Не вдалося завантажити медіа.",
       "mediaUploaded": "Медіа додано.",
       "mediaUploadError": "Не вдалося додати медіа.",
+      "mediaUploadTooLarge": "Файл завеликий. Оберіть фото до 25 МБ.",
       "mediaRemove": "Прибрати",
       "mediaRemoved": "Слайд прибрано.",
       "mediaRemoveError": "Не вдалося прибрати слайд.",

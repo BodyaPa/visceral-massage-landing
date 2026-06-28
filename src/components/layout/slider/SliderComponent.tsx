@@ -2,8 +2,10 @@
 
 import styles from "./SliderStyles.module.scss";
 import React, {useEffect, useMemo, useRef, useState} from "react";
+import {usePathname} from "next/navigation";
 import SliderButtons from "@/components/layout/slider/sliderButtons/SliderButtons";
 import {API_URL} from "@/shared/constants/env";
+import {SITE_SLIDER_UPDATED_EVENT} from "@/features/siteSettings/siteSettingsMedia";
 import type {MediaAsset} from "@/types/news";
 
 type Props = {
@@ -16,6 +18,7 @@ type Slide = {
 };
 
 export default function SliderComponent({background = false}: Props) {
+    const pathname = usePathname();
     const [activeIndex, setActiveIndex] = useState(0);
     const [managedSlides, setManagedSlides] = useState<Slide[]>([]);
 
@@ -32,27 +35,44 @@ export default function SliderComponent({background = false}: Props) {
     useEffect(() => {
         let active = true;
 
-        fetch(`${API_URL}/api/site-settings/media`)
-            .then((response) => response.ok ? response.json() as Promise<MediaAsset[]> : [])
-            .then((assets) => {
-                if (!active) return;
-                setManagedSlides(
-                    assets
-                        .filter((asset) => asset.contentType.startsWith("image/"))
-                        .map((asset) => ({
-                            src: `${API_URL}/api/site-settings/media/${asset.id}/content`,
-                            alt: asset.originalFilename
-                        }))
-                );
-            })
-            .catch(() => {
-                if (active) setManagedSlides([]);
-            });
+        const loadSlides = () => {
+            fetch(`${API_URL}/api/site-settings/media`, {cache: "no-store"})
+                .then((response) => response.ok ? response.json() as Promise<MediaAsset[]> : [])
+                .then((assets) => {
+                    if (!active) return;
+                    setManagedSlides(
+                        assets
+                            .filter((asset) => asset.contentType.startsWith("image/"))
+                            .map((asset) => ({
+                                src: `${API_URL}/api/site-settings/media/${asset.id}/content`,
+                                alt: asset.originalFilename
+                            }))
+                    );
+                })
+                .catch(() => {
+                    if (active) setManagedSlides([]);
+                });
+        };
+        const loadWhenVisible = () => {
+            if (document.visibilityState === "visible") {
+                loadSlides();
+            }
+        };
+
+        loadSlides();
+        window.addEventListener(SITE_SLIDER_UPDATED_EVENT, loadSlides);
+        window.addEventListener("focus", loadSlides);
+        window.addEventListener("pageshow", loadSlides);
+        document.addEventListener("visibilitychange", loadWhenVisible);
 
         return () => {
             active = false;
+            window.removeEventListener(SITE_SLIDER_UPDATED_EVENT, loadSlides);
+            window.removeEventListener("focus", loadSlides);
+            window.removeEventListener("pageshow", loadSlides);
+            document.removeEventListener("visibilitychange", loadWhenVisible);
         };
-    }, []);
+    }, [pathname]);
 
     useEffect(() => {
         if (activeIndex < 0) {

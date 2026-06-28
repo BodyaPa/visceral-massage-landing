@@ -2,6 +2,7 @@
 
 import {type ChangeEvent, useEffect, useRef, useState, type ReactNode} from "react";
 import {useTranslations} from "next-intl";
+import type {FetchBaseQueryError} from "@reduxjs/toolkit/query";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import NewsRichTextEditor, {type NewsEditorLabels, type NewsEditorPastedImage} from "@/features/news/NewsRichTextEditor";
 import {
@@ -13,7 +14,7 @@ import {
     useUploadSiteSettingsContentMediaMutation,
     useUploadSiteSettingsMediaMutation
 } from "@/features/siteSettings/siteSettings.api";
-import {createAdminSiteMediaUrl, createSiteMediaPath} from "@/features/siteSettings/siteSettingsMedia";
+import {createAdminSiteMediaUrl, createSiteMediaPath, notifySiteSliderUpdated} from "@/features/siteSettings/siteSettingsMedia";
 import type {MediaAsset} from "@/types/news";
 import type {SiteSettingsInput} from "@/types/siteSettings";
 
@@ -141,9 +142,10 @@ export default function SiteSettingsManagement() {
 
         try {
             await uploadMedia(file).unwrap();
+            notifySiteSliderUpdated();
             toast.success(t("mediaUploaded"));
-        } catch {
-            toast.error(t("mediaUploadError"));
+        } catch (error) {
+            toast.error(siteMediaErrorMessage(error, t("mediaUploadError"), t("mediaUploadTooLarge")));
         }
     }
 
@@ -165,6 +167,7 @@ export default function SiteSettingsManagement() {
         if (!window.confirm(t("mediaRemoveConfirm"))) return;
         try {
             await unlinkMedia(asset.id).unwrap();
+            notifySiteSliderUpdated();
             toast.success(t("mediaRemoved"));
         } catch {
             toast.error(t("mediaRemoveError"));
@@ -179,6 +182,7 @@ export default function SiteSettingsManagement() {
         [ids[index], ids[nextIndex]] = [ids[nextIndex], ids[index]];
         try {
             await reorderMedia(ids).unwrap();
+            notifySiteSliderUpdated();
         } catch {
             toast.error(t("mediaReorderError"));
         }
@@ -197,7 +201,7 @@ export default function SiteSettingsManagement() {
 
             <section className="flex min-w-0 flex-col gap-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
                 <div className="min-w-0">
-                                    <h2 className="break-words text-base font-semibold text-stone-950">{t("mediaTitle")}</h2>
+                    <h2 className="break-words text-base font-semibold text-stone-950">{t("mediaTitle")}</h2>
                     <p className="mt-1 max-w-3xl break-words text-sm leading-6 text-stone-500">{t("mediaActionHint")}</p>
                 </div>
                 <button className="w-full shrink-0 rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-stone-700 motion-reduce:transition-none sm:w-auto" onClick={openMedia} type="button">
@@ -384,6 +388,14 @@ function TextArea({label, maxLength = 4000, minHeight = "min-h-28", onChange, va
             <textarea className={`${minHeight} w-full resize-y rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none transition-colors focus:border-stone-800`} maxLength={maxLength} onChange={(event) => onChange(event.target.value)} value={value} />
         </label>
     );
+}
+
+function siteMediaErrorMessage(error: unknown, fallback: string, tooLarge: string) {
+    const status = typeof error === "object" && error !== null && "status" in error
+        ? (error as FetchBaseQueryError).status
+        : null;
+
+    return status === 413 ? tooLarge : fallback;
 }
 
 function normalizeForm(form: SiteSettingsInput): SiteSettingsInput {

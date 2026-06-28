@@ -403,6 +403,7 @@
       "mediaLoadError": "Unable to load media.",
       "mediaUploaded": "Media added.",
       "mediaUploadError": "Unable to add media.",
+      "mediaUploadTooLarge": "The file is too large. Choose a photo up to 25 MB.",
       "mediaRemove": "Remove",
       "mediaRemoved": "Slide removed.",
       "mediaRemoveError": "Unable to remove slide.",

@@ -64,17 +64,17 @@ function event(overrides: Partial<PublicFixedEvent> = {}): PublicFixedEvent {
         enrollmentStatus: null,
         price: 1000,
         note: null,
+        membershipPurchaseId: null,
+        paidWithMembership: false,
         ...overrides
     };
 }
 
 const service: PublicService = {
-    active: true,
     basePrice: 1500,
     bookingMode: "INDIVIDUAL_APPOINTMENT",
     description: null,
     durationMinutes: 60,
-    externalPaymentUrl: null,
     id: 100,
     title: "Service"
 };

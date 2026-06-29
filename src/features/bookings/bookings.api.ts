@@ -5,6 +5,7 @@ import type {
     BookingInput,
     BookingStatus,
     FinanceBooking,
+    FinanceEventEnrollment,
     FinanceExpense,
     FinanceExpenseInput,
     FinanceSettings,
@@ -20,6 +21,15 @@ import type {PageResponse} from "@/types/news";
 
 type ListFinanceBookingsArgs = {
     status?: BookingStatus | "";
+    officeId?: number;
+    from?: string;
+    to?: string;
+    page?: number;
+    size?: number;
+};
+
+type ListFinanceEventEnrollmentsArgs = {
+    status?: "ACTIVE" | "CANCELLED" | "";
     officeId?: number;
     from?: string;
     to?: string;
@@ -55,6 +65,21 @@ function listFinanceBookingsPath({status, officeId, from, to, page = 0, size = 1
     return `/admin/finance/bookings?${params.toString()}`;
 }
 
+function listFinanceEventEnrollmentsPath({status, officeId, from, to, page = 0, size = 100}: ListFinanceEventEnrollmentsArgs) {
+    const params = new URLSearchParams({
+        page: String(page),
+        size: String(size),
+        sort: "createdAt,desc"
+    });
+
+    if (status) params.set("status", status);
+    if (officeId) params.set("officeId", String(officeId));
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+
+    return `/admin/finance/event-enrollments?${params.toString()}`;
+}
+
 export const bookingsApi = createApi({
     reducerPath: "bookingsApi",
     baseQuery,
@@ -77,6 +102,14 @@ export const bookingsApi = createApi({
                         {type: "Bookings" as const, id: "LIST"}
                     ]
                     : [{type: "Bookings" as const, id: "LIST"}]
+        }),
+        listFinanceEventEnrollments: build.query<PageResponse<FinanceEventEnrollment>, ListFinanceEventEnrollmentsArgs>({
+            query: listFinanceEventEnrollmentsPath,
+            providesTags: [{type: "Bookings", id: "EVENT_ENROLLMENTS"}]
+        }),
+        confirmEventEnrollmentPayment: build.mutation<FinanceEventEnrollment, number>({
+            query: (id) => ({url: `/admin/finance/event-enrollments/${id}/confirm-payment`, method: "POST"}),
+            invalidatesTags: [{type: "Bookings", id: "EVENT_ENROLLMENTS"}]
         }),
         getFinanceSummary: build.query<FinanceSummary, FinanceSummaryArgs>({
             query: ({officeId, from, to, expenseFrom, expenseTo}) => {
@@ -201,6 +234,7 @@ export const bookingsApi = createApi({
 
 export const {
     useCancelBookingMutation,
+    useConfirmEventEnrollmentPaymentMutation,
     useConfirmPaymentMutation,
     useCreateFinanceExpenseMutation,
     useCreateManualBookingMutation,
@@ -208,6 +242,7 @@ export const {
     useGetFinanceSettingsQuery,
     useGetSpecialistFinanceOverviewQuery,
     useListFinanceBookingsQuery,
+    useListFinanceEventEnrollmentsQuery,
     useListFinanceExpensesQuery,
     useListMyBookingsQuery,
     useListSpecialistBookingsQuery,

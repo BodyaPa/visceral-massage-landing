@@ -4,6 +4,7 @@ import {useLocale, useTranslations} from "next-intl";
 import {useMemo, useState} from "react";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {
+    useCreateMembershipPaymentSessionMutation,
     useCreateMembershipPurchaseMutation,
     useListMembershipOffersQuery,
     useListMyMembershipPurchasesQuery
@@ -25,14 +26,20 @@ export default function MembershipsPage() {
     const {data: offers = [], isFetching, isError} = useListMembershipOffersQuery();
     const {data: purchasesData} = useListMyMembershipPurchasesQuery({size: 50});
     const [createPurchase, {isLoading}] = useCreateMembershipPurchaseMutation();
+    const [createPaymentSession, {isLoading: isCreatingPaymentSession}] = useCreateMembershipPaymentSessionMutation();
     const [selectedOffer, setSelectedOffer] = useState<MembershipOffer | null>(null);
     const purchases = useMemo(() => purchasesData?.content ?? [], [purchasesData?.content]);
     const pendingOfferIds = new Set(purchases.filter((item) => item.status === "AWAITING_PAYMENT_CONFIRMATION").map((item) => item.offerId));
 
     async function buy(offer: MembershipOffer) {
         try {
-            await createPurchase({offerId: offer.id}).unwrap();
-            toast.success(t("purchaseCreated"));
+            const purchase = await createPurchase({offerId: offer.id}).unwrap();
+            const session = await createPaymentSession(purchase.id).unwrap();
+            if (session.checkoutUrl) {
+                window.location.assign(session.checkoutUrl);
+                return;
+            }
+            toast.success(session.requiresManualConfirmation ? t("manualSessionCreated") : t("purchaseCreated"));
         } catch {
             toast.error(t("purchaseError"));
         }
@@ -60,7 +67,7 @@ export default function MembershipsPage() {
                 <div className="grid gap-4 lg:grid-cols-3">
                     {offers.map((offer) => (
                         <OfferCard
-                            disabled={isLoading || pendingOfferIds.has(offer.id)}
+                            disabled={isLoading || isCreatingPaymentSession || pendingOfferIds.has(offer.id)}
                             key={offer.id}
                             locale={locale}
                             offer={offer}

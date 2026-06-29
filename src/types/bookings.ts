@@ -22,6 +22,8 @@ export interface Booking {
     endsAt: string;
     reminderOptIn: boolean;
     externalPaymentUrl: string | null;
+    membershipPurchaseId: number | null;
+    paidWithMembership: boolean;
 }
 
 export interface FinanceBooking {
@@ -36,6 +38,8 @@ export interface FinanceBooking {
     serviceTitleUa: string;
     serviceTitleEn: string | null;
     externalPaymentUrl: string | null;
+    membershipPurchaseId: number | null;
+    paidWithMembership: boolean;
     bookedPrice: number;
     specialistSharePercent: number;
     specialistShare: number;
@@ -48,6 +52,35 @@ export interface FinanceBooking {
     startsAt: string;
     endsAt: string;
     reminderOptIn: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export type FixedEventEnrollmentStatus = "ACTIVE" | "CANCELLED";
+
+export interface FinanceEventEnrollment {
+    id: number;
+    status: FixedEventEnrollmentStatus;
+    userId: number;
+    clientName: string;
+    clientContact: string | null;
+    eventId: number;
+    serviceId: number;
+    serviceTitleUa: string;
+    serviceTitleEn: string | null;
+    externalPaymentUrl: string | null;
+    membershipPurchaseId: number | null;
+    paidWithMembership: boolean;
+    bookedPrice: number;
+    paymentConfirmed: boolean;
+    paymentConfirmedAt: string | null;
+    paymentConfirmedByUserId: number | null;
+    specialistId: number;
+    specialistName: string;
+    officeId: number | null;
+    officeName: string | null;
+    startsAt: string;
+    endsAt: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -148,6 +181,7 @@ export type BookingInput = {
     serviceId: number;
     startsAt?: string;
     reminderOptIn: boolean;
+    membershipPurchaseId?: number | null;
 };
 
 export type ManualBookingInput = BookingInput & {

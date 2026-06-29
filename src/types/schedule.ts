@@ -84,6 +84,8 @@ export interface PublicFixedEvent {
     enrollmentStatus: "ACTIVE" | "CANCELLED" | null;
     price: number;
     note: string | null;
+    membershipPurchaseId: number | null;
+    paidWithMembership: boolean;
 }
 
 export interface SpecialistFixedEvent {

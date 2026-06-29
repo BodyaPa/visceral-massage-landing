@@ -1,6 +1,6 @@
 import {createApi} from "@reduxjs/toolkit/query/react";
 import {baseQuery} from "@/shared/api/baseQuery";
-import type {MembershipOffer, MembershipPurchase, MembershipPurchaseInput, MembershipPurchaseStatus} from "@/types/memberships";
+import type {MembershipOffer, MembershipOfferUpdateInput, MembershipPaymentSession, MembershipPurchase, MembershipPurchaseInput, MembershipPurchaseStatus} from "@/types/memberships";
 import type {PageResponse} from "@/types/news";
 
 export const membershipsApi = createApi({
@@ -11,6 +11,17 @@ export const membershipsApi = createApi({
         listMembershipOffers: build.query<MembershipOffer[], void>({
             query: () => "/memberships/offers",
             providesTags: [{type: "MembershipOffers", id: "LIST"}]
+        }),
+        listAdminMembershipOffers: build.query<MembershipOffer[], void>({
+            query: () => "/admin/memberships/offers",
+            providesTags: [{type: "MembershipOffers", id: "ADMIN"}]
+        }),
+        updateAdminMembershipOffer: build.mutation<MembershipOffer, {id: number; body: MembershipOfferUpdateInput}>({
+            query: ({id, body}) => ({url: `/admin/memberships/offers/${id}`, method: "PUT", body}),
+            invalidatesTags: [
+                {type: "MembershipOffers", id: "ADMIN"},
+                {type: "MembershipOffers", id: "LIST"}
+            ]
         }),
         listMyMembershipPurchases: build.query<PageResponse<MembershipPurchase>, {page?: number; size?: number} | void>({
             query: (args) => {
@@ -23,6 +34,10 @@ export const membershipsApi = createApi({
         createMembershipPurchase: build.mutation<MembershipPurchase, MembershipPurchaseInput>({
             query: (body) => ({url: "/memberships/purchases", method: "POST", body}),
             invalidatesTags: [{type: "MembershipPurchases", id: "MY"}, {type: "MembershipPurchases", id: "FINANCE"}]
+        }),
+        createMembershipPaymentSession: build.mutation<MembershipPaymentSession, number>({
+            query: (purchaseId) => ({url: `/memberships/purchases/${purchaseId}/payment-session`, method: "POST"}),
+            invalidatesTags: [{type: "MembershipPurchases", id: "MY"}]
         }),
         listFinanceMembershipPurchases: build.query<PageResponse<MembershipPurchase>, {status?: MembershipPurchaseStatus | ""; page?: number; size?: number}>({
             query: ({status = "AWAITING_PAYMENT_CONFIRMATION", page = 0, size = 100}) => {
@@ -41,8 +56,11 @@ export const membershipsApi = createApi({
 
 export const {
     useConfirmMembershipPaymentMutation,
+    useCreateMembershipPaymentSessionMutation,
     useCreateMembershipPurchaseMutation,
+    useListAdminMembershipOffersQuery,
     useListFinanceMembershipPurchasesQuery,
     useListMembershipOffersQuery,
-    useListMyMembershipPurchasesQuery
+    useListMyMembershipPurchasesQuery,
+    useUpdateAdminMembershipOfferMutation
 } = membershipsApi;

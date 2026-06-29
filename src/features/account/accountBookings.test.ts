@@ -26,7 +26,9 @@ function booking(id: number, status: Booking["status"], startsAt: string, endsAt
         startsAt,
         endsAt,
         reminderOptIn: false,
-        externalPaymentUrl: null
+        externalPaymentUrl: null,
+        membershipPurchaseId: null,
+        paidWithMembership: false
     };
 }
 
@@ -58,7 +60,9 @@ function event(id: number, endsAt: string, enrollmentStatus: PublicFixedEvent["e
         enrolled: true,
         enrollmentStatus,
         price: 1000,
-        note: null
+        note: null,
+        membershipPurchaseId: null,
+        paidWithMembership: false
     };
 }
 

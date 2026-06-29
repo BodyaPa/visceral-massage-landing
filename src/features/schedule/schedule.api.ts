@@ -77,11 +77,11 @@ export const scheduleApi = createApi({
             },
             providesTags: [{type: "ScheduleAvailability", id: "MY_EVENTS"}]
         }),
-        enrollFixedEvent: build.mutation<PublicFixedEvent, {id: number; lang: Locale; reminderOptIn: boolean}>({
-            query: ({id, lang, reminderOptIn}) => ({
+        enrollFixedEvent: build.mutation<PublicFixedEvent, {id: number; lang: Locale; reminderOptIn: boolean; membershipPurchaseId?: number | null}>({
+            query: ({id, lang, reminderOptIn, membershipPurchaseId}) => ({
                 url: `/schedule/events/${id}/enroll?lang=${lang}`,
                 method: "POST",
-                body: {reminderOptIn}
+                body: {reminderOptIn, membershipPurchaseId}
             }),
             invalidatesTags: [
                 {type: "ScheduleAvailability", id: "EVENTS"},

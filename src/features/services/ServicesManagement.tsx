@@ -3,7 +3,9 @@
 import {useEffect, useState, type ReactNode} from "react";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
+import {useListAdminMembershipOffersQuery, useUpdateAdminMembershipOfferMutation} from "@/features/memberships/memberships.api";
 import {useCreateServiceMutation, useListAdminServicesQuery, useUpdateServiceMutation} from "@/features/services/services.api";
+import type {MembershipOffer, MembershipOfferUpdateInput} from "@/types/memberships";
 import type {AdminService, ServiceInput} from "@/types/services";
 
 type ServiceEditorLanguage = "ua" | "en";
@@ -20,6 +22,17 @@ const emptyForm: ServiceInput = {
     active: true,
     externalPaymentUrl: ""
 };
+const emptyOfferForm: MembershipOfferUpdateInput = {
+    titleUa: "",
+    titleEn: "",
+    descriptionUa: "",
+    descriptionEn: "",
+    price: 0,
+    visitsTotal: 0,
+    validityDays: 30,
+    active: true,
+    eligibleServiceIds: []
+};
 
 export default function ServicesManagement() {
     const t = useTranslations("admin.services");
@@ -27,7 +40,10 @@ export default function ServicesManagement() {
     const [query, setQuery] = useState("");
     const [active, setActive] = useState<boolean | "">("");
     const {data, isFetching, isError} = useListAdminServicesQuery({query, active});
+    const {data: allServicesData} = useListAdminServicesQuery({query: "", active: "", size: 200});
+    const {data: membershipOffers = [], isFetching: offersFetching, isError: offersError} = useListAdminMembershipOffersQuery();
     const services = data?.content ?? emptyServices;
+    const allServices = allServicesData?.content ?? emptyServices;
     const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
     const selectedService = selectedServiceId === null
         ? null
@@ -36,6 +52,12 @@ export default function ServicesManagement() {
     const [form, setForm] = useState<ServiceInput>(emptyForm);
     const [createService, {isLoading: isCreating}] = useCreateServiceMutation();
     const [updateService, {isLoading: isUpdating}] = useUpdateServiceMutation();
+    const [updateMembershipOffer, {isLoading: isUpdatingOffer}] = useUpdateAdminMembershipOfferMutation();
+    const [selectedOfferId, setSelectedOfferId] = useState<number | null>(null);
+    const selectedOffer = selectedOfferId === null
+        ? membershipOffers[0] ?? null
+        : membershipOffers.find((offer) => offer.id === selectedOfferId) ?? null;
+    const [offerForm, setOfferForm] = useState<MembershipOfferUpdateInput>(emptyOfferForm);
     const saving = isCreating || isUpdating;
 
     useEffect(() => {
@@ -67,6 +89,36 @@ export default function ServicesManagement() {
             externalPaymentUrl: selectedService.externalPaymentUrl ?? ""
         });
     }, [selectedService]);
+
+    useEffect(() => {
+        if (membershipOffers.length === 0) {
+            setSelectedOfferId(null);
+            return;
+        }
+
+        if (selectedOfferId === null || !membershipOffers.some((offer) => offer.id === selectedOfferId)) {
+            setSelectedOfferId(membershipOffers[0].id);
+        }
+    }, [membershipOffers, selectedOfferId]);
+
+    useEffect(() => {
+        if (!selectedOffer) {
+            setOfferForm(emptyOfferForm);
+            return;
+        }
+
+        setOfferForm({
+            titleUa: selectedOffer.titleUa,
+            titleEn: selectedOffer.titleEn ?? "",
+            descriptionUa: selectedOffer.descriptionUa ?? "",
+            descriptionEn: selectedOffer.descriptionEn ?? "",
+            price: selectedOffer.price,
+            visitsTotal: selectedOffer.visitsTotal,
+            validityDays: selectedOffer.validityDays,
+            active: selectedOffer.active,
+            eligibleServiceIds: selectedOffer.eligibleServiceIds
+        });
+    }, [selectedOffer]);
 
     function selectService(service: AdminService) {
         setSelectedServiceId(service.id);
@@ -105,6 +157,27 @@ export default function ServicesManagement() {
             toast.success(selectedService ? t("updated") : t("created"));
         } catch {
             toast.error(t("saveError"));
+        }
+    }
+
+    async function saveMembershipOffer() {
+        if (!selectedOffer) return;
+        try {
+            const body: MembershipOfferUpdateInput = {
+                ...offerForm,
+                titleUa: offerForm.titleUa.trim(),
+                titleEn: offerForm.titleEn?.trim() || null,
+                descriptionUa: offerForm.descriptionUa?.trim() || null,
+                descriptionEn: offerForm.descriptionEn?.trim() || null,
+                price: Number(offerForm.price),
+                visitsTotal: offerForm.visitsTotal == null ? null : Number(offerForm.visitsTotal),
+                validityDays: Number(offerForm.validityDays),
+                eligibleServiceIds: offerForm.eligibleServiceIds
+            };
+            await updateMembershipOffer({id: selectedOffer.id, body}).unwrap();
+            toast.success(t("memberships.updated"));
+        } catch {
+            toast.error(t("memberships.saveError"));
         }
     }
 
@@ -206,6 +279,7 @@ export default function ServicesManagement() {
                 </div>
             </div>
 
+            <div className="min-w-0 space-y-5">
             <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex flex-col gap-2 border-b border-stone-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
@@ -336,6 +410,128 @@ export default function ServicesManagement() {
                     </button>
                 </div>
             </div>
+            <MembershipOffersPanel
+                allServices={allServices}
+                form={offerForm}
+                isError={offersError}
+                isFetching={offersFetching}
+                isSaving={isUpdatingOffer}
+                offers={membershipOffers}
+                onChange={setOfferForm}
+                onSave={saveMembershipOffer}
+                onSelect={setSelectedOfferId}
+                selectedOffer={selectedOffer}
+                t={t}
+            />
+            </div>
+        </section>
+    );
+}
+
+function MembershipOffersPanel({allServices, form, isError, isFetching, isSaving, offers, onChange, onSave, onSelect, selectedOffer, t}: {
+    allServices: AdminService[];
+    form: MembershipOfferUpdateInput;
+    isError: boolean;
+    isFetching: boolean;
+    isSaving: boolean;
+    offers: MembershipOffer[];
+    onChange: (form: MembershipOfferUpdateInput) => void;
+    onSave: () => void;
+    onSelect: (id: number) => void;
+    selectedOffer: MembershipOffer | null;
+    t: ReturnType<typeof useTranslations<"admin.services">>;
+}) {
+    function updateField<K extends keyof MembershipOfferUpdateInput>(field: K, value: MembershipOfferUpdateInput[K]) {
+        onChange({...form, [field]: value});
+    }
+
+    function toggleService(serviceId: number, enabled: boolean) {
+        const nextIds = enabled
+            ? Array.from(new Set([...form.eligibleServiceIds, serviceId]))
+            : form.eligibleServiceIds.filter((id) => id !== serviceId);
+        updateField("eligibleServiceIds", nextIds);
+    }
+
+    const saveDisabled = isSaving || !selectedOffer || !form.titleUa.trim() || form.price < 0 || form.validityDays < 1 || (selectedOffer.kind === "MEMBERSHIP" && (!form.visitsTotal || form.visitsTotal < 1));
+
+    return (
+        <section className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="flex min-w-0 flex-col gap-3 border-b border-stone-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                    <p className="text-xs font-medium uppercase tracking-wide text-stone-500">{t("memberships.eyebrow")}</p>
+                    <h2 className="mt-1 break-words text-xl font-semibold text-stone-950">{t("memberships.title")}</h2>
+                    <p className="mt-1 break-words text-sm text-stone-500">{t("memberships.subtitle")}</p>
+                </div>
+                {selectedOffer ? <StatusBadge enabled={form.active} label={form.active ? t("active") : t("inactive")} /> : null}
+            </div>
+            {isError ? <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("memberships.loadError")}</p> : null}
+            {isFetching ? <p className="mt-4 text-sm text-stone-500">{t("loading")}</p> : null}
+            {offers.length > 0 ? (
+                <div className="mt-4 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+                    <div className="space-y-2">
+                        {offers.map((offer) => (
+                            <button
+                                aria-pressed={offer.id === selectedOffer?.id}
+                                className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${offer.id === selectedOffer?.id ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-stone-50 text-stone-800 hover:bg-white"}`}
+                                key={offer.id}
+                                onClick={() => onSelect(offer.id)}
+                                type="button"
+                            >
+                                <span className="block break-words font-semibold">{offer.titleUa}</span>
+                                <span className="mt-1 block break-words text-xs opacity-75">{offer.code}</span>
+                            </button>
+                        ))}
+                    </div>
+                    {selectedOffer ? (
+                        <div className="min-w-0 space-y-3">
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <Field label={t("memberships.titleUa")}>
+                                    <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => updateField("titleUa", event.target.value)} value={form.titleUa} />
+                                </Field>
+                                <Field label={t("memberships.titleEn")}>
+                                    <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => updateField("titleEn", event.target.value)} value={form.titleEn ?? ""} />
+                                </Field>
+                                <Field label={t("memberships.price")}>
+                                    <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" min={0} onChange={(event) => updateField("price", Number(event.target.value))} step="0.01" type="number" value={form.price} />
+                                </Field>
+                                <Field label={t("memberships.validityDays")}>
+                                    <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" min={1} onChange={(event) => updateField("validityDays", Number(event.target.value))} type="number" value={form.validityDays} />
+                                </Field>
+                                <Field label={t("memberships.visitsTotal")}>
+                                    <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" min={0} onChange={(event) => updateField("visitsTotal", event.target.value === "" ? null : Number(event.target.value))} type="number" value={form.visitsTotal ?? ""} />
+                                </Field>
+                                <label className={`flex min-w-0 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm ${form.active ? "border-stone-300 bg-stone-100 text-stone-950" : "border-stone-200 bg-stone-50 text-stone-700"}`}>
+                                    <span className="min-w-0 break-words">{t("active")}</span>
+                                    <input checked={form.active} onChange={(event) => updateField("active", event.target.checked)} type="checkbox" />
+                                </label>
+                            </div>
+                            <Field label={t("memberships.descriptionUa")}>
+                                <textarea className="min-h-20 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => updateField("descriptionUa", event.target.value)} value={form.descriptionUa ?? ""} />
+                            </Field>
+                            <Field label={t("memberships.descriptionEn")}>
+                                <textarea className="min-h-20 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => updateField("descriptionEn", event.target.value)} value={form.descriptionEn ?? ""} />
+                            </Field>
+                            <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
+                                <p className="break-words text-sm font-semibold text-stone-900">{t("memberships.eligibleServices")}</p>
+                                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                    {allServices.map((service) => (
+                                        <label className="flex min-w-0 items-start gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-700" key={service.id}>
+                                            <input checked={form.eligibleServiceIds.includes(service.id)} className="mt-1" onChange={(event) => toggleService(service.id, event.target.checked)} type="checkbox" />
+                                            <span className="min-w-0">
+                                                <span className="block break-words font-medium text-stone-900">{service.titleUa}</span>
+                                                <span className="mt-0.5 block break-words text-xs text-stone-500">{service.bookingMode === "FIXED_EVENT" ? t("fixedEvent") : t("individualAppointment")}</span>
+                                            </span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                            <button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-400 sm:w-fit" disabled={saveDisabled} onClick={onSave} type="button">
+                                {isSaving ? t("saving") : t("memberships.save")}
+                            </button>
+                        </div>
+                    ) : null}
+                </div>
+            ) : null}
         </section>
     );
 }

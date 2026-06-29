@@ -13,7 +13,20 @@ export interface MembershipOffer {
     visitsTotal: number | null;
     validityDays: number;
     active: boolean;
+    eligibleServiceIds: number[];
 }
+
+export type MembershipOfferUpdateInput = {
+    titleUa: string;
+    titleEn: string | null;
+    descriptionUa: string | null;
+    descriptionEn: string | null;
+    price: number;
+    visitsTotal: number | null;
+    validityDays: number;
+    active: boolean;
+    eligibleServiceIds: number[];
+};
 
 export interface MembershipPurchase {
     id: number;
@@ -37,3 +50,10 @@ export interface MembershipPurchase {
 export type MembershipPurchaseInput = {
     offerId: number;
 };
+
+export interface MembershipPaymentSession {
+    purchaseId: number;
+    mode: "MANUAL_REVIEW" | string;
+    checkoutUrl: string | null;
+    requiresManualConfirmation: boolean;
+}

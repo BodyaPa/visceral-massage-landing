@@ -31,6 +31,7 @@ import {
     type StatusFilter
 } from "@/features/schedule/publicScheduleHelpers";
 import {useListServicesQuery} from "@/features/services/services.api";
+import {useListMembershipOffersQuery, useListMyMembershipPurchasesQuery} from "@/features/memberships/memberships.api";
 import {formatWholeCurrencyAmount as formatAmount} from "@/shared/lib/i18n/formatNumbers";
 import {toLanguageTag} from "@/shared/lib/i18n/toLanguageTag";
 import {withLocale} from "@/shared/lib/locale/withLocale";
@@ -39,6 +40,7 @@ import {initialsFromName} from "@/shared/lib/text/initials";
 import type {Office} from "@/types/offices";
 import type {PublicFixedEvent, PublicScheduleAvailabilityBlock} from "@/types/schedule";
 import type {PublicService} from "@/types/services";
+import type {MembershipOffer, MembershipPurchase} from "@/types/memberships";
 
 const savedFiltersKey = "ataraksia.publicScheduleFilters";
 type PendingBooking =
@@ -47,6 +49,7 @@ type PendingBooking =
 type ChoiceSectionKey = "office" | "specialist";
 type PaymentPrompt = {
     externalPaymentUrl: string | null;
+    paidWithMembership?: boolean;
     serviceTitleUa?: string;
     serviceTitleEn?: string | null;
     title?: string;
@@ -62,6 +65,7 @@ export default function PublicSchedulePage() {
     const [currentDate, setCurrentDate] = useState(() => new Date());
     const [reminderOptIn, setReminderOptIn] = useState(false);
     const [pendingBooking, setPendingBooking] = useState<PendingBooking | null>(null);
+    const [selectedMembershipPurchaseId, setSelectedMembershipPurchaseId] = useState<number | "">("");
     const [selectedEventDetails, setSelectedEventDetails] = useState<PublicFixedEvent | null>(null);
     const [slotForServiceChoice, setSlotForServiceChoice] = useState<PublicScheduleAvailabilityBlock | null>(null);
     const [paymentPrompt, setPaymentPrompt] = useState<PaymentPrompt | null>(null);
@@ -69,6 +73,8 @@ export default function PublicSchedulePage() {
 
     const {data: officesData} = useListPublicOfficesQuery({size: 100});
     const {data: servicesData} = useListServicesQuery({lang: locale, size: 100});
+    const {data: membershipOffers = []} = useListMembershipOffersQuery();
+    const {data: myMembershipsData, refetch: refetchMemberships} = useListMyMembershipPurchasesQuery({size: 50});
     const {data: guidedSlotsData = [], isError: slotsError, refetch: refetchSlots} = useListPublicAvailabilityQuery({
         from: guidedRange.from,
         to: guidedRange.to,
@@ -105,6 +111,7 @@ export default function PublicSchedulePage() {
 
     const offices = officesData?.content ?? [];
     const services = servicesData?.content ?? [];
+    const myMemberships = myMembershipsData?.content ?? [];
     const individualServices = services.filter((service) => service.bookingMode === "INDIVIDUAL_APPOINTMENT");
     const guidedSlots = useMemo(() => (
         filters.mode === "events" || filters.status === "unavailable" || filters.status === "events" || filters.status === "mine" ? [] : guidedSlotsData
@@ -163,19 +170,27 @@ export default function PublicSchedulePage() {
                     availabilityBlockId: pendingBooking.slot.id,
                     serviceId: pendingBooking.service.id,
                     startsAt: pendingBooking.slot.startsAt,
-                    reminderOptIn
+                    reminderOptIn,
+                    membershipPurchaseId: selectedMembershipPurchaseId === "" ? null : selectedMembershipPurchaseId
                 }).unwrap();
-                toast.success(booking.externalPaymentUrl ? copy.bookingCreatedWithPayment : copy.bookingCreated);
+                toast.success(booking.paidWithMembership ? copy.bookingCreatedWithMembership : booking.externalPaymentUrl ? copy.bookingCreatedWithPayment : copy.bookingCreated);
                 setPaymentPrompt(booking);
                 void refetchSlots();
             } else {
-                await enrollEvent({id: pendingBooking.event.id, lang: locale, reminderOptIn}).unwrap();
-                toast.success(copy.eventEnrolled);
-                setPaymentPrompt({externalPaymentUrl: null, title: pendingBooking.event.title, startsAt: pendingBooking.event.startsAt});
+                const event = await enrollEvent({
+                    id: pendingBooking.event.id,
+                    lang: locale,
+                    reminderOptIn,
+                    membershipPurchaseId: selectedMembershipPurchaseId === "" ? null : selectedMembershipPurchaseId
+                }).unwrap();
+                toast.success(event.paidWithMembership ? copy.eventEnrolledWithMembership : copy.eventEnrolled);
+                setPaymentPrompt({externalPaymentUrl: null, paidWithMembership: event.paidWithMembership, title: pendingBooking.event.title, startsAt: pendingBooking.event.startsAt});
                 void refetchEvents();
             }
+            void refetchMemberships();
             setPendingBooking(null);
             setSelectedEventDetails(null);
+            setSelectedMembershipPurchaseId("");
             setReminderOptIn(false);
         } catch {
             toast.error(copy.bookingError);
@@ -240,8 +255,8 @@ export default function PublicSchedulePage() {
                 <section className="mx-auto w-full max-w-[1040px] rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm lg:w-[72vw] xl:w-[58vw]">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
-                            <h2 className="text-base font-semibold text-emerald-950">{copy.paymentTitle}</h2>
-                            <p className="mt-1 text-sm leading-6 text-emerald-900">{copy.paymentBody(paymentPromptTitle(paymentPrompt, locale), formatDateTime(paymentPrompt.startsAt, locale))}</p>
+                            <h2 className="text-base font-semibold text-emerald-950">{paymentPrompt.paidWithMembership ? copy.membershipPaymentTitle : copy.paymentTitle}</h2>
+                            <p className="mt-1 text-sm leading-6 text-emerald-900">{paymentPrompt.paidWithMembership ? copy.membershipPaymentBody(paymentPromptTitle(paymentPrompt, locale), formatDateTime(paymentPrompt.startsAt, locale)) : copy.paymentBody(paymentPromptTitle(paymentPrompt, locale), formatDateTime(paymentPrompt.startsAt, locale))}</p>
                         </div>
                         <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
                             {paymentPrompt.externalPaymentUrl ? <a className="rounded-lg bg-emerald-900 px-4 py-2 text-center text-sm font-semibold text-white transition-colors hover:bg-emerald-800" href={paymentPrompt.externalPaymentUrl} rel="noreferrer" target="_blank">{copy.paymentAction}</a> : null}
@@ -257,10 +272,16 @@ export default function PublicSchedulePage() {
                     copy={copy}
                     isSaving={isSaving}
                     locale={locale}
-                    onClose={() => setPendingBooking(null)}
+                    memberships={eligibleMembershipsForPending(pendingBooking, myMemberships, membershipOffers, locale)}
+                    onClose={() => {
+                        setPendingBooking(null);
+                        setSelectedMembershipPurchaseId("");
+                    }}
                     onConfirm={confirmBooking}
                     pending={pendingBooking}
                     reminderOptIn={reminderOptIn}
+                    selectedMembershipPurchaseId={selectedMembershipPurchaseId}
+                    setSelectedMembershipPurchaseId={setSelectedMembershipPurchaseId}
                     setReminderOptIn={setReminderOptIn}
                 />
             ) : null}
@@ -782,7 +803,31 @@ function EventDetailsModal({copy, event, isSaving, locale, onCancelEnrollment, o
     );
 }
 
-function ConfirmationModal({copy, isSaving, locale, onClose, onConfirm, pending, reminderOptIn, setReminderOptIn}: {copy: Copy; isSaving: boolean; locale: string; onClose: () => void; onConfirm: () => void; pending: PendingBooking; reminderOptIn: boolean; setReminderOptIn: (value: boolean) => void}) {
+function ConfirmationModal({
+    copy,
+    isSaving,
+    locale,
+    memberships,
+    onClose,
+    onConfirm,
+    pending,
+    reminderOptIn,
+    selectedMembershipPurchaseId,
+    setSelectedMembershipPurchaseId,
+    setReminderOptIn
+}: {
+    copy: Copy;
+    isSaving: boolean;
+    locale: string;
+    memberships: MembershipUsageOption[];
+    onClose: () => void;
+    onConfirm: () => void;
+    pending: PendingBooking;
+    reminderOptIn: boolean;
+    selectedMembershipPurchaseId: number | "";
+    setSelectedMembershipPurchaseId: (value: number | "") => void;
+    setReminderOptIn: (value: boolean) => void;
+}) {
     const title = pending.type === "individual" ? pending.service.title : pending.event.title;
     const specialist = pending.type === "individual" ? pending.slot.specialistName : pending.event.specialistName;
     const office = pending.type === "individual" ? pending.slot.officeName : pending.event.officeName;
@@ -793,6 +838,7 @@ function ConfirmationModal({copy, isSaving, locale, onClose, onConfirm, pending,
     const endsAt = pending.type === "individual" ? pending.slot.endsAt : pending.event.endsAt;
     const price = pending.type === "individual" ? pending.service.basePrice : pending.event.price;
     const capacity = pending.type === "event" ? copy.remaining(pending.event.remainingPlaces) : null;
+    const selectedMembership = memberships.find((membership) => membership.id === selectedMembershipPurchaseId);
 
     return (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6">
@@ -806,6 +852,26 @@ function ConfirmationModal({copy, isSaving, locale, onClose, onConfirm, pending,
                     <InfoRow label={copy.price} value={formatAmount(price, locale)} />
                     {capacity ? <InfoRow label={copy.places} value={capacity} /> : null}
                 </dl>
+                <div className="mt-5 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                    <label className="block text-sm font-semibold text-stone-900" htmlFor="membership-use">{copy.membershipUseTitle}</label>
+                    <p className="mt-1 text-xs leading-5 text-stone-500">{memberships.length > 0 ? copy.membershipUseHint : copy.membershipUseEmpty}</p>
+                    {memberships.length > 0 ? (
+                        <select
+                            className="mt-3 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none transition-colors focus:border-stone-900"
+                            id="membership-use"
+                            onChange={(event) => setSelectedMembershipPurchaseId(event.target.value ? Number(event.target.value) : "")}
+                            value={selectedMembershipPurchaseId}
+                        >
+                            <option value="">{copy.membershipDoNotUse}</option>
+                            {memberships.map((membership) => (
+                                <option key={membership.id} value={membership.id}>
+                                    {membership.title} · {copy.membershipVisits(membership.visitsRemaining)}
+                                </option>
+                            ))}
+                        </select>
+                    ) : null}
+                    {selectedMembership ? <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-900">{copy.membershipWillUse(selectedMembership.title)}</p> : null}
+                </div>
                 <OfficeDetailsBlock copy={copy} details={officeDetails} />
                 <label className="mt-5 flex min-w-0 gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
                     <input checked={reminderOptIn} className="mt-0.5 h-4 w-4 accent-stone-900" onChange={(event) => setReminderOptIn(event.target.checked)} type="checkbox" />
@@ -818,6 +884,36 @@ function ConfirmationModal({copy, isSaving, locale, onClose, onConfirm, pending,
             </div>
         </div>
     );
+}
+
+type MembershipUsageOption = {
+    id: number;
+    title: string;
+    visitsRemaining: number;
+};
+
+function eligibleMembershipsForPending(pending: PendingBooking, purchases: MembershipPurchase[], offers: MembershipOffer[], locale: string): MembershipUsageOption[] {
+    const serviceId = pending.type === "individual" ? pending.service.id : pending.event.serviceId;
+    const offerById = new Map(offers.map((offer) => [offer.id, offer]));
+    const now = Date.now();
+
+    return purchases
+        .filter((purchase) => {
+            if (purchase.status !== "ACTIVE") return false;
+            if (purchase.visitsRemaining == null || purchase.visitsRemaining <= 0) return false;
+            if (purchase.expiresAt && new Date(purchase.expiresAt).getTime() <= now) return false;
+            const offer = offerById.get(purchase.offerId);
+            return Boolean(offer?.eligibleServiceIds.includes(serviceId));
+        })
+        .map((purchase) => ({
+            id: purchase.id,
+            title: localeTitle(purchase.titleUa, purchase.titleEn, locale),
+            visitsRemaining: purchase.visitsRemaining ?? 0
+        }));
+}
+
+function localeTitle(titleUa: string, titleEn: string, locale: string) {
+    return locale === "en" ? titleEn || titleUa : titleUa || titleEn;
 }
 
 function ServiceChoiceModal({copy, locale, onClose, onSelect, services, slot}: {copy: Copy; locale: string; onClose: () => void; onSelect: (service: PublicService) => void; services: PublicService[]; slot: PublicScheduleAvailabilityBlock}) {
@@ -1163,14 +1259,24 @@ function labels(t: T) {
         saving: t("public.saving"),
         bookingCreated: t("booking.created"),
         bookingCreatedWithPayment: t("booking.createdWithPayment"),
+        bookingCreatedWithMembership: t("booking.createdWithMembership"),
         paymentTitle: t("public.paymentTitle"),
         paymentBody: (service: string, startsAt: string) => t("public.paymentBody", {service, startsAt}),
+        membershipPaymentTitle: t("public.membershipPaymentTitle"),
+        membershipPaymentBody: (service: string, startsAt: string) => t("public.membershipPaymentBody", {service, startsAt}),
         paymentAction: t("public.paymentAction"),
         accountAction: t("public.accountAction"),
         dismissPayment: t("public.dismissPayment"),
         eventEnrolled: t("public.eventEnrolled"),
+        eventEnrolledWithMembership: t("public.eventEnrolledWithMembership"),
         eventCancelled: t("public.eventCancelled"),
         cancelEventError: t("public.cancelEventError"),
-        bookingError: t("public.bookingError")
+        bookingError: t("public.bookingError"),
+        membershipUseTitle: t("public.membershipUseTitle"),
+        membershipUseHint: t("public.membershipUseHint"),
+        membershipUseEmpty: t("public.membershipUseEmpty"),
+        membershipDoNotUse: t("public.membershipDoNotUse"),
+        membershipVisits: (count: number) => t("public.membershipVisits", {count}),
+        membershipWillUse: (title: string) => t("public.membershipWillUse", {title})
     };
 }

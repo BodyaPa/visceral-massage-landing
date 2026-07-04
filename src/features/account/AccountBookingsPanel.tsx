@@ -16,6 +16,7 @@ import {bookingServiceTitle} from "@/features/bookings/bookingTitles";
 import {useCancelFixedEventEnrollmentMutation, useListMyFixedEventEnrollmentsQuery} from "@/features/schedule/schedule.api";
 import type {Locale} from "@/i18n";
 import {toLanguageTag} from "@/shared/lib/i18n/toLanguageTag";
+import {withLocale} from "@/shared/lib/locale/withLocale";
 import {resolveApiMediaUrl} from "@/shared/lib/media/resolveApiMediaUrl";
 import type {Booking} from "@/types/bookings";
 import type {PublicFixedEvent} from "@/types/schedule";
@@ -28,6 +29,7 @@ export default function AccountBookingsPanel({locale}: {locale: Locale}) {
     const toast = useToast();
     const range = useMemo(() => buildAccountRange(), []);
     const [filter, setFilter] = useState<AccountBookingFilter>("upcoming");
+    const [pendingCancel, setPendingCancel] = useState<{id: number; title: string; type: "booking" | "event"} | null>(null);
     const {data: bookingsData, isFetching: bookingsFetching, isError: bookingsError} = useListMyBookingsQuery({page: 0, size: 100});
     const {data: events = [], isFetching: eventsFetching, isError: eventsError} = useListMyFixedEventEnrollmentsQuery({...range, lang: locale});
     const [cancelBooking, {isLoading: cancellingBooking}] = useCancelBookingMutation();
@@ -79,9 +81,26 @@ export default function AccountBookingsPanel({locale}: {locale: Locale}) {
             </div>
 
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                <BookingList bookings={filteredBookings} cancelling={cancellingBooking} copy={copy} isError={bookingsError} locale={locale} onCancel={cancelAppointment} />
-                <EventList cancelling={cancellingEnrollment} copy={copy} events={filteredEvents} isError={eventsError} locale={locale} onCancel={cancelEvent} />
+                <BookingList bookings={filteredBookings} cancelling={cancellingBooking} copy={copy} isError={bookingsError} locale={locale} onCancel={(booking) => setPendingCancel({id: booking.id, title: bookingServiceTitle(booking, locale), type: "booking"})} />
+                <EventList cancelling={cancellingEnrollment} copy={copy} events={filteredEvents} isError={eventsError} locale={locale} onCancel={(event) => setPendingCancel({id: event.id, title: event.title, type: "event"})} />
             </div>
+
+            {pendingCancel ? (
+                <CancelConfirmationModal
+                    copy={copy}
+                    disabled={cancellingBooking || cancellingEnrollment}
+                    onClose={() => setPendingCancel(null)}
+                    onConfirm={async () => {
+                        if (pendingCancel.type === "booking") {
+                            await cancelAppointment(pendingCancel.id);
+                        } else {
+                            await cancelEvent(pendingCancel.id);
+                        }
+                        setPendingCancel(null);
+                    }}
+                    title={pendingCancel.title}
+                />
+            ) : null}
         </section>
     );
 }
@@ -89,7 +108,7 @@ export default function AccountBookingsPanel({locale}: {locale: Locale}) {
 const filterClass = "flex min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-stone-600 transition-colors hover:bg-white hover:text-stone-900";
 const activeFilterClass = "flex min-w-0 items-center justify-center gap-2 rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white shadow-sm";
 
-function BookingList({bookings, cancelling, copy, isError, locale, onCancel}: {bookings: Booking[]; cancelling: boolean; copy: Copy; isError: boolean; locale: Locale; onCancel: (id: number) => void}) {
+function BookingList({bookings, cancelling, copy, isError, locale, onCancel}: {bookings: Booking[]; cancelling: boolean; copy: Copy; isError: boolean; locale: Locale; onCancel: (booking: Booking) => void}) {
     const [expanded, setExpanded] = useState(false);
     const visibleBookings = expanded ? bookings : bookings.slice(0, INITIAL_VISIBLE_ITEMS);
     const hiddenCount = Math.max(0, bookings.length - visibleBookings.length);
@@ -103,7 +122,7 @@ function BookingList({bookings, cancelling, copy, isError, locale, onCancel}: {b
             {isError ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{copy.loadError}</p> : null}
             <div className="mt-3 space-y-2">
                 {visibleBookings.map((booking) => <BookingCard booking={booking} cancelling={cancelling} copy={copy} key={booking.id} locale={locale} onCancel={onCancel} />)}
-                {bookings.length === 0 && !isError ? <p className="rounded-lg border border-dashed border-stone-200 bg-stone-50 px-3 py-4 text-center text-sm text-stone-500">{copy.noAppointments}</p> : null}
+                {bookings.length === 0 && !isError ? <AccountEmptyAction body={copy.noAppointments} href={withLocale("/calendar", locale)} label={copy.bookAppointment} /> : null}
                 {bookings.length > INITIAL_VISIBLE_ITEMS ? (
                     <button className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-50" onClick={() => setExpanded((current) => !current)} type="button">
                         {expanded ? copy.showLess : copy.showMore(hiddenCount)}
@@ -114,7 +133,7 @@ function BookingList({bookings, cancelling, copy, isError, locale, onCancel}: {b
     );
 }
 
-function EventList({cancelling, copy, events, isError, locale, onCancel}: {cancelling: boolean; copy: Copy; events: PublicFixedEvent[]; isError: boolean; locale: Locale; onCancel: (id: number) => void}) {
+function EventList({cancelling, copy, events, isError, locale, onCancel}: {cancelling: boolean; copy: Copy; events: PublicFixedEvent[]; isError: boolean; locale: Locale; onCancel: (event: PublicFixedEvent) => void}) {
     const [expanded, setExpanded] = useState(false);
     const visibleEvents = expanded ? events : events.slice(0, INITIAL_VISIBLE_ITEMS);
     const hiddenCount = Math.max(0, events.length - visibleEvents.length);
@@ -128,7 +147,7 @@ function EventList({cancelling, copy, events, isError, locale, onCancel}: {cance
             {isError ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{copy.loadError}</p> : null}
             <div className="mt-3 space-y-2">
                 {visibleEvents.map((event) => <EventCard cancelling={cancelling} copy={copy} event={event} key={event.id} locale={locale} onCancel={onCancel} />)}
-                {events.length === 0 && !isError ? <p className="rounded-lg border border-dashed border-stone-200 bg-stone-50 px-3 py-4 text-center text-sm text-stone-500">{copy.noEvents}</p> : null}
+                {events.length === 0 && !isError ? <AccountEmptyAction body={copy.noEvents} href={withLocale("/calendar", locale)} label={copy.findEvent} /> : null}
                 {events.length > INITIAL_VISIBLE_ITEMS ? (
                     <button className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-50" onClick={() => setExpanded((current) => !current)} type="button">
                         {expanded ? copy.showLess : copy.showMore(hiddenCount)}
@@ -139,7 +158,16 @@ function EventList({cancelling, copy, events, isError, locale, onCancel}: {cance
     );
 }
 
-function BookingCard({booking, cancelling, copy, locale, onCancel}: {booking: Booking; cancelling: boolean; copy: Copy; locale: Locale; onCancel: (id: number) => void}) {
+function AccountEmptyAction({body, href, label}: {body: string; href: string; label: string}) {
+    return (
+        <div className="rounded-lg border border-dashed border-stone-200 bg-stone-50 px-3 py-4 text-center text-sm text-stone-500">
+            <p>{body}</p>
+            <a className="mt-3 inline-flex rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 transition-colors hover:bg-stone-100" href={href}>{label}</a>
+        </div>
+    );
+}
+
+function BookingCard({booking, cancelling, copy, locale, onCancel}: {booking: Booking; cancelling: boolean; copy: Copy; locale: Locale; onCancel: (booking: Booking) => void}) {
     const cancellable = booking.status !== "CANCELLED" && new Date(booking.startsAt).getTime() > Date.now();
     const canPay = booking.status === "AWAITING_PAYMENT_CONFIRMATION" && Boolean(booking.externalPaymentUrl);
 
@@ -156,9 +184,10 @@ function BookingCard({booking, cancelling, copy, locale, onCancel}: {booking: Bo
                 <p className="text-xs font-medium text-stone-700">{formatDateTimeRange(booking.startsAt, booking.endsAt, locale)}</p>
                 <div className="flex flex-wrap justify-end gap-2">
                     {canPay ? <a className="rounded-md border border-emerald-200 bg-white px-2.5 py-1.5 text-xs font-medium text-emerald-800 hover:bg-emerald-50" href={booking.externalPaymentUrl ?? undefined} rel="noreferrer" target="_blank">{copy.pay}</a> : null}
-                    {cancellable ? <button className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300" disabled={cancelling} onClick={() => onCancel(booking.id)} type="button">{copy.cancel}</button> : null}
+                    {cancellable ? <button className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300" disabled={cancelling} onClick={() => onCancel(booking)} type="button">{copy.cancel}</button> : null}
                 </div>
             </div>
+            <BookingMetaChips booking={booking} copy={copy} />
             <OfficeDetails
                 address={booking.officeAddress}
                 copy={copy}
@@ -171,7 +200,7 @@ function BookingCard({booking, cancelling, copy, locale, onCancel}: {booking: Bo
     );
 }
 
-function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boolean; copy: Copy; event: PublicFixedEvent; locale: Locale; onCancel: (id: number) => void}) {
+function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boolean; copy: Copy; event: PublicFixedEvent; locale: Locale; onCancel: (event: PublicFixedEvent) => void}) {
     const status = eventStatus(event);
     const cancellable = status === "ACTIVE" && new Date(event.startsAt).getTime() > Date.now();
 
@@ -186,8 +215,9 @@ function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boo
             </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs font-medium text-stone-700">{formatDateTimeRange(event.startsAt, event.endsAt, locale)}</p>
-                {cancellable ? <button className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300" disabled={cancelling} onClick={() => onCancel(event.id)} type="button">{copy.cancel}</button> : null}
+                {cancellable ? <button className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300" disabled={cancelling} onClick={() => onCancel(event)} type="button">{copy.cancel}</button> : null}
             </div>
+            <EventMetaChips copy={copy} event={event} />
             <OfficeDetails
                 address={event.officeAddress}
                 copy={copy}
@@ -198,6 +228,28 @@ function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boo
             />
         </article>
     );
+}
+
+function BookingMetaChips({booking, copy}: {booking: Booking; copy: Copy}) {
+    const chips = [
+        booking.status === "AWAITING_PAYMENT_CONFIRMATION" ? copy.paymentPendingHint : null,
+        booking.paidWithMembership && booking.membershipPurchaseId ? copy.paidWithMembership(booking.membershipPurchaseId) : null,
+        booking.reminderOptIn ? copy.reminderEnabled : null
+    ].filter((chip): chip is string => Boolean(chip));
+
+    if (chips.length === 0) return null;
+
+    return <div className="mt-3 flex flex-wrap gap-1.5">{chips.map((chip) => <span className="max-w-full break-words rounded-full border border-stone-200 bg-white px-2 py-1 text-[11px] font-medium text-stone-600" key={chip}>{chip}</span>)}</div>;
+}
+
+function EventMetaChips({copy, event}: {copy: Copy; event: PublicFixedEvent}) {
+    const chips = [
+        event.paidWithMembership && event.membershipPurchaseId ? copy.paidWithMembership(event.membershipPurchaseId) : null
+    ].filter((chip): chip is string => Boolean(chip));
+
+    if (chips.length === 0) return null;
+
+    return <div className="mt-3 flex flex-wrap gap-1.5">{chips.map((chip) => <span className="max-w-full break-words rounded-full border border-stone-200 bg-white px-2 py-1 text-[11px] font-medium text-stone-600" key={chip}>{chip}</span>)}</div>;
 }
 
 function EventStatusBadge({copy, status}: {copy: Copy; status: AccountEventStatus}) {
@@ -263,6 +315,24 @@ function BookingStatusBadge({booking, copy}: {booking: Booking; copy: Copy}) {
     return <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${className}`}>{label}</span>;
 }
 
+function CancelConfirmationModal({copy, disabled, onClose, onConfirm, title}: {copy: Copy; disabled: boolean; onClose: () => void; onConfirm: () => void; title: string}) {
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 p-4" onClick={onClose} role="presentation">
+            <section aria-modal="true" className="w-full max-w-md rounded-xl bg-white p-4 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()} role="dialog">
+                <div className="border-b border-stone-200 pb-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-red-700">{copy.cancelConfirmEyebrow}</p>
+                    <h3 className="mt-1 break-words text-lg font-semibold text-stone-950">{copy.cancelConfirmTitle}</h3>
+                    <p className="mt-2 break-words text-sm leading-6 text-stone-600">{copy.cancelConfirmBody(title)}</p>
+                </div>
+                <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <button className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-100" onClick={onClose} type="button">{copy.keepBooking}</button>
+                    <button className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-200" disabled={disabled} onClick={onConfirm} type="button">{copy.confirmCancel}</button>
+                </div>
+            </section>
+        </div>
+    );
+}
+
 function formatDateTimeRange(start: string, end: string, locale: Locale) {
     const languageTag = toLanguageTag(locale);
     const date = new Intl.DateTimeFormat(languageTag, {day: "numeric", month: "short", weekday: "short"}).format(new Date(start));
@@ -283,6 +353,8 @@ function labels(t: T) {
         noOffice: t("noOffice"),
         noAppointments: t("noAppointments"),
         noEvents: t("noEvents"),
+        bookAppointment: t("bookAppointment"),
+        findEvent: t("findEvent"),
         showMore: (count: number) => t("showMore", {count}),
         showLess: t("showLess"),
         filters: {
@@ -300,8 +372,16 @@ function labels(t: T) {
         loadError: t("loadError"),
         cancel: t("cancel"),
         pay: t("pay"),
+        paymentPendingHint: t("paymentPendingHint"),
+        paidWithMembership: (id: number) => t("paidWithMembership", {id}),
+        reminderEnabled: t("reminderEnabled"),
         cancelled: t("cancelled"),
         cancelError: t("cancelError"),
+        cancelConfirmEyebrow: t("cancelConfirmEyebrow"),
+        cancelConfirmTitle: t("cancelConfirmTitle"),
+        cancelConfirmBody: (title: string) => t("cancelConfirmBody", {title}),
+        keepBooking: t("keepBooking"),
+        confirmCancel: t("confirmCancel"),
         statuses: {
             AWAITING_PAYMENT_CONFIRMATION: t("statuses.AWAITING_PAYMENT_CONFIRMATION"),
             CONFIRMED: t("statuses.CONFIRMED"),

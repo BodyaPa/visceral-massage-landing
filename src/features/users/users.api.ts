@@ -50,11 +50,23 @@ export const usersApi = createApi({
                 {type: "Users", id},
                 {type: "Users", id: "LIST"}
             ]
+        }),
+        updateUserEnabled: build.mutation<AdminUser, {id: number; enabled: boolean}>({
+            query: ({id, enabled}) => ({
+                url: `/admin/users/${id}/enabled`,
+                method: "PATCH",
+                body: {enabled}
+            }),
+            invalidatesTags: (result, error, {id}) => [
+                {type: "Users", id},
+                {type: "Users", id: "LIST"}
+            ]
         })
     })
 });
 
 export const {
     useListUsersQuery,
+    useUpdateUserEnabledMutation,
     useUpdateUserRolesMutation
 } = usersApi;

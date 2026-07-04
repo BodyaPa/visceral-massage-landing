@@ -2,6 +2,7 @@
 
 import {useLocale, useTranslations} from "next-intl";
 import {useMemo, useState} from "react";
+import BoundedList from "@/components/ui/list/BoundedList";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {
     useCreateMembershipPaymentSessionMutation,
@@ -153,19 +154,31 @@ function PurchaseSummary({locale, purchases, t}: {locale: Locale; purchases: Mem
     return (
         <section className="mt-8 rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-stone-950">{t("myPurchases")}</h2>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-                {purchases.slice(0, 4).map((purchase) => (
-                    <article className="rounded-lg border border-stone-200 bg-stone-50 p-3" key={purchase.id}>
-                        <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                                <h3 className="break-words text-sm font-semibold text-stone-950">{locale === "ua" ? purchase.titleUa : purchase.titleEn}</h3>
-                                <p className="mt-1 text-xs text-stone-500">{t(`statuses.${purchase.status}`)}</p>
-                            </div>
-                            <strong className="shrink-0 text-sm text-stone-950">{formatAmount(purchase.priceSnapshot, locale)}</strong>
-                        </div>
-                    </article>
-                ))}
-            </div>
+            <BoundedList
+                initialCount={4}
+                items={purchases}
+                labels={{
+                    showLess: t("showLess"),
+                    showMore: t("showMore"),
+                    showing: (visible, total) => t("showing", {total, visible})
+                }}
+                renderItems={(visiblePurchases) => (
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                        {visiblePurchases.map((purchase) => (
+                            <article className="rounded-lg border border-stone-200 bg-stone-50 p-3" key={purchase.id}>
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <h3 className="break-words text-sm font-semibold text-stone-950">{locale === "ua" ? purchase.titleUa : purchase.titleEn}</h3>
+                                        <p className="mt-1 text-xs text-stone-500">{t(`statuses.${purchase.status}`)}</p>
+                                    </div>
+                                    <strong className="shrink-0 text-sm text-stone-950">{formatAmount(purchase.priceSnapshot, locale)}</strong>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                )}
+                step={4}
+            />
         </section>
     );
 }

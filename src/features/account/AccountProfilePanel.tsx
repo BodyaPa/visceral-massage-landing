@@ -93,7 +93,7 @@ export default function AccountProfilePanel({contactValue, dateOfBirth, displayN
                         <p className="text-sm font-medium text-stone-500">{t("title")}</p>
                         <p className="mt-2 break-words text-xl font-semibold text-stone-950">{displayName}</p>
                         <p className="mt-1 break-words text-sm text-stone-600">{contactValue}</p>
-                        <p className="mt-1 break-words text-xs text-stone-500">{t("birthDate", {date: dateOfBirth})}</p>
+                        <p className="mt-1 break-words text-xs text-stone-500">{dateOfBirth ? t("birthDate", {date: dateOfBirth}) : t("birthDateEmpty")}</p>
                     </div>
                 </div>
                 <button

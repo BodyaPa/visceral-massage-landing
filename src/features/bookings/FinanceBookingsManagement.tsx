@@ -31,6 +31,7 @@ import {
 } from "@/features/bookings/financeFormatting";
 import {useListPublicOfficesQuery} from "@/features/offices/offices.api";
 import {
+    useCancelFinanceMembershipPurchaseMutation,
     useConfirmMembershipPaymentMutation,
     useListFinanceMembershipPurchasesQuery
 } from "@/features/memberships/memberships.api";
@@ -53,6 +54,9 @@ export default function FinanceBookingsManagement() {
     const [to, setTo] = useState("");
     const [selectedBooking, setSelectedBooking] = useState<FinanceBooking | null>(null);
     const [bookingToConfirm, setBookingToConfirm] = useState<FinanceBooking | null>(null);
+    const [membershipToConfirm, setMembershipToConfirm] = useState<MembershipPurchase | null>(null);
+    const [membershipToCancel, setMembershipToCancel] = useState<MembershipPurchase | null>(null);
+    const [eventEnrollmentToConfirm, setEventEnrollmentToConfirm] = useState<FinanceEventEnrollment | null>(null);
     const {data: officesData} = useListPublicOfficesQuery({size: 100});
     const activeOffices = useMemo(() => officesData?.content ?? [], [officesData?.content]);
     const bookingStatusFilter = tab === "pending" ? "AWAITING_PAYMENT_CONFIRMATION" : status;
@@ -75,7 +79,7 @@ export default function FinanceBookingsManagement() {
         to: to || undefined
     });
     const {data: membershipPurchasesData, isFetching: membershipPurchasesFetching, isError: membershipPurchasesError} = useListFinanceMembershipPurchasesQuery({
-        status: "AWAITING_PAYMENT_CONFIRMATION"
+        status: ""
     });
     const {data: eventEnrollmentsData, isFetching: eventEnrollmentsFetching, isError: eventEnrollmentsError} = useListFinanceEventEnrollmentsQuery({
         officeId: officeId ? Number(officeId) : undefined,
@@ -85,6 +89,7 @@ export default function FinanceBookingsManagement() {
     const [confirmPayment, {isLoading: isConfirming}] = useConfirmPaymentMutation();
     const [confirmEventEnrollmentPayment, {isLoading: isConfirmingEventEnrollment}] = useConfirmEventEnrollmentPaymentMutation();
     const [confirmMembershipPayment, {isLoading: isConfirmingMembership}] = useConfirmMembershipPaymentMutation();
+    const [cancelMembershipPurchase, {isLoading: isCancellingMembership}] = useCancelFinanceMembershipPurchaseMutation();
     const [markPayoutPaid, {isLoading: isMarkingPayout}] = useMarkSpecialistPayoutPaidMutation();
     const allBookings = useMemo(() => data?.content ?? [], [data?.content]);
     const expenses = useMemo(() => expensesData?.content ?? [], [expensesData?.content]);
@@ -93,6 +98,14 @@ export default function FinanceBookingsManagement() {
     const bookings = allBookings;
     const pendingCount = summary?.pendingCount ?? 0;
     const confirmedCount = summary?.confirmedCount ?? 0;
+    const pendingMembershipCount = membershipPurchases.filter((purchase) => purchase.status === "AWAITING_PAYMENT_CONFIRMATION").length;
+    const pendingEventEnrollmentCount = eventEnrollments.filter((enrollment) => enrollment.status === "ACTIVE" && !enrollment.paymentConfirmed && !enrollment.paidWithMembership).length;
+    const selectedOffice = officeId ? activeOffices.find((office) => String(office.id) === officeId) : undefined;
+    const scopeChips = [
+        tab === "pending" ? t("statuses.AWAITING_PAYMENT_CONFIRMATION") : status ? t(`statuses.${status}`) : t("statuses.all"),
+        selectedOffice?.name ?? t("filters.allOffices"),
+        from || to ? `${from || "..."} - ${to || "..."}` : t("filters.allPeriods")
+    ];
     const income = summary?.income ?? 0;
     const specialistEarnings = summary?.specialistEarnings ?? 0;
     const businessIncome = summary?.businessIncome ?? income;
@@ -130,15 +143,27 @@ export default function FinanceBookingsManagement() {
     async function confirmMembership(purchaseId: number) {
         try {
             await confirmMembershipPayment(purchaseId).unwrap();
+            setMembershipToConfirm(null);
             toast.success(t("memberships.confirmed"));
         } catch {
             toast.error(t("memberships.confirmError"));
         }
     }
 
+    async function cancelMembership(purchaseId: number) {
+        try {
+            await cancelMembershipPurchase(purchaseId).unwrap();
+            setMembershipToCancel(null);
+            toast.success(t("memberships.cancelled"));
+        } catch {
+            toast.error(t("memberships.cancelError"));
+        }
+    }
+
     async function confirmEventEnrollment(enrollmentId: number) {
         try {
             await confirmEventEnrollmentPayment(enrollmentId).unwrap();
+            setEventEnrollmentToConfirm(null);
             toast.success(t("events.confirmed"));
         } catch {
             toast.error(t("events.confirmError"));
@@ -189,6 +214,22 @@ export default function FinanceBookingsManagement() {
                     <SummaryCard label={t("summary.expenses")} value={formatAmount(expenseTotal, locale)} />
                     <SummaryCard label={t("summary.result")} value={formatAmount(result, locale)} />
                 </div>
+                <div className="mt-4 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                    <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="min-w-0">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{t("scope.title")}</p>
+                            <p className="mt-1 text-xs leading-5 text-stone-500">{t("scope.body")}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                            {scopeChips.map((chip) => <span className="max-w-full break-words rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs font-medium text-stone-700" key={chip}>{chip}</span>)}
+                        </div>
+                    </div>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                    <QueueMetric label={t("queue.bookings")} value={pendingCount} />
+                    <QueueMetric label={t("queue.events")} value={pendingEventEnrollmentCount} />
+                    <QueueMetric label={t("queue.memberships")} value={pendingMembershipCount} />
+                </div>
             </header>
 
             <section className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
@@ -201,14 +242,17 @@ export default function FinanceBookingsManagement() {
                 {tab === "pending" || tab === "transactions" ? (
                     <BookingSection bookings={bookings} confirming={isConfirming} isFetching={isFetching} locale={locale} markingPayout={isMarkingPayout} onConfirm={requestConfirm} onMarkPayout={markPayout} onSelect={setSelectedBooking} tab={tab} t={t} />
                 ) : null}
-                {tab === "memberships" ? <MembershipFinanceSection confirming={isConfirmingMembership} isError={membershipPurchasesError} isFetching={membershipPurchasesFetching} locale={locale} onConfirm={confirmMembership} purchases={membershipPurchases} t={t} /> : null}
-                {tab === "events" ? <EventEnrollmentsFinanceSection confirming={isConfirmingEventEnrollment} enrollments={eventEnrollments} isError={eventEnrollmentsError} isFetching={eventEnrollmentsFetching} locale={locale} onConfirm={confirmEventEnrollment} t={t} /> : null}
+                {tab === "memberships" ? <MembershipFinanceSection cancelling={isCancellingMembership} confirming={isConfirmingMembership} isError={membershipPurchasesError} isFetching={membershipPurchasesFetching} locale={locale} onCancel={setMembershipToCancel} onConfirm={setMembershipToConfirm} purchases={membershipPurchases} t={t} /> : null}
+                {tab === "events" ? <EventEnrollmentsFinanceSection confirming={isConfirmingEventEnrollment} enrollments={eventEnrollments} isError={eventEnrollmentsError} isFetching={eventEnrollmentsFetching} locale={locale} onConfirm={setEventEnrollmentToConfirm} t={t} /> : null}
                 {tab === "expenses" ? <ExpensesSection expenses={expenses} isError={expensesError} isFetching={expensesFetching} locale={locale} offices={activeOffices} t={t} /> : null}
                 {tab === "reports" ? <ReportsSection businessIncome={businessIncome} estimatedTax={estimatedTax} expenses={expenseTotal} income={income} locale={locale} officeId={officeId} quarterlyTaxPercent={quarterlyTaxPercent} result={result} specialistEarnings={specialistEarnings} status={status} taxableIncome={taxableIncome} t={t} to={to} from={from} /> : null}
             </section>
 
             {selectedBooking ? <BookingDetails booking={selectedBooking} confirming={isConfirming} locale={locale} markingPayout={isMarkingPayout} onClose={() => setSelectedBooking(null)} onConfirm={requestConfirm} onMarkPayout={markPayout} t={t} /> : null}
             {bookingToConfirm ? <PaymentReviewModal booking={bookingToConfirm} confirming={isConfirming} locale={locale} onClose={() => setBookingToConfirm(null)} onConfirm={confirm} t={t} /> : null}
+            {membershipToConfirm ? <ManualReviewModal amount={formatAmount(membershipToConfirm.priceSnapshot, locale)} body={t("memberships.reviewBody")} confirming={isConfirmingMembership} onClose={() => setMembershipToConfirm(null)} onConfirm={() => confirmMembership(membershipToConfirm.id)} subtitle={`ID ${membershipToConfirm.id} · ${t(`memberships.statuses.${membershipToConfirm.status}`)}`} t={t} title={locale === "ua" ? membershipToConfirm.titleUa : membershipToConfirm.titleEn} /> : null}
+            {membershipToCancel ? <MembershipCancelModal cancelling={isCancellingMembership} locale={locale} onClose={() => setMembershipToCancel(null)} onConfirm={() => cancelMembership(membershipToCancel.id)} purchase={membershipToCancel} t={t} /> : null}
+            {eventEnrollmentToConfirm ? <ManualReviewModal amount={formatAmount(eventEnrollmentToConfirm.bookedPrice, locale)} body={t("events.reviewBody")} confirming={isConfirmingEventEnrollment} onClose={() => setEventEnrollmentToConfirm(null)} onConfirm={() => confirmEventEnrollment(eventEnrollmentToConfirm.id)} subtitle={`${formatDateTime(eventEnrollmentToConfirm.startsAt, locale)} · ${eventEnrollmentToConfirm.officeName ?? t("withoutOffice")}`} t={t} title={locale === "ua" ? eventEnrollmentToConfirm.serviceTitleUa : eventEnrollmentToConfirm.serviceTitleEn || eventEnrollmentToConfirm.serviceTitleUa} /> : null}
         </section>
     );
 }
@@ -225,6 +269,16 @@ function Filter({children, label}: {children: React.ReactNode; label: string}) {
 function SummaryCard({label, muted = false, tone = "neutral", value}: {label: string; muted?: boolean; tone?: "neutral" | "success" | "warning"; value: string}) {
     const valueClass = muted ? "text-stone-400" : tone === "success" ? "text-emerald-800" : tone === "warning" ? "text-amber-800" : "text-stone-950";
     return <div className="flex min-h-24 min-w-0 flex-col justify-center rounded-xl border border-stone-200 bg-stone-50 px-4 py-4"><p className={`break-words text-xl font-semibold ${valueClass}`}>{value}</p><p className="mt-2 break-words text-xs font-medium text-stone-500">{label}</p></div>;
+}
+
+function QueueMetric({label, value}: {label: string; value: number}) {
+    const active = value > 0;
+    return (
+        <div className={active ? "rounded-xl border border-amber-200 bg-amber-50 px-3 py-2" : "rounded-xl border border-stone-200 bg-white px-3 py-2"}>
+            <p className={active ? "text-lg font-semibold text-amber-900" : "text-lg font-semibold text-stone-400"}>{value}</p>
+            <p className={active ? "mt-0.5 break-words text-xs font-medium text-amber-900" : "mt-0.5 break-words text-xs font-medium text-stone-500"}>{label}</p>
+        </div>
+    );
 }
 
 function BookingSection({bookings, confirming, isFetching, locale, markingPayout, onConfirm, onMarkPayout, onSelect, tab, t}: {bookings: FinanceBooking[]; confirming: boolean; isFetching: boolean; locale: string; markingPayout: boolean; onConfirm: (booking: FinanceBooking) => void; onMarkPayout: (id: number) => void; onSelect: (booking: FinanceBooking) => void; tab: "pending" | "transactions"; t: T}) {
@@ -293,21 +347,23 @@ function StatusBadge({status, t}: {status: BookingStatus; t: T}) {
     return <span className={`inline-flex max-w-full break-words rounded-full border px-2.5 py-1 text-xs font-medium ${tone}`}>{t(`statuses.${status}`)}</span>;
 }
 
-function MembershipFinanceSection({confirming, isError, isFetching, locale, onConfirm, purchases, t}: {confirming: boolean; isError: boolean; isFetching: boolean; locale: string; onConfirm: (id: number) => void; purchases: MembershipPurchase[]; t: T}) {
-    return <div className="p-4 sm:p-5"><div className="mb-4"><h2 className="text-base font-semibold text-stone-950">{t("memberships.title")}</h2><p className="mt-1 text-sm text-stone-500">{t("memberships.subtitle")}</p></div>{isError ? <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("memberships.loadError")}</p> : null}{isFetching ? <p className="py-8 text-center text-sm text-stone-500">{t("memberships.loading")}</p> : null}{!isFetching && purchases.length === 0 ? <EmptyState body={t("memberships.empty")} title={t("memberships.emptyTitle")} /> : null}<BoundedList initialCount={25} items={purchases} labels={{showLess: t("bounded.showLess"), showMore: t("bounded.showMore"), showing: (visible, total) => t("bounded.showing", {total, visible})}} renderItems={(visiblePurchases) => <div className="grid gap-3 lg:grid-cols-2">{visiblePurchases.map((purchase) => <MembershipFinanceCard confirming={confirming} key={purchase.id} locale={locale} onConfirm={onConfirm} purchase={purchase} t={t} />)}</div>} step={25} /></div>;
+function MembershipFinanceSection({cancelling, confirming, isError, isFetching, locale, onCancel, onConfirm, purchases, t}: {cancelling: boolean; confirming: boolean; isError: boolean; isFetching: boolean; locale: string; onCancel: (purchase: MembershipPurchase) => void; onConfirm: (purchase: MembershipPurchase) => void; purchases: MembershipPurchase[]; t: T}) {
+    return <div className="p-4 sm:p-5"><div className="mb-4"><h2 className="text-base font-semibold text-stone-950">{t("memberships.title")}</h2><p className="mt-1 text-sm text-stone-500">{t("memberships.subtitle")}</p></div>{isError ? <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("memberships.loadError")}</p> : null}{isFetching ? <p className="py-8 text-center text-sm text-stone-500">{t("memberships.loading")}</p> : null}{!isFetching && purchases.length === 0 ? <EmptyState body={t("memberships.empty")} title={t("memberships.emptyTitle")} /> : null}<BoundedList initialCount={25} items={purchases} labels={{showLess: t("bounded.showLess"), showMore: t("bounded.showMore"), showing: (visible, total) => t("bounded.showing", {total, visible})}} renderItems={(visiblePurchases) => <div className="grid gap-3 lg:grid-cols-2">{visiblePurchases.map((purchase) => <MembershipFinanceCard cancelling={cancelling} confirming={confirming} key={purchase.id} locale={locale} onCancel={onCancel} onConfirm={onConfirm} purchase={purchase} t={t} />)}</div>} step={25} /></div>;
 }
 
-function MembershipFinanceCard({confirming, locale, onConfirm, purchase, t}: {confirming: boolean; locale: string; onConfirm: (id: number) => void; purchase: MembershipPurchase; t: T}) {
-    return <article className="rounded-xl border border-stone-200 bg-white p-4"><div className="flex min-w-0 items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{purchase.offerKind === "CERTIFICATE" ? t("memberships.certificate") : t("memberships.membership")}</p><h3 className="mt-1 break-words text-base font-semibold text-stone-950">{locale === "ua" ? purchase.titleUa : purchase.titleEn}</h3><p className="mt-1 break-words text-xs text-stone-500">ID {purchase.id} · {t(`memberships.statuses.${purchase.status}`)}</p></div><strong className="shrink-0 text-sm text-stone-950">{formatAmount(purchase.priceSnapshot, locale)}</strong></div><dl className="mt-4 grid gap-2 text-sm text-stone-600"><Detail label={t("memberships.user")} value={`ID ${purchase.userId}`} /><Detail label={t("memberships.visits")} value={purchase.visitsRemaining == null ? t("memberships.certificate") : String(purchase.visitsRemaining)} /><Detail label={t("memberships.createdAt")} value={formatDateTime(purchase.createdAt, locale)} /></dl><button className="mt-4 rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={confirming} onClick={() => onConfirm(purchase.id)} type="button">{confirming ? t("confirming") : t("memberships.confirm")}</button></article>;
+function MembershipFinanceCard({cancelling, confirming, locale, onCancel, onConfirm, purchase, t}: {cancelling: boolean; confirming: boolean; locale: string; onCancel: (purchase: MembershipPurchase) => void; onConfirm: (purchase: MembershipPurchase) => void; purchase: MembershipPurchase; t: T}) {
+    const isAwaitingPayment = purchase.status === "AWAITING_PAYMENT_CONFIRMATION";
+    const canCancel = isAwaitingPayment || (purchase.status === "ACTIVE" && purchase.visitsTotal != null && purchase.visitsRemaining === purchase.visitsTotal);
+    return <article className="rounded-xl border border-stone-200 bg-white p-4"><div className="flex min-w-0 items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{purchase.offerKind === "CERTIFICATE" ? t("memberships.certificate") : t("memberships.membership")}</p><h3 className="mt-1 break-words text-base font-semibold text-stone-950">{locale === "ua" ? purchase.titleUa : purchase.titleEn}</h3><p className="mt-1 break-words text-xs text-stone-500">ID {purchase.id} · {t(`memberships.statuses.${purchase.status}`)}</p></div><strong className="shrink-0 text-sm text-stone-950">{formatAmount(purchase.priceSnapshot, locale)}</strong></div><dl className="mt-4 grid gap-2 text-sm text-stone-600"><Detail label={t("memberships.user")} value={`ID ${purchase.userId}`} /><Detail label={t("memberships.visits")} value={purchase.visitsRemaining == null ? t("memberships.certificate") : `${purchase.visitsRemaining}/${purchase.visitsTotal ?? "—"}`} /><Detail label={t("memberships.createdAt")} value={formatDateTime(purchase.createdAt, locale)} /></dl><div className="mt-4 flex flex-wrap gap-2">{isAwaitingPayment ? <button className="rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={confirming || cancelling} onClick={() => onConfirm(purchase)} type="button">{confirming ? t("confirming") : t("memberships.confirm")}</button> : null}{canCancel ? <button className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300" disabled={confirming || cancelling} onClick={() => onCancel(purchase)} type="button">{cancelling ? t("memberships.cancelling") : t("memberships.cancel")}</button> : null}</div></article>;
 }
 
-function EventEnrollmentsFinanceSection({confirming, enrollments, isError, isFetching, locale, onConfirm, t}: {confirming: boolean; enrollments: FinanceEventEnrollment[]; isError: boolean; isFetching: boolean; locale: string; onConfirm: (id: number) => void; t: T}) {
+function EventEnrollmentsFinanceSection({confirming, enrollments, isError, isFetching, locale, onConfirm, t}: {confirming: boolean; enrollments: FinanceEventEnrollment[]; isError: boolean; isFetching: boolean; locale: string; onConfirm: (enrollment: FinanceEventEnrollment) => void; t: T}) {
     return <div className="p-4 sm:p-5"><div className="mb-4"><h2 className="text-base font-semibold text-stone-950">{t("events.title")}</h2><p className="mt-1 text-sm text-stone-500">{t("events.subtitle")}</p></div>{isError ? <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("events.loadError")}</p> : null}{isFetching ? <p className="py-8 text-center text-sm text-stone-500">{t("events.loading")}</p> : null}{!isFetching && enrollments.length === 0 ? <EmptyState body={t("events.empty")} title={t("events.emptyTitle")} /> : null}<BoundedList initialCount={25} items={enrollments} labels={{showLess: t("bounded.showLess"), showMore: t("bounded.showMore"), showing: (visible, total) => t("bounded.showing", {total, visible})}} renderItems={(visibleEnrollments) => <div className="grid gap-3 lg:grid-cols-2">{visibleEnrollments.map((enrollment) => <EventEnrollmentFinanceCard confirming={confirming} enrollment={enrollment} key={enrollment.id} locale={locale} onConfirm={onConfirm} t={t} />)}</div>} step={25} /></div>;
 }
 
-function EventEnrollmentFinanceCard({confirming, enrollment, locale, onConfirm, t}: {confirming: boolean; enrollment: FinanceEventEnrollment; locale: string; onConfirm: (id: number) => void; t: T}) {
+function EventEnrollmentFinanceCard({confirming, enrollment, locale, onConfirm, t}: {confirming: boolean; enrollment: FinanceEventEnrollment; locale: string; onConfirm: (enrollment: FinanceEventEnrollment) => void; t: T}) {
     const serviceTitle = locale === "ua" ? enrollment.serviceTitleUa : enrollment.serviceTitleEn || enrollment.serviceTitleUa;
-    return <article className="rounded-xl border border-stone-200 bg-white p-4"><div className="flex min-w-0 items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{t("events.eyebrow", {id: enrollment.eventId})}</p><h3 className="mt-1 break-words text-base font-semibold text-stone-950">{serviceTitle}</h3><p className="mt-1 break-words text-xs text-stone-500">{formatDateTime(enrollment.startsAt, locale)} · {enrollment.officeName ?? t("withoutOffice")}</p></div><div className="flex shrink-0 flex-col items-end gap-1"><span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${enrollment.status === "ACTIVE" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-stone-200 bg-stone-100 text-stone-600"}`}>{t(`events.statuses.${enrollment.status}`)}</span><span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${enrollment.paymentConfirmed ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>{enrollment.paymentConfirmed ? t("events.paymentConfirmed") : t("events.paymentPending")}</span></div></div><dl className="mt-4 grid gap-2 text-sm text-stone-600 sm:grid-cols-2"><Detail label={t("table.client")} value={enrollment.clientName} /><Detail label={t("table.specialist")} value={enrollment.specialistName} /><Detail label={t("table.amount")} value={formatAmount(enrollment.bookedPrice, locale)} /><Detail label={t("memberships.user")} value={`ID ${enrollment.userId}`} /></dl>{enrollment.paymentConfirmedAt ? <p className="mt-3 break-words text-xs text-stone-500">{t("events.confirmedAt", {date: formatDateTime(enrollment.paymentConfirmedAt, locale)})}</p> : null}{enrollment.paidWithMembership ? <p className="mt-3 w-fit rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">{t("table.paidWithMembership")} · ID {enrollment.membershipPurchaseId}</p> : null}{enrollment.externalPaymentUrl ? <a className="mt-3 inline-block break-all text-xs font-medium text-emerald-800 underline-offset-2 hover:underline" href={enrollment.externalPaymentUrl} rel="noreferrer" target="_blank">{t("details.paymentLink")}</a> : null}{!enrollment.paymentConfirmed && !enrollment.paidWithMembership && enrollment.status === "ACTIVE" ? <button className="mt-4 rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={confirming} onClick={() => onConfirm(enrollment.id)} type="button">{confirming ? t("confirming") : t("events.confirm")}</button> : null}</article>;
+    return <article className="rounded-xl border border-stone-200 bg-white p-4"><div className="flex min-w-0 items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{t("events.eyebrow", {id: enrollment.eventId})}</p><h3 className="mt-1 break-words text-base font-semibold text-stone-950">{serviceTitle}</h3><p className="mt-1 break-words text-xs text-stone-500">{formatDateTime(enrollment.startsAt, locale)} · {enrollment.officeName ?? t("withoutOffice")}</p></div><div className="flex shrink-0 flex-col items-end gap-1"><span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${enrollment.status === "ACTIVE" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-stone-200 bg-stone-100 text-stone-600"}`}>{t(`events.statuses.${enrollment.status}`)}</span><span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${enrollment.paymentConfirmed ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>{enrollment.paymentConfirmed ? t("events.paymentConfirmed") : t("events.paymentPending")}</span></div></div><dl className="mt-4 grid gap-2 text-sm text-stone-600 sm:grid-cols-2"><Detail label={t("table.client")} value={enrollment.clientName} /><Detail label={t("table.specialist")} value={enrollment.specialistName} /><Detail label={t("table.amount")} value={formatAmount(enrollment.bookedPrice, locale)} /><Detail label={t("memberships.user")} value={`ID ${enrollment.userId}`} /></dl>{enrollment.paymentConfirmedAt ? <p className="mt-3 break-words text-xs text-stone-500">{t("events.confirmedAt", {date: formatDateTime(enrollment.paymentConfirmedAt, locale)})}</p> : null}{enrollment.paidWithMembership ? <p className="mt-3 w-fit rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">{t("table.paidWithMembership")} · ID {enrollment.membershipPurchaseId}</p> : null}{enrollment.externalPaymentUrl ? <a className="mt-3 inline-block break-all text-xs font-medium text-emerald-800 underline-offset-2 hover:underline" href={enrollment.externalPaymentUrl} rel="noreferrer" target="_blank">{t("details.paymentLink")}</a> : null}{!enrollment.paymentConfirmed && !enrollment.paidWithMembership && enrollment.status === "ACTIVE" ? <button className="mt-4 rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={confirming} onClick={() => onConfirm(enrollment)} type="button">{confirming ? t("confirming") : t("events.confirm")}</button> : null}</article>;
 }
 
 function ExpensesSection({expenses, isError, isFetching, locale, offices, t}: {expenses: FinanceExpense[]; isError: boolean; isFetching: boolean; locale: string; offices: Office[]; t: T}) {
@@ -346,7 +402,7 @@ function ExpenseForm({offices, t}: {offices: Office[]; t: T}) {
 function ReportsSection({businessIncome, estimatedTax, expenses, from, income, locale, officeId, quarterlyTaxPercent, result, specialistEarnings, status, taxableIncome, t, to}: {businessIncome: number; estimatedTax: number; expenses: number; from: string; income: number; locale: string; officeId: string; quarterlyTaxPercent: number; result: number; specialistEarnings: number; status: BookingStatus | ""; taxableIncome: number; t: T; to: string}) {
     const pdfUrl = financeExportUrl("pdf", {from, locale, officeId, status, to});
     const xlsxUrl = financeExportUrl("xlsx", {from, locale, officeId, status, to});
-    return <div className="grid min-w-0 gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_320px]"><div className="min-w-0"><h2 className="break-words text-base font-semibold text-stone-950">{t("reports.title")}</h2><p className="mt-1 break-words text-sm text-stone-500">{t("reports.subtitle")}</p><div className="mt-4 grid gap-3 sm:grid-cols-2"><SummaryCard label={t("reports.income")} value={formatAmount(income, locale)} /><SummaryCard label={t("reports.specialistEarnings")} value={formatAmount(specialistEarnings, locale)} /><SummaryCard label={t("reports.businessIncome")} value={formatAmount(businessIncome, locale)} /><SummaryCard label={t("reports.expenses")} value={formatAmount(expenses, locale)} /><SummaryCard label={t("reports.taxable")} value={formatAmount(taxableIncome, locale)} /><SummaryCard label={t("reports.estimatedTax", {value: formatPercent(quarterlyTaxPercent, locale)})} value={formatAmount(estimatedTax, locale)} /><SummaryCard label={t("summary.result")} value={formatAmount(result, locale)} /></div><CalculationBreakdown businessIncome={businessIncome} estimatedTax={estimatedTax} expenses={expenses} income={income} locale={locale} quarterlyTaxPercent={quarterlyTaxPercent} result={result} specialistEarnings={specialistEarnings} taxableIncome={taxableIncome} t={t} /></div><div className="min-w-0 space-y-4"><TaxSettingsPanel locale={locale} t={t} /><SpecialistSettingsPanel locale={locale} t={t} /><div className="min-w-0 rounded-xl border border-stone-200 bg-stone-50 p-4"><h3 className="break-words text-sm font-semibold text-stone-900">{t("reports.exportTitle")}</h3><p className="mt-1 break-words text-xs leading-5 text-stone-500">{t("reports.exportHint")}</p><div className="mt-4 grid gap-2"><a className={downloadButtonClass} href={pdfUrl}>{t("reports.pdf")}</a><a className={downloadButtonClass} href={xlsxUrl}>{t("reports.excel")}</a></div></div></div></div>;
+    return <div className="grid min-w-0 gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_320px]"><div className="min-w-0"><h2 className="break-words text-base font-semibold text-stone-950">{t("reports.title")}</h2><p className="mt-1 break-words text-sm text-stone-500">{t("reports.subtitle")}</p><div className="mt-4 grid gap-3 sm:grid-cols-2"><SummaryCard label={t("reports.income")} value={formatAmount(income, locale)} /><SummaryCard label={t("reports.specialistEarnings")} value={formatAmount(specialistEarnings, locale)} /><SummaryCard label={t("reports.businessIncome")} value={formatAmount(businessIncome, locale)} /><SummaryCard label={t("reports.expenses")} value={formatAmount(expenses, locale)} /><SummaryCard label={t("reports.taxable")} value={formatAmount(taxableIncome, locale)} /><SummaryCard label={t("reports.estimatedTax", {value: formatPercent(quarterlyTaxPercent, locale)})} value={formatAmount(estimatedTax, locale)} /><SummaryCard label={t("summary.result")} value={formatAmount(result, locale)} /></div><CalculationBreakdown businessIncome={businessIncome} estimatedTax={estimatedTax} expenses={expenses} income={income} locale={locale} quarterlyTaxPercent={quarterlyTaxPercent} result={result} specialistEarnings={specialistEarnings} taxableIncome={taxableIncome} t={t} /></div><div className="min-w-0 space-y-4"><TaxSettingsPanel locale={locale} t={t} /><SpecialistSettingsPanel locale={locale} t={t} /><div className="min-w-0 rounded-xl border border-stone-200 bg-stone-50 p-4"><h3 className="break-words text-sm font-semibold text-stone-900">{t("reports.exportTitle")}</h3><p className="mt-1 break-words text-xs leading-5 text-stone-500">{t("reports.exportHint")}</p><p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">{t("reports.exportScopeHint")}</p><div className="mt-4 grid gap-2"><a className={downloadButtonClass} href={pdfUrl}>{t("reports.pdf")}</a><a className={downloadButtonClass} href={xlsxUrl}>{t("reports.excel")}</a></div></div></div></div>;
 }
 
 function CalculationBreakdown({businessIncome, estimatedTax, expenses, income, locale, quarterlyTaxPercent, result, specialistEarnings, taxableIncome, t}: {businessIncome: number; estimatedTax: number; expenses: number; income: number; locale: string; quarterlyTaxPercent: number; result: number; specialistEarnings: number; taxableIncome: number; t: T}) {
@@ -447,6 +503,68 @@ function BookingDetails({booking, confirming, locale, markingPayout, onClose, on
 function PaymentReviewModal({booking, confirming, locale, onClose, onConfirm, t}: {booking: FinanceBooking; confirming: boolean; locale: string; onClose: () => void; onConfirm: (id: number) => void; t: T}) {
     const [verified, setVerified] = useState(false);
     return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-stone-950/40 p-4" onClick={onClose} role="presentation"><section aria-modal="true" className="w-full max-w-lg rounded-xl bg-white p-4 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()} role="dialog"><div className="flex min-w-0 items-start justify-between gap-3 border-b border-stone-200 pb-4"><div className="min-w-0"><p className="break-words text-xs font-semibold uppercase tracking-wide text-amber-700">{t("paymentReview.eyebrow")}</p><h2 className="mt-1 break-words text-xl font-semibold text-stone-950">{t("paymentReview.title")}</h2><p className="mt-2 break-words text-sm leading-6 text-stone-600">{t("paymentReview.body")}</p></div><button aria-label={t("details.close")} className="shrink-0 rounded-lg border border-stone-200 px-3 py-2 text-stone-600 hover:bg-stone-100" onClick={onClose} type="button">×</button></div><dl className="mt-5 grid gap-3 sm:grid-cols-2"><Detail label={t("table.client")} value={booking.clientName} /><Detail label={t("table.service")} value={bookingServiceTitle(booking, locale)} /><Detail label={t("table.when")} value={formatDateTime(booking.startsAt, locale)} /><Detail label={t("table.amount")} value={formatAmount(booking.bookedPrice, locale)} /><Detail label={t("table.specialist")} value={booking.specialistName} /><Detail label={t("table.office")} value={booking.officeName ?? t("withoutOffice")} /></dl>{booking.externalPaymentUrl ? <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3"><DetailLink label={t("details.paymentLink")} value={booking.externalPaymentUrl} /></div> : <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{t("paymentReview.noPaymentLink")}</p>}<label className="mt-5 flex items-start gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm text-stone-700"><input checked={verified} className="mt-1 h-4 w-4 rounded border-stone-300 text-stone-900" onChange={(event) => setVerified(event.target.checked)} type="checkbox" /><span className="min-w-0"><strong className="block break-words text-stone-950">{t("paymentReview.verified")}</strong><span className="mt-1 block break-words text-xs leading-5 text-stone-500">{t("paymentReview.verifyHint")}</span></span></label><div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-100" onClick={onClose} type="button">{t("paymentReview.cancel")}</button><button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={!verified || confirming} onClick={() => onConfirm(booking.id)} type="button">{confirming ? t("confirming") : t("paymentReview.confirm")}</button></div></section></div>;
+}
+
+function ManualReviewModal({amount, body, confirming, onClose, onConfirm, subtitle, t, title}: {amount: string; body: string; confirming: boolean; onClose: () => void; onConfirm: () => void; subtitle: string; t: T; title: string}) {
+    const [verified, setVerified] = useState(false);
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-stone-950/40 p-4" onClick={onClose} role="presentation">
+            <section aria-modal="true" className="w-full max-w-lg rounded-xl bg-white p-4 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()} role="dialog">
+                <div className="flex min-w-0 items-start justify-between gap-3 border-b border-stone-200 pb-4">
+                    <div className="min-w-0">
+                        <p className="break-words text-xs font-semibold uppercase tracking-wide text-amber-700">{t("paymentReview.eyebrow")}</p>
+                        <h2 className="mt-1 break-words text-xl font-semibold text-stone-950">{t("paymentReview.title")}</h2>
+                        <p className="mt-2 break-words text-sm leading-6 text-stone-600">{body}</p>
+                    </div>
+                    <button aria-label={t("details.close")} className="shrink-0 rounded-lg border border-stone-200 px-3 py-2 text-stone-600 hover:bg-stone-100" onClick={onClose} type="button">×</button>
+                </div>
+                <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <Detail label={t("table.service")} value={title} />
+                    <Detail label={t("table.amount")} value={amount} />
+                    <Detail label={t("table.status")} value={subtitle} />
+                </dl>
+                <label className="mt-5 flex items-start gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm text-stone-700">
+                    <input checked={verified} className="mt-1 h-4 w-4 rounded border-stone-300 text-stone-900" onChange={(event) => setVerified(event.target.checked)} type="checkbox" />
+                    <span className="min-w-0">
+                        <strong className="block break-words text-stone-950">{t("paymentReview.verified")}</strong>
+                        <span className="mt-1 block break-words text-xs leading-5 text-stone-500">{t("paymentReview.verifyHint")}</span>
+                    </span>
+                </label>
+                <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <button className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-100" onClick={onClose} type="button">{t("paymentReview.cancel")}</button>
+                    <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={!verified || confirming} onClick={onConfirm} type="button">{confirming ? t("confirming") : t("paymentReview.confirm")}</button>
+                </div>
+            </section>
+        </div>
+    );
+}
+
+function MembershipCancelModal({cancelling, locale, onClose, onConfirm, purchase, t}: {cancelling: boolean; locale: string; onClose: () => void; onConfirm: () => void; purchase: MembershipPurchase; t: T}) {
+    const title = locale === "ua" ? purchase.titleUa : purchase.titleEn;
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-stone-950/40 p-4" onClick={onClose} role="presentation">
+            <section aria-modal="true" className="w-full max-w-lg rounded-xl bg-white p-4 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()} role="dialog">
+                <div className="flex min-w-0 items-start justify-between gap-3 border-b border-stone-200 pb-4">
+                    <div className="min-w-0">
+                        <p className="break-words text-xs font-semibold uppercase tracking-wide text-red-700">{t("memberships.cancel")}</p>
+                        <h2 className="mt-1 break-words text-xl font-semibold text-stone-950">{t("memberships.cancelConfirmTitle")}</h2>
+                        <p className="mt-2 break-words text-sm leading-6 text-stone-600">{t("memberships.cancelConfirmBody")}</p>
+                    </div>
+                    <button aria-label={t("details.close")} className="shrink-0 rounded-lg border border-stone-200 px-3 py-2 text-stone-600 hover:bg-stone-100" onClick={onClose} type="button">×</button>
+                </div>
+                <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <Detail label={t("table.service")} value={title} />
+                    <Detail label={t("table.amount")} value={formatAmount(purchase.priceSnapshot, locale)} />
+                    <Detail label={t("table.status")} value={`ID ${purchase.id} · ${t(`memberships.statuses.${purchase.status}`)}`} />
+                    <Detail label={t("memberships.visits")} value={purchase.visitsRemaining == null ? t("memberships.certificate") : `${purchase.visitsRemaining}/${purchase.visitsTotal ?? "—"}`} />
+                </dl>
+                <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <button className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-100" onClick={onClose} type="button">{t("paymentReview.cancel")}</button>
+                    <button className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-300" disabled={cancelling} onClick={onConfirm} type="button">{cancelling ? t("memberships.cancelling") : t("memberships.confirmCancel")}</button>
+                </div>
+            </section>
+        </div>
+    );
 }
 
 function Detail({label, value}: {label: string; value: string}) {

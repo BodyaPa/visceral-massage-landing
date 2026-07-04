@@ -1,6 +1,7 @@
 "use client";
 
 import {useTranslations} from "next-intl";
+import BoundedList from "@/components/ui/list/BoundedList";
 import {useListMyMembershipPurchasesQuery} from "@/features/memberships/memberships.api";
 import type {Locale} from "@/i18n";
 import {formatWholeCurrencyAmount as formatAmount} from "@/shared/lib/i18n/formatNumbers";
@@ -22,23 +23,35 @@ export default function AccountMembershipsPanel({locale}: {locale: Locale}) {
             {isFetching ? <p className="mt-4 text-sm text-stone-500">{t("loading")}</p> : null}
             {!isFetching && purchases.length === 0 ? <p className="mt-4 rounded-lg border border-dashed border-stone-300 bg-stone-50 px-4 py-5 text-center text-sm text-stone-500">{t("empty")}</p> : null}
             {purchases.length > 0 ? (
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    {purchases.map((purchase) => (
-                        <article className="rounded-lg border border-stone-200 bg-stone-50 p-3" key={purchase.id}>
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                    <h3 className="break-words text-sm font-semibold text-stone-950">{locale === "ua" ? purchase.titleUa : purchase.titleEn}</h3>
-                                    <p className="mt-1 text-xs text-stone-500">{t(`statuses.${purchase.status}`)}</p>
-                                </div>
-                                <strong className="shrink-0 text-sm text-stone-950">{formatAmount(purchase.priceSnapshot, locale)}</strong>
-                            </div>
-                            <dl className="mt-3 grid gap-2 text-xs text-stone-600">
-                                <Info label={t("visits")} value={purchase.visitsRemaining == null ? t("certificate") : String(purchase.visitsRemaining)} />
-                                {purchase.expiresAt ? <Info label={t("expires")} value={formatDate(purchase.expiresAt, locale)} /> : null}
-                            </dl>
-                        </article>
-                    ))}
-                </div>
+                <BoundedList
+                    initialCount={6}
+                    items={purchases}
+                    labels={{
+                        showLess: t("showLess"),
+                        showMore: t("showMore"),
+                        showing: (visible, total) => t("showing", {total, visible})
+                    }}
+                    renderItems={(visiblePurchases) => (
+                        <div className="mt-4 grid gap-3 md:grid-cols-2">
+                            {visiblePurchases.map((purchase) => (
+                                <article className="rounded-lg border border-stone-200 bg-stone-50 p-3" key={purchase.id}>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <h3 className="break-words text-sm font-semibold text-stone-950">{locale === "ua" ? purchase.titleUa : purchase.titleEn}</h3>
+                                            <p className="mt-1 text-xs text-stone-500">{t(`statuses.${purchase.status}`)}</p>
+                                        </div>
+                                        <strong className="shrink-0 text-sm text-stone-950">{formatAmount(purchase.priceSnapshot, locale)}</strong>
+                                    </div>
+                                    <dl className="mt-3 grid gap-2 text-xs text-stone-600">
+                                        <Info label={t("visits")} value={purchase.visitsRemaining == null ? t("certificate") : String(purchase.visitsRemaining)} />
+                                        {purchase.expiresAt ? <Info label={t("expires")} value={formatDate(purchase.expiresAt, locale)} /> : null}
+                                    </dl>
+                                </article>
+                            ))}
+                        </div>
+                    )}
+                    step={6}
+                />
             ) : null}
         </section>
     );

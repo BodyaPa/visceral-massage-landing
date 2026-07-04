@@ -324,6 +324,8 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     }}
                     onOpenBookings={() => setPlannerMode("bookings")}
                     onOpenPlan={() => setPlannerMode("plan")}
+                    onSelectDetail={setSelectedCalendarDetail}
+                    t={t}
                 />
 
                 <section className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
@@ -813,7 +815,9 @@ function PlannerDayFocus({
     locale,
     onOpenAgenda,
     onOpenBookings,
-    onOpenPlan
+    onOpenPlan,
+    onSelectDetail,
+    t
 }: {
     blocks: SpecialistAvailabilityBlock[];
     bookings: SpecialistBooking[];
@@ -824,18 +828,23 @@ function PlannerDayFocus({
     onOpenAgenda: () => void;
     onOpenBookings: () => void;
     onOpenPlan: () => void;
+    onSelectDetail: (detail: CalendarDetail) => void;
+    t: T;
 }) {
     const dayItems = useMemo(() => {
         const key = dateKey(currentDate);
         return {
             available: blocks.filter((block) => block.status === "AVAILABLE" && !block.booked && dateKey(new Date(block.startsAt)) === key),
+            blocked: blocks.filter((block) => block.status === "BLOCKED" && dateKey(new Date(block.startsAt)) === key),
             bookings: bookings.filter((booking) => booking.status !== "CANCELLED" && dateKey(new Date(booking.startsAt)) === key),
+            pendingBookings: bookings.filter((booking) => booking.status === "AWAITING_PAYMENT_CONFIRMATION" && dateKey(new Date(booking.startsAt)) === key),
             events: events.filter((event) => event.active && dateKey(new Date(event.startsAt)) === key)
         };
     }, [blocks, bookings, currentDate, events]);
-    const nextItems = [
+    const allNextItems = [
         ...dayItems.bookings.map((booking) => ({
             id: `booking-${booking.id}`,
+            detail: bookingCalendarDetail(booking, copy, locale, t),
             startsAt: booking.startsAt,
             title: bookingServiceTitle(booking, locale),
             meta: booking.clientName,
@@ -843,6 +852,7 @@ function PlannerDayFocus({
         })),
         ...dayItems.events.map((event) => ({
             id: `event-${event.id}`,
+            detail: eventCalendarDetail(event, copy, locale),
             startsAt: event.startsAt,
             title: event.serviceTitle,
             meta: `${event.enrolledCount}/${event.capacity}`,
@@ -850,12 +860,23 @@ function PlannerDayFocus({
         })),
         ...dayItems.available.map((block) => ({
             id: `block-${block.id}`,
+            detail: blockCalendarDetail(block, copy, locale, t),
             startsAt: block.startsAt,
             title: scheduleBlockTypeLabel(block, copy),
             meta: block.officeName ?? copy.noOffice,
             tone: "available" as const
+        })),
+        ...dayItems.blocked.map((block) => ({
+            id: `blocked-${block.id}`,
+            detail: blockCalendarDetail(block, copy, locale, t),
+            startsAt: block.startsAt,
+            title: scheduleBlockTypeLabel(block, copy),
+            meta: block.officeName ?? copy.noOffice,
+            tone: "blocked" as const
         }))
-    ].sort((first, second) => new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime()).slice(0, 5);
+    ].sort((first, second) => new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime());
+    const nextItems = allNextItems.slice(0, 5);
+    const hiddenNextItems = Math.max(0, allNextItems.length - nextItems.length);
 
     return (
         <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
@@ -871,20 +892,28 @@ function PlannerDayFocus({
                     <button className={controlButtonClass} onClick={onOpenAgenda} type="button">{copy.agendaAction}</button>
                 </div>
             </div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
                 <CompactMetric label={copy.bookingsTitle} value={dayItems.bookings.length} />
+                <CompactMetric label={copy.dayFocusPending} tone={dayItems.pendingBookings.length > 0 ? "warning" : "neutral"} value={dayItems.pendingBookings.length} />
                 <CompactMetric label={copy.eventsTitle} value={dayItems.events.length} />
                 <CompactMetric label={copy.availabilityTitle} value={dayItems.available.length} />
+                <CompactMetric label={copy.blocksTitle} value={dayItems.blocked.length} />
             </div>
             {nextItems.length > 0 ? (
-                <div className="mt-4 grid gap-2 lg:grid-cols-5">
-                    {nextItems.map((item) => (
-                        <article className={dayFocusItemClass(item.tone)} key={item.id}>
-                            <p className="text-xs font-semibold text-stone-500">{formatTime(item.startsAt, locale)}</p>
-                            <h3 className="mt-1 line-clamp-2 text-sm font-semibold text-stone-950">{item.title}</h3>
-                            <p className="mt-1 truncate text-xs text-stone-500">{item.meta}</p>
-                        </article>
-                    ))}
+                <div className="mt-4">
+                    <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
+                        <h3 className="break-words text-sm font-semibold text-stone-950">{copy.dayFocusNext}</h3>
+                        {hiddenNextItems > 0 ? <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-1 text-xs text-stone-500">{copy.dayFocusMore(hiddenNextItems)}</span> : null}
+                    </div>
+                    <div className="grid gap-2 lg:grid-cols-5">
+                        {nextItems.map((item) => (
+                            <button className={`${dayFocusItemClass(item.tone)} text-left transition-colors hover:border-stone-400 hover:bg-white`} key={item.id} onClick={() => onSelectDetail(item.detail)} type="button">
+                                <p className="text-xs font-semibold text-stone-500">{formatTime(item.startsAt, locale)}</p>
+                                <h3 className="mt-1 line-clamp-2 text-sm font-semibold text-stone-950">{item.title}</h3>
+                                <p className="mt-1 truncate text-xs text-stone-500">{item.meta}</p>
+                            </button>
+                        ))}
+                    </div>
                 </div>
             ) : (
                 <p className="mt-4 rounded-lg border border-dashed border-stone-200 bg-stone-50 px-3 py-4 text-sm text-stone-500">{copy.dayFocusEmpty}</p>
@@ -893,19 +922,20 @@ function PlannerDayFocus({
     );
 }
 
-function CompactMetric({label, value}: {label: string; value: number}) {
+function CompactMetric({label, tone = "neutral", value}: {label: string; tone?: "neutral" | "warning"; value: number}) {
     return (
         <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
             <p className="text-xs font-medium text-stone-500">{label}</p>
-            <p className="mt-1 text-lg font-semibold text-stone-950">{value}</p>
+            <p className={`mt-1 text-lg font-semibold ${tone === "warning" ? "text-amber-800" : "text-stone-950"}`}>{value}</p>
         </div>
     );
 }
 
-function dayFocusItemClass(tone: "available" | "booking" | "event") {
+function dayFocusItemClass(tone: "available" | "blocked" | "booking" | "event") {
     const base = "min-w-0 rounded-lg border px-3 py-2";
     if (tone === "available") return `${base} border-emerald-200 bg-emerald-50`;
     if (tone === "event") return `${base} border-sky-200 bg-sky-50`;
+    if (tone === "blocked") return `${base} border-amber-200 bg-amber-50`;
     return `${base} border-stone-300 bg-stone-50`;
 }
 
@@ -928,12 +958,14 @@ function PlannerAgendaList({
     onSelectDetail: (detail: CalendarDetail) => void;
     t: T;
 }) {
-    const entries = [
+    const allEntries = [
         ...blocks.map((block) => ({detail: blockCalendarDetail(block, copy, locale, t), end: block.endsAt, id: `block-${block.id}`, meta: [blockStatusLabel(block, copy, t), block.officeName ?? copy.noOffice, block.serviceTitle].filter(Boolean).join(" · "), specialistName: block.specialistName, start: block.startsAt, tone: calendarToneForBlock(block)})),
         ...bookings.map((booking) => ({detail: bookingCalendarDetail(booking, copy, locale, t), end: booking.endsAt, id: `booking-${booking.id}`, meta: [bookingStatusLabel(booking, copy, t), booking.clientName, booking.officeName ?? copy.noOffice].filter(Boolean).join(" · "), specialistName: booking.specialistName, start: booking.startsAt, tone: calendarToneForBooking(booking)})),
         ...events.map((event) => ({detail: eventCalendarDetail(event, copy, locale), end: event.endsAt, id: `event-${event.id}`, meta: [eventStatusLabel(event, copy), `${event.enrolledCount}/${event.capacity}`, event.officeName ?? copy.noOffice].join(" · "), specialistName: event.specialistName, start: event.startsAt, tone: calendarToneForEvent(event)})),
         ...buffers.map((buffer) => ({detail: bufferCalendarDetail(buffer, copy, locale), end: buffer.endsAt, id: `buffer-${buffer.id}`, meta: [copy.buffer, buffer.officeName ?? copy.noOffice].join(" · "), specialistName: buffer.specialistName, start: buffer.startsAt, tone: "buffer" as const}))
-    ].sort((first, second) => new Date(first.start).getTime() - new Date(second.start).getTime()).slice(0, 160);
+    ].sort((first, second) => new Date(first.start).getTime() - new Date(second.start).getTime());
+    const entries = allEntries.slice(0, 160);
+    const hiddenEntries = Math.max(0, allEntries.length - entries.length);
     const groupedEntries = entries.reduce<Array<{dateKey: string; entries: typeof entries}>>((groups, entry) => {
         const key = dateKey(new Date(entry.start));
         const currentGroup = groups.at(-1);
@@ -971,6 +1003,9 @@ function PlannerAgendaList({
                     </div>
                 </section>
             ))}
+            {hiddenEntries > 0 ? (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{t("schedule.agendaLimitNotice", {count: hiddenEntries})}</p>
+            ) : null}
         </div>
     );
 }
@@ -1477,6 +1512,8 @@ function DayPlanCopyForm({
 }
 
 function EventsPanel({copy, events, isError, isFetching, locale, onDeactivate, onEdit}: {copy: ReturnType<typeof scheduleCopy>; events: SpecialistFixedEvent[]; isError: boolean; isFetching: boolean; locale: string; onDeactivate: (event: SpecialistFixedEvent) => void; onEdit: (event: SpecialistFixedEvent) => void}) {
+    const [pendingDeactivateId, setPendingDeactivateId] = useState<number | null>(null);
+
     return (
         <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
             <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
@@ -1499,8 +1536,18 @@ function EventsPanel({copy, events, isError, isFetching, locale, onDeactivate, o
                         <p className="mt-2 text-xs font-medium text-stone-700">{formatDateTime(event.startsAt, locale)} - {formatDateTime(event.endsAt, locale)}</p>
                         <div className="mt-3 flex flex-wrap gap-2">
                             <button className="rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100" onClick={() => onEdit(event)} type="button">{copy.editEvent}</button>
-                            {event.active ? <button className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100" onClick={() => onDeactivate(event)} type="button">{copy.deactivateEvent}</button> : null}
+                            {event.active ? (
+                                pendingDeactivateId === event.id ? (
+                                    <>
+                                        <button className="rounded-md bg-amber-700 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-amber-600" onClick={() => { onDeactivate(event); setPendingDeactivateId(null); }} type="button">{copy.deactivateConfirmAction}</button>
+                                        <button className="rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100" onClick={() => setPendingDeactivateId(null)} type="button">{copy.cancelEdit}</button>
+                                    </>
+                                ) : (
+                                    <button className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100" onClick={() => setPendingDeactivateId(event.id)} type="button">{copy.deactivateEvent}</button>
+                                )
+                            ) : null}
                         </div>
+                        {pendingDeactivateId === event.id ? <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs leading-5 text-amber-800">{copy.deactivateConfirmBody}</p> : null}
                     </article>
                 ))}
                 {!isFetching && events.length === 0 ? <p className="rounded-lg border border-dashed border-stone-200 bg-stone-50 px-3 py-4 text-center text-sm text-stone-500">{copy.eventsEmpty}</p> : null}
@@ -1984,6 +2031,9 @@ function scheduleCopy(t: T) {
         dayFocusEyebrow: t("schedule.dayFocusEyebrow"),
         dayFocusTitle: t("schedule.dayFocusTitle"),
         dayFocusEmpty: t("schedule.dayFocusEmpty"),
+        dayFocusNext: t("schedule.dayFocusNext"),
+        dayFocusMore: (count: number) => t("schedule.dayFocusMore", {count}),
+        dayFocusPending: t("schedule.dayFocusPending"),
         specialistFilter: t("schedule.specialistFilter"),
         allSpecialists: t("schedule.allSpecialists"),
         specialistsError: t("schedule.specialistsError"),
@@ -2030,6 +2080,8 @@ function scheduleCopy(t: T) {
         editEvent: t("schedule.editEvent"),
         cancelEdit: t("schedule.cancelEdit"),
         deactivateEvent: t("schedule.deactivateEvent"),
+        deactivateConfirmBody: t("schedule.deactivateConfirmBody"),
+        deactivateConfirmAction: t("schedule.deactivateConfirmAction"),
         active: t("schedule.active"),
         inactive: t("schedule.inactive"),
         saving: t("schedule.saving"),

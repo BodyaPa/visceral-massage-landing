@@ -346,6 +346,7 @@ function SiteMediaDialog({busy, closing, isError, isFetching, media, onClose, on
                                 {asset.contentType.startsWith("video/") ? (
                                     <video className="h-full w-full object-contain" controls preload="metadata" src={createAdminSiteMediaUrl(asset.id)} />
                                 ) : (
+                                    // eslint-disable-next-line @next/next/no-img-element -- admin slider preview is loaded from the protected site media endpoint.
                                     <img alt={asset.originalFilename} className="h-full w-full object-contain" loading="lazy" src={createAdminSiteMediaUrl(asset.id)} />
                                 )}
                             </div>

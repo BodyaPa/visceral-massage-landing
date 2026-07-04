@@ -4,14 +4,14 @@ import {useEffect, useMemo, useState} from "react";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import type {UserRole} from "@/features/auth/auth.roles";
-import {useListUsersQuery, useUpdateUserRolesMutation} from "@/features/users/users.api";
+import {useListUsersQuery, useUpdateUserEnabledMutation, useUpdateUserRolesMutation} from "@/features/users/users.api";
 import type {AdminUser} from "@/types/users";
 
 const manageableRoles: UserRole[] = ["MASTER", "SPECIALIST", "FINANCE_MANAGER", "SMM"];
 const allFilterRoles: UserRole[] = ["USER", ...manageableRoles];
 const emptyUsers: AdminUser[] = [];
 
-export default function UsersManagement() {
+export default function UsersManagement({currentUserId}: {currentUserId: number}) {
     const t = useTranslations("admin.users");
     const toast = useToast();
     const [query, setQuery] = useState("");
@@ -22,7 +22,9 @@ export default function UsersManagement() {
     const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
     const selectedUser = selectedUserId === null ? null : users.find((user) => user.id === selectedUserId) ?? null;
     const [selectedRoles, setSelectedRoles] = useState<UserRole[]>([]);
+    const [pendingStatusUser, setPendingStatusUser] = useState<AdminUser | null>(null);
     const [updateRoles, {isLoading: isSaving}] = useUpdateUserRolesMutation();
+    const [updateEnabled, {isLoading: isStatusSaving}] = useUpdateUserEnabledMutation();
 
     useEffect(() => {
         if (users.length === 0) {
@@ -60,6 +62,18 @@ export default function UsersManagement() {
             toast.success(t("saveSuccess"));
         } catch {
             toast.error(t("saveError"));
+        }
+    }
+
+    async function confirmStatusChange() {
+        if (!pendingStatusUser) return;
+
+        try {
+            await updateEnabled({id: pendingStatusUser.id, enabled: !pendingStatusUser.enabled}).unwrap();
+            toast.success(pendingStatusUser.enabled ? t("disableSuccess") : t("restoreSuccess"));
+            setPendingStatusUser(null);
+        } catch {
+            toast.error(pendingStatusUser.enabled ? t("disableError") : t("restoreError"));
         }
     }
 
@@ -179,6 +193,24 @@ export default function UsersManagement() {
                             <Info label={t("createdAt")} value={new Date(selectedUser.createdAt).toLocaleString()} />
                         </div>
 
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3">
+                            <p className="text-sm font-semibold text-amber-950">{t("accessTitle")}</p>
+                            <p className="mt-1 text-xs leading-5 text-amber-900">{t("accessBody")}</p>
+                            <button
+                                className={`mt-3 w-full rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-500 sm:w-fit ${
+                                    selectedUser.enabled
+                                        ? "bg-red-700 text-white hover:bg-red-600"
+                                        : "bg-stone-900 text-white hover:bg-stone-700"
+                                }`}
+                                disabled={selectedUser.id === currentUserId || isStatusSaving}
+                                onClick={() => setPendingStatusUser(selectedUser)}
+                                type="button"
+                            >
+                                {selectedUser.enabled ? t("disableUser") : t("restoreUser")}
+                            </button>
+                            {selectedUser.id === currentUserId ? <p className="mt-2 text-xs text-amber-900">{t("selfDisableBlocked")}</p> : null}
+                        </div>
+
                         <fieldset className="space-y-3">
                             <legend className="text-sm font-semibold text-stone-900">{t("assignedRoles")}</legend>
                             <label className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-500">
@@ -219,6 +251,37 @@ export default function UsersManagement() {
                     <p className="text-sm text-stone-500">{t("empty")}</p>
                 )}
             </div>
+            {pendingStatusUser ? (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 p-4">
+                    <div className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-5 shadow-2xl">
+                        <h2 className="text-base font-semibold text-stone-950">
+                            {pendingStatusUser.enabled ? t("disableConfirmTitle") : t("restoreConfirmTitle")}
+                        </h2>
+                        <p className="mt-2 text-sm leading-6 text-stone-600">
+                            {pendingStatusUser.enabled ? t("disableConfirmBody") : t("restoreConfirmBody")}
+                        </p>
+                        <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                            <button
+                                className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-100"
+                                onClick={() => setPendingStatusUser(null)}
+                                type="button"
+                            >
+                                {t("cancel")}
+                            </button>
+                            <button
+                                className={`rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-300 ${
+                                    pendingStatusUser.enabled ? "bg-red-700 hover:bg-red-600" : "bg-stone-900 hover:bg-stone-700"
+                                }`}
+                                disabled={isStatusSaving}
+                                onClick={confirmStatusChange}
+                                type="button"
+                            >
+                                {isStatusSaving ? t("saving") : pendingStatusUser.enabled ? t("confirmDisable") : t("confirmRestore")}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
         </section>
     );
 }

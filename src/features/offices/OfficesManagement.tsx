@@ -250,6 +250,7 @@ export default function OfficesManagement() {
                         <MediaField
                             accept="image/jpeg,image/png,image/webp"
                             disabled={isUploading}
+                            hint={t("mediaHint")}
                             id={form.photoMediaId ?? null}
                             label={t("photoMedia")}
                             noMedia={t("noMedia")}
@@ -262,6 +263,7 @@ export default function OfficesManagement() {
                         <MediaField
                             accept="video/mp4,video/webm"
                             disabled={isUploading}
+                            hint={t("mediaHint")}
                             id={form.videoMediaId ?? null}
                             label={t("videoMedia")}
                             noMedia={t("noMedia")}
@@ -312,7 +314,7 @@ function StatusBadge({active = false, enabled, label}: {active?: boolean; enable
     );
 }
 
-function MediaField({accept, disabled, id, label, noMedia, onClear, onUpload, previewType, replaceLabel, uploadLabel}: {accept: string; disabled: boolean; id: string | null; label: string; noMedia: string; onClear: () => void; onUpload: (event: ChangeEvent<HTMLInputElement>) => void; previewType: "image" | "video"; replaceLabel: string; uploadLabel: string}) {
+function MediaField({accept, disabled, hint, id, label, noMedia, onClear, onUpload, previewType, replaceLabel, uploadLabel}: {accept: string; disabled: boolean; hint: string; id: string | null; label: string; noMedia: string; onClear: () => void; onUpload: (event: ChangeEvent<HTMLInputElement>) => void; previewType: "image" | "video"; replaceLabel: string; uploadLabel: string}) {
     const previewUrl = id ? createAdminMediaUrl(id) : null;
 
     return (
@@ -335,6 +337,7 @@ function MediaField({accept, disabled, id, label, noMedia, onClear, onUpload, pr
                 {id ? replaceLabel : uploadLabel}
                 <input accept={accept} className="sr-only" disabled={disabled} onChange={onUpload} type="file" />
             </label>
+            <p className="mt-2 break-words text-xs leading-5 text-stone-500">{hint}</p>
         </div>
     );
 }

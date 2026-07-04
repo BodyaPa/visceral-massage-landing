@@ -445,6 +445,14 @@ function GuidedBookingFlow({
     const selectedDayCountLabel = availabilityCountLabel({slotsCount: slots.length, eventsCount: events.length}, copy);
     const totalAvailableSlots = availableDays.reduce((sum, day) => sum + day.slotsCount, 0);
     const totalAvailableEvents = availableDays.reduce((sum, day) => sum + day.eventsCount, 0);
+    const selectedFilterChips = useMemo(() => guidedSelectionChips({
+        copy,
+        currentDate,
+        filters,
+        locale,
+        offices,
+        specialists
+    }), [copy, currentDate, filters, locale, offices, specialists]);
 
     useEffect(() => {
         setVisibleResultCount(10);
@@ -547,14 +555,7 @@ function GuidedBookingFlow({
                     <div className="mb-3 rounded-xl border border-stone-200 bg-white p-3">
                         <h3 className="text-sm font-semibold text-stone-950">{copy.selectedSummary}</h3>
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                            {guidedSelectionChips({
-                                copy,
-                                currentDate,
-                                filters,
-                                locale,
-                                offices,
-                                specialists
-                            }).map((chip) => (
+                            {selectedFilterChips.map((chip) => (
                                 <span className="max-w-full break-words rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700" key={chip}>{chip}</span>
                             ))}
                         </div>
@@ -648,6 +649,14 @@ function GuidedBookingFlow({
                         {selectedDayItems.length === 0 && visibleDays.length > 0 ? (
                             <div className="ataraksia-booking-enter rounded-xl border border-dashed border-stone-300 bg-white px-4 py-5 text-sm text-stone-500">
                                 <p>{copy.selectedDayEmpty}</p>
+                                <div className="mt-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
+                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-stone-500">{copy.selectedSummary}</p>
+                                    <div className="mt-2 flex flex-wrap gap-1.5">
+                                        {selectedFilterChips.map((chip) => (
+                                            <span className="max-w-full break-words rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs font-medium text-stone-700" key={chip}>{chip}</span>
+                                        ))}
+                                    </div>
+                                </div>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     {nearestDay ? (
                                         <button className={compactButtonClass} onClick={() => onChooseDate(nearestDay.date)} type="button">
@@ -770,6 +779,7 @@ function OfficeDetailsInline({copy, details}: {copy: Copy; details: OfficeDetail
 }
 
 function EventDetailsModal({copy, event, isSaving, locale, onCancelEnrollment, onClose, onEnroll}: {copy: Copy; event: PublicFixedEvent; isSaving: boolean; locale: string; onCancelEnrollment: (event: PublicFixedEvent) => void; onClose: () => void; onEnroll: (event: PublicFixedEvent) => void}) {
+    const [confirmingCancel, setConfirmingCancel] = useState(false);
     const canCancel = event.enrolled && new Date(event.startsAt).getTime() > Date.now();
     const canEnroll = !event.enrolled && !event.full && new Date(event.startsAt).getTime() > Date.now();
 
@@ -793,9 +803,21 @@ function EventDetailsModal({copy, event, isSaving, locale, onCancelEnrollment, o
                     <InfoRow label={copy.places} value={event.full ? copy.full : copy.remaining(event.remainingPlaces)} />
                     <InfoRow label={copy.price} value={formatAmount(event.price, locale)} />
                 </dl>
+                {confirmingCancel ? (
+                    <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-3">
+                        <p className="text-sm font-semibold text-red-900">{copy.cancelEnrollmentConfirmTitle}</p>
+                        <p className="mt-1 break-words text-xs leading-5 text-red-800">{copy.cancelEnrollmentConfirmBody(event.title)}</p>
+                    </div>
+                ) : null}
                 <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <button className={secondaryButtonClass} disabled={isSaving} onClick={onClose} type="button">{copy.close}</button>
-                    {canCancel ? <button className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:text-red-300" disabled={isSaving} onClick={() => onCancelEnrollment(event)} type="button">{copy.cancelEnrollment}</button> : null}
+                    {canCancel ? (
+                        confirmingCancel ? (
+                            <button className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-200" disabled={isSaving} onClick={() => onCancelEnrollment(event)} type="button">{copy.cancelEnrollmentConfirmAction}</button>
+                        ) : (
+                            <button className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:text-red-300" disabled={isSaving} onClick={() => setConfirmingCancel(true)} type="button">{copy.cancelEnrollment}</button>
+                        )
+                    ) : null}
                     {canEnroll ? <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={isSaving} onClick={() => onEnroll(event)} type="button">{copy.bookEvent}</button> : null}
                 </div>
             </div>
@@ -828,6 +850,7 @@ function ConfirmationModal({
     setSelectedMembershipPurchaseId: (value: number | "") => void;
     setReminderOptIn: (value: boolean) => void;
 }) {
+    const [acknowledged, setAcknowledged] = useState(false);
     const title = pending.type === "individual" ? pending.service.title : pending.event.title;
     const specialist = pending.type === "individual" ? pending.slot.specialistName : pending.event.specialistName;
     const office = pending.type === "individual" ? pending.slot.officeName : pending.event.officeName;
@@ -852,6 +875,10 @@ function ConfirmationModal({
                     <InfoRow label={copy.price} value={formatAmount(price, locale)} />
                     {capacity ? <InfoRow label={copy.places} value={capacity} /> : null}
                 </dl>
+                <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                    <p className="text-sm font-semibold text-amber-950">{copy.reviewStepTitle}</p>
+                    <p className="mt-1 text-xs leading-5 text-amber-900">{selectedMembership ? copy.membershipManualNote : copy.paymentManualNote}</p>
+                </div>
                 <div className="mt-5 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
                     <label className="block text-sm font-semibold text-stone-900" htmlFor="membership-use">{copy.membershipUseTitle}</label>
                     <p className="mt-1 text-xs leading-5 text-stone-500">{memberships.length > 0 ? copy.membershipUseHint : copy.membershipUseEmpty}</p>
@@ -877,9 +904,13 @@ function ConfirmationModal({
                     <input checked={reminderOptIn} className="mt-0.5 h-4 w-4 accent-stone-900" onChange={(event) => setReminderOptIn(event.target.checked)} type="checkbox" />
                     <span className="min-w-0"><strong className="block break-words font-medium text-stone-900">{copy.reminder}</strong><span className="mt-0.5 block break-words text-xs leading-5 text-stone-500">{copy.reminderHint}</span></span>
                 </label>
+                <label className="mt-3 flex min-w-0 gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700">
+                    <input checked={acknowledged} className="mt-0.5 h-4 w-4 accent-stone-900" onChange={(event) => setAcknowledged(event.target.checked)} type="checkbox" />
+                    <span className="min-w-0"><strong className="block break-words font-medium text-stone-900">{copy.confirmUnderstand}</strong><span className="mt-0.5 block break-words text-xs leading-5 text-stone-500">{selectedMembership ? copy.confirmUnderstandMembershipHint : copy.confirmUnderstandPaymentHint}</span></span>
+                </label>
                 <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <button className={secondaryButtonClass} disabled={isSaving} onClick={onClose} type="button">{copy.cancel}</button>
-                    <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={isSaving} onClick={onConfirm} type="button">{isSaving ? copy.saving : pending.type === "individual" ? copy.confirmAppointment : copy.confirmParticipation}</button>
+                    <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={isSaving || !acknowledged} onClick={onConfirm} type="button">{isSaving ? copy.saving : pending.type === "individual" ? copy.confirmAppointment : copy.confirmParticipation}</button>
                 </div>
             </div>
         </div>
@@ -1241,6 +1272,12 @@ function labels(t: T) {
         confirmAppointment: t("public.confirmAppointment"),
         confirmEvent: t("public.confirmEvent"),
         confirmParticipation: t("public.confirmParticipation"),
+        reviewStepTitle: t("public.reviewStepTitle"),
+        paymentManualNote: t("public.paymentManualNote"),
+        membershipManualNote: t("public.membershipManualNote"),
+        confirmUnderstand: t("public.confirmUnderstand"),
+        confirmUnderstandPaymentHint: t("public.confirmUnderstandPaymentHint"),
+        confirmUnderstandMembershipHint: t("public.confirmUnderstandMembershipHint"),
         time: t("public.time"),
         price: t("summary.price"),
         places: t("public.places"),
@@ -1256,6 +1293,9 @@ function labels(t: T) {
         cancel: t("public.cancel"),
         close: t("public.close"),
         cancelEnrollment: t("public.cancelEnrollment"),
+        cancelEnrollmentConfirmTitle: t("public.cancelEnrollmentConfirmTitle"),
+        cancelEnrollmentConfirmBody: (title: string) => t("public.cancelEnrollmentConfirmBody", {title}),
+        cancelEnrollmentConfirmAction: t("public.cancelEnrollmentConfirmAction"),
         saving: t("public.saving"),
         bookingCreated: t("booking.created"),
         bookingCreatedWithPayment: t("booking.createdWithPayment"),

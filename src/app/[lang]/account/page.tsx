@@ -95,15 +95,15 @@ export default async function AccountPage({params}: Props) {
                                         <h2 className="text-base font-semibold text-red-950">{t("deleteSection")}</h2>
                                         <p className="mt-1 max-w-2xl text-sm text-red-900/75">{t("deleteText")}</p>
                                     </div>
-                                    <button
-                                        className="w-fit rounded-lg border border-red-200 bg-white/70 px-3 py-2 text-sm font-medium text-red-300"
-                                        disabled
-                                        type="button"
+                                    <Link
+                                        className="w-fit rounded-lg border border-red-200 bg-white/80 px-3 py-2 text-sm font-medium text-red-800 transition-colors hover:bg-white"
+                                        href={withLocale("/contact", locale)}
                                     >
                                         {t("deleteAction")}
-                                    </button>
+                                    </Link>
                                 </div>
                                 <p className="mt-3 text-xs text-red-900/65">{t("deleteDeferred")}</p>
+                                <p className="mt-2 text-xs text-red-900/65">{t("deleteReviewHint")}</p>
                             </section>
                     </div>
                 </div>

@@ -50,11 +50,16 @@ export const membershipsApi = createApi({
         confirmMembershipPayment: build.mutation<MembershipPurchase, number>({
             query: (id) => ({url: `/admin/finance/memberships/${id}/confirm-payment`, method: "POST"}),
             invalidatesTags: [{type: "MembershipPurchases", id: "FINANCE"}, {type: "MembershipPurchases", id: "MY"}]
+        }),
+        cancelFinanceMembershipPurchase: build.mutation<MembershipPurchase, number>({
+            query: (id) => ({url: `/admin/finance/memberships/${id}/cancel`, method: "POST"}),
+            invalidatesTags: [{type: "MembershipPurchases", id: "FINANCE"}, {type: "MembershipPurchases", id: "MY"}]
         })
     })
 });
 
 export const {
+    useCancelFinanceMembershipPurchaseMutation,
     useConfirmMembershipPaymentMutation,
     useCreateMembershipPaymentSessionMutation,
     useCreateMembershipPurchaseMutation,

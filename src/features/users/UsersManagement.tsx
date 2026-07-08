@@ -175,7 +175,7 @@ export default function UsersManagement({currentUserId}: {currentUserId: number}
                     <div className="space-y-5">
                         <div className="flex flex-col gap-3 border-b border-stone-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
                             <div className="min-w-0">
-                                <p className="text-xs font-medium uppercase tracking-wide text-stone-500">ID {selectedUser.id}</p>
+                                <p className="text-xs font-medium uppercase tracking-wide text-stone-500">{t("profile")}</p>
                                 <h2 className="mt-1 break-words text-2xl font-semibold text-stone-950">
                                     {[selectedUser.firstName, selectedUser.lastName].filter(Boolean).join(" ") || t("unnamed")}
                                 </h2>

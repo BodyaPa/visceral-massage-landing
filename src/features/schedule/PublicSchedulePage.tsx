@@ -431,6 +431,7 @@ function GuidedBookingFlow({
     const [officesExpanded, setOfficesExpanded] = useState(false);
     const [specialistsExpanded, setSpecialistsExpanded] = useState(false);
     const [openSection, setOpenSection] = useState<ChoiceSectionKey | null>(null);
+    const [renderedSection, setRenderedSection] = useState<ChoiceSectionKey | null>(null);
     const [visibleResultCount, setVisibleResultCount] = useState(10);
     const visibleDays = availableDays.slice(0, 14);
     const visibleOffices = officesExpanded ? offices : offices.slice(0, 3);
@@ -457,6 +458,15 @@ function GuidedBookingFlow({
     useEffect(() => {
         setVisibleResultCount(10);
     }, [selectedKey, filters.officeId, filters.specialistId, filters.mode]);
+
+    useEffect(() => {
+        if (openSection) {
+            setRenderedSection(openSection);
+            return;
+        }
+        const timeout = window.setTimeout(() => setRenderedSection(null), 300);
+        return () => window.clearTimeout(timeout);
+    }, [openSection]);
 
     function toggleSection(section: ChoiceSectionKey) {
         setOpenSection((current) => current === section ? null : section);
@@ -511,7 +521,7 @@ function GuidedBookingFlow({
                     </div>
                     <div className="mb-3">
                         <AnimatedFilterPanel open={openSection !== null}>
-                            {openSection === "office" ? (
+                            {renderedSection === "office" ? (
                                 <>
                                     <p className="text-xs leading-5 text-stone-500">{copy.chooseOfficeHint}</p>
                                     <div className="ataraksia-booking-enter mt-2 grid gap-2 sm:grid-cols-2">
@@ -530,7 +540,7 @@ function GuidedBookingFlow({
                                     ) : null}
                                 </>
                             ) : null}
-                            {openSection === "specialist" ? (
+                            {renderedSection === "specialist" ? (
                                 <>
                                     <p className="text-xs leading-5 text-stone-500">{copy.chooseSpecialistHint}</p>
                                     <div className="ataraksia-booking-enter mt-2 grid gap-2 sm:grid-cols-2">

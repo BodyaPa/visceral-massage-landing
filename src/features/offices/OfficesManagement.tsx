@@ -122,9 +122,6 @@ export default function OfficesManagement() {
                             <p className="mt-1 break-words text-sm text-stone-600">{t("subtitle")}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-600">
-                                {offices.length}
-                            </span>
                             <button
                                 className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700"
                                 onClick={startNewOffice}
@@ -208,7 +205,7 @@ export default function OfficesManagement() {
                 <div className="flex flex-col gap-2 border-b border-stone-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                         <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
-                            {selectedOffice ? `ID ${selectedOffice.id}` : t("newOffice")}
+                            {selectedOffice ? t("editTitle") : t("newOffice")}
                         </p>
                         <h2 className="mt-1 break-words text-xl font-semibold text-stone-950">
                             {selectedOffice ? t("editTitle") : t("createTitle")}

@@ -12,6 +12,7 @@ import {
 } from "@/features/memberships/memberships.api";
 import type {Locale} from "@/i18n";
 import {formatWholeCurrencyAmount as formatAmount} from "@/shared/lib/i18n/formatNumbers";
+import {resolveApiMediaUrl} from "@/shared/lib/media/resolveApiMediaUrl";
 import type {MembershipOffer, MembershipPurchase} from "@/types/memberships";
 
 const includedByCode: Record<string, string[]> = {
@@ -29,16 +30,28 @@ export default function MembershipsPage() {
     const [createPurchase, {isLoading}] = useCreateMembershipPurchaseMutation();
     const [createPaymentSession, {isLoading: isCreatingPaymentSession}] = useCreateMembershipPaymentSessionMutation();
     const [selectedOffer, setSelectedOffer] = useState<MembershipOffer | null>(null);
+    const [checkoutOffer, setCheckoutOffer] = useState<MembershipOffer | null>(null);
+    const [manualPaymentOffer, setManualPaymentOffer] = useState<MembershipOffer | null>(null);
     const purchases = useMemo(() => purchasesData?.content ?? [], [purchasesData?.content]);
     const pendingOfferIds = new Set(purchases.filter((item) => item.status === "AWAITING_PAYMENT_CONFIRMATION").map((item) => item.offerId));
+    const isProcessingCheckout = isLoading || isCreatingPaymentSession;
 
-    async function buy(offer: MembershipOffer) {
+    function openPaymentDialog(offer: MembershipOffer) {
+        setSelectedOffer(null);
+        setCheckoutOffer(offer);
+    }
+
+    async function confirmPayment(offer: MembershipOffer) {
         try {
             const purchase = await createPurchase({offerId: offer.id}).unwrap();
             const session = await createPaymentSession(purchase.id).unwrap();
             if (session.checkoutUrl) {
                 window.location.assign(session.checkoutUrl);
                 return;
+            }
+            if (session.requiresManualConfirmation) {
+                setCheckoutOffer(null);
+                setManualPaymentOffer(offer);
             }
             toast.success(session.requiresManualConfirmation ? t("manualSessionCreated") : t("purchaseCreated"));
         } catch {
@@ -68,11 +81,11 @@ export default function MembershipsPage() {
                 <div className="grid gap-4 lg:grid-cols-3">
                     {offers.map((offer) => (
                         <OfferCard
-                            disabled={isLoading || isCreatingPaymentSession || pendingOfferIds.has(offer.id)}
+                            disabled={isProcessingCheckout || pendingOfferIds.has(offer.id)}
                             key={offer.id}
                             locale={locale}
                             offer={offer}
-                            onBuy={buy}
+                            onBuy={openPaymentDialog}
                             onDetails={setSelectedOffer}
                             pending={pendingOfferIds.has(offer.id)}
                             t={t}
@@ -82,7 +95,18 @@ export default function MembershipsPage() {
                 <PurchaseSummary locale={locale} purchases={purchases} t={t} />
             </section>
 
-            {selectedOffer ? <OfferDetails locale={locale} offer={selectedOffer} onBuy={buy} onClose={() => setSelectedOffer(null)} pending={pendingOfferIds.has(selectedOffer.id)} t={t} /> : null}
+            {selectedOffer ? <OfferDetails locale={locale} offer={selectedOffer} onBuy={openPaymentDialog} onClose={() => setSelectedOffer(null)} pending={pendingOfferIds.has(selectedOffer.id)} t={t} /> : null}
+            {checkoutOffer ? (
+                <PaymentConfirmationDialog
+                    isLoading={isProcessingCheckout}
+                    locale={locale}
+                    offer={checkoutOffer}
+                    onClose={() => setCheckoutOffer(null)}
+                    onConfirm={() => confirmPayment(checkoutOffer)}
+                    t={t}
+                />
+            ) : null}
+            {manualPaymentOffer ? <ManualPaymentDialog locale={locale} offer={manualPaymentOffer} onClose={() => setManualPaymentOffer(null)} t={t} /> : null}
         </main>
     );
 }
@@ -91,7 +115,14 @@ type T = ReturnType<typeof useTranslations<"memberships.page">>;
 
 function OfferCard({disabled, locale, offer, onBuy, onDetails, pending, t}: {disabled: boolean; locale: Locale; offer: MembershipOffer; onBuy: (offer: MembershipOffer) => void; onDetails: (offer: MembershipOffer) => void; pending: boolean; t: T}) {
     return (
-        <article className="flex min-w-0 flex-col rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+        <article className="flex min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+            {offer.backgroundMediaUrl ? (
+                <div className="min-h-64 w-36 shrink-0 bg-stone-100 max-sm:hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- membership offer background is served by the API. */}
+                    <img alt="" className="h-full w-full object-cover" src={resolveApiMediaUrl(offer.backgroundMediaUrl)} />
+                </div>
+            ) : null}
+            <div className="flex min-w-0 flex-1 flex-col p-5">
             <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0">
                     <span className="inline-flex rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-600">{kindLabel(offer, t)}</span>
@@ -112,6 +143,7 @@ function OfferCard({disabled, locale, offer, onBuy, onDetails, pending, t}: {dis
                 <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={disabled} onClick={() => onBuy(offer)} type="button">
                     {pending ? t("pending") : t("buy")}
                 </button>
+            </div>
             </div>
         </article>
     );
@@ -144,6 +176,52 @@ function OfferDetails({locale, offer, onBuy, onClose, pending, t}: {locale: Loca
                     <button className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100" onClick={onClose} type="button">{t("close")}</button>
                     <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={pending} onClick={() => onBuy(offer)} type="button">{pending ? t("pending") : t("buy")}</button>
                 </div>
+            </section>
+        </div>
+    );
+}
+
+function PaymentConfirmationDialog({isLoading, locale, offer, onClose, onConfirm, t}: {isLoading: boolean; locale: Locale; offer: MembershipOffer; onClose: () => void; onConfirm: () => void; t: T}) {
+    return (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/40 px-3 py-3 sm:items-center sm:justify-center" role="presentation">
+            <section aria-labelledby="membership-checkout-title" aria-modal="true" className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl border border-stone-200 bg-white p-5 shadow-2xl" role="dialog">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">{t("checkoutEyebrow")}</p>
+                <h2 className="mt-2 break-words text-2xl font-semibold text-stone-950" id="membership-checkout-title">{t("checkoutTitle", {kind: kindLabel(offer, t).toLowerCase()})}</h2>
+                <p className="mt-3 break-words text-sm leading-6 text-stone-600">{t("checkoutBody")}</p>
+                <dl className="mt-5 grid gap-2 rounded-xl border border-stone-200 bg-stone-50 p-4 text-sm">
+                    <InfoRow label={t("checkoutOffer")} value={localizedTitle(offer, locale)} />
+                    <InfoRow label={t("price")} value={formatAmount(offer.price, locale)} />
+                    <InfoRow label={t("visits")} value={offer.visitsTotal ? t("visitCount", {count: offer.visitsTotal}) : t("certificateValue")} />
+                    <InfoRow label={t("validity")} value={t("validityDays", {count: offer.validityDays})} />
+                </dl>
+                <p className="mt-4 rounded-xl border border-stone-200 bg-white p-4 text-sm leading-6 text-stone-600">{t("checkoutNotice")}</p>
+                <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <button className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60" disabled={isLoading} onClick={onClose} type="button">
+                        {t("checkoutCancel")}
+                    </button>
+                    <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={isLoading} onClick={onConfirm} type="button">
+                        {isLoading ? t("checkoutProcessing") : t("checkoutPay")}
+                    </button>
+                </div>
+            </section>
+        </div>
+    );
+}
+
+function ManualPaymentDialog({locale, offer, onClose, t}: {locale: Locale; offer: MembershipOffer; onClose: () => void; t: T}) {
+    return (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/40 px-3 py-3 sm:items-center sm:justify-center" role="presentation">
+            <section aria-labelledby="membership-payment-title" aria-modal="true" className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl border border-stone-200 bg-white p-5 shadow-2xl" role="dialog">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">{t("manualPaymentEyebrow")}</p>
+                <h2 className="mt-2 break-words text-2xl font-semibold text-stone-950" id="membership-payment-title">{t("manualPaymentTitle")}</h2>
+                <p className="mt-3 break-words text-sm leading-6 text-stone-600">{t("manualPaymentBody", {offer: localizedTitle(offer, locale), price: formatAmount(offer.price, locale)})}</p>
+                <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                    <p className="font-semibold">{t("manualPaymentNextTitle")}</p>
+                    <p className="mt-1">{t("manualPaymentNextBody")}</p>
+                </div>
+                <button className="mt-5 w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 sm:w-fit" onClick={onClose} type="button">
+                    {t("manualPaymentClose")}
+                </button>
             </section>
         </div>
     );

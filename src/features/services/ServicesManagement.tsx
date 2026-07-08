@@ -1,10 +1,11 @@
 "use client";
 
-import {useEffect, useState, type ReactNode} from "react";
+import {useEffect, useState, type ChangeEvent, type ReactNode} from "react";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
-import {useListAdminMembershipOffersQuery, useUpdateAdminMembershipOfferMutation} from "@/features/memberships/memberships.api";
+import {useListAdminMembershipOffersQuery, useUpdateAdminMembershipOfferMutation, useUploadAdminMembershipOfferMediaMutation} from "@/features/memberships/memberships.api";
 import {useCreateServiceMutation, useListAdminServicesQuery, useUpdateServiceMutation} from "@/features/services/services.api";
+import {resolveApiMediaUrl} from "@/shared/lib/media/resolveApiMediaUrl";
 import type {MembershipOffer, MembershipOfferUpdateInput} from "@/types/memberships";
 import type {AdminService, ServiceInput} from "@/types/services";
 
@@ -28,10 +29,12 @@ const emptyOfferForm: MembershipOfferUpdateInput = {
     descriptionUa: "",
     descriptionEn: "",
     price: 0,
+    externalPaymentUrl: "",
     visitsTotal: 0,
     validityDays: 30,
     active: true,
-    eligibleServiceIds: []
+    eligibleServiceIds: [],
+    backgroundMediaId: null
 };
 
 export default function ServicesManagement() {
@@ -53,6 +56,7 @@ export default function ServicesManagement() {
     const [createService, {isLoading: isCreating}] = useCreateServiceMutation();
     const [updateService, {isLoading: isUpdating}] = useUpdateServiceMutation();
     const [updateMembershipOffer, {isLoading: isUpdatingOffer}] = useUpdateAdminMembershipOfferMutation();
+    const [uploadMembershipOfferMedia, {isLoading: isUploadingOfferMedia}] = useUploadAdminMembershipOfferMediaMutation();
     const [selectedOfferId, setSelectedOfferId] = useState<number | null>(null);
     const selectedOffer = selectedOfferId === null
         ? membershipOffers[0] ?? null
@@ -113,10 +117,12 @@ export default function ServicesManagement() {
             descriptionUa: selectedOffer.descriptionUa ?? "",
             descriptionEn: selectedOffer.descriptionEn ?? "",
             price: selectedOffer.price,
+            externalPaymentUrl: selectedOffer.externalPaymentUrl ?? "",
             visitsTotal: selectedOffer.visitsTotal,
             validityDays: selectedOffer.validityDays,
             active: selectedOffer.active,
-            eligibleServiceIds: selectedOffer.eligibleServiceIds
+            eligibleServiceIds: selectedOffer.eligibleServiceIds,
+            backgroundMediaId: selectedOffer.backgroundMediaId
         });
     }, [selectedOffer]);
 
@@ -170,9 +176,11 @@ export default function ServicesManagement() {
                 descriptionUa: offerForm.descriptionUa?.trim() || null,
                 descriptionEn: offerForm.descriptionEn?.trim() || null,
                 price: Number(offerForm.price),
+                externalPaymentUrl: offerForm.externalPaymentUrl?.trim() || null,
                 visitsTotal: offerForm.visitsTotal == null ? null : Number(offerForm.visitsTotal),
                 validityDays: Number(offerForm.validityDays),
-                eligibleServiceIds: offerForm.eligibleServiceIds
+                eligibleServiceIds: offerForm.eligibleServiceIds,
+                backgroundMediaId: offerForm.backgroundMediaId
             };
             await updateMembershipOffer({id: selectedOffer.id, body}).unwrap();
             toast.success(t("memberships.updated"));
@@ -185,7 +193,8 @@ export default function ServicesManagement() {
     const enComplete = Boolean(form.titleEn?.trim());
 
     return (
-        <section className="grid w-full min-w-0 max-w-full items-start gap-5 xl:grid-cols-[minmax(380px,520px)_minmax(0,680px)]">
+        <section className="w-full min-w-0 max-w-full space-y-5">
+            <div className="grid w-full min-w-0 max-w-full items-start gap-5 xl:grid-cols-[minmax(380px,520px)_minmax(0,680px)]">
             <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
                 <div className="mb-4 flex flex-col gap-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -194,9 +203,6 @@ export default function ServicesManagement() {
                             <p className="mt-1 break-words text-sm text-stone-600">{t("subtitle")}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-600">
-                                {services.length}
-                            </span>
                             <button
                                 className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700"
                                 onClick={startNewService}
@@ -284,7 +290,7 @@ export default function ServicesManagement() {
                 <div className="flex flex-col gap-2 border-b border-stone-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                         <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
-                            {selectedService ? `ID ${selectedService.id}` : t("newService")}
+                            {selectedService ? t("editTitle") : t("newService")}
                         </p>
                         <h2 className="mt-1 text-xl font-semibold text-stone-950">
                             {selectedService ? t("editTitle") : t("createTitle")}
@@ -410,34 +416,43 @@ export default function ServicesManagement() {
                     </button>
                 </div>
             </div>
+            </div>
+            </div>
             <MembershipOffersPanel
                 allServices={allServices}
                 form={offerForm}
                 isError={offersError}
                 isFetching={offersFetching}
                 isSaving={isUpdatingOffer}
+                isUploadingMedia={isUploadingOfferMedia}
                 offers={membershipOffers}
                 onChange={setOfferForm}
+                onUploadMedia={async (file) => {
+                    const media = await uploadMembershipOfferMedia(file).unwrap();
+                    setOfferForm((current) => ({...current, backgroundMediaId: media.id}));
+                    return media.id;
+                }}
                 onSave={saveMembershipOffer}
                 onSelect={setSelectedOfferId}
                 selectedOffer={selectedOffer}
                 t={t}
             />
-            </div>
         </section>
     );
 }
 
-function MembershipOffersPanel({allServices, form, isError, isFetching, isSaving, offers, onChange, onSave, onSelect, selectedOffer, t}: {
+function MembershipOffersPanel({allServices, form, isError, isFetching, isSaving, isUploadingMedia, offers, onChange, onSave, onSelect, onUploadMedia, selectedOffer, t}: {
     allServices: AdminService[];
     form: MembershipOfferUpdateInput;
     isError: boolean;
     isFetching: boolean;
     isSaving: boolean;
+    isUploadingMedia: boolean;
     offers: MembershipOffer[];
     onChange: (form: MembershipOfferUpdateInput) => void;
     onSave: () => void;
     onSelect: (id: number) => void;
+    onUploadMedia: (file: File) => Promise<string>;
     selectedOffer: MembershipOffer | null;
     t: ReturnType<typeof useTranslations<"admin.services">>;
 }) {
@@ -452,7 +467,19 @@ function MembershipOffersPanel({allServices, form, isError, isFetching, isSaving
         updateField("eligibleServiceIds", nextIds);
     }
 
-    const saveDisabled = isSaving || !selectedOffer || !form.titleUa.trim() || form.price < 0 || form.validityDays < 1 || (selectedOffer.kind === "MEMBERSHIP" && (!form.visitsTotal || form.visitsTotal < 1));
+    const saveDisabled = isSaving || isUploadingMedia || !selectedOffer || !form.titleUa.trim() || form.price < 0 || form.validityDays < 1 || (selectedOffer.kind === "MEMBERSHIP" && (!form.visitsTotal || form.visitsTotal < 1));
+    const previewUrl = form.backgroundMediaId === selectedOffer?.backgroundMediaId ? selectedOffer?.backgroundMediaUrl : null;
+
+    async function uploadBackground(event: ChangeEvent<HTMLInputElement>) {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (!file) return;
+        try {
+            await onUploadMedia(file);
+        } catch {
+            // The page-level toast would be too detached from this compact editor.
+        }
+    }
 
     return (
         <section className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
@@ -467,8 +494,8 @@ function MembershipOffersPanel({allServices, form, isError, isFetching, isSaving
             {isError ? <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("memberships.loadError")}</p> : null}
             {isFetching ? <p className="mt-4 text-sm text-stone-500">{t("loading")}</p> : null}
             {offers.length > 0 ? (
-                <div className="mt-4 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-                    <div className="space-y-2">
+                <div className="mt-4 grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+                    <div className="grid gap-2 sm:grid-cols-2 lg:block lg:space-y-2">
                         {offers.map((offer) => (
                             <button
                                 aria-pressed={offer.id === selectedOffer?.id}
@@ -478,13 +505,14 @@ function MembershipOffersPanel({allServices, form, isError, isFetching, isSaving
                                 type="button"
                             >
                                 <span className="block break-words font-semibold">{offer.titleUa}</span>
-                                <span className="mt-1 block break-words text-xs opacity-75">{offer.code}</span>
+                                <span className="mt-1 block break-words text-xs opacity-75">{offer.kind === "CERTIFICATE" ? t("memberships.certificate") : t("memberships.membership")}</span>
                             </button>
                         ))}
                     </div>
                     {selectedOffer ? (
                         <div className="min-w-0 space-y-3">
-                            <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+                                <div className="grid gap-3 sm:grid-cols-2">
                                 <Field label={t("memberships.titleUa")}>
                                     <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => updateField("titleUa", event.target.value)} value={form.titleUa} />
                                 </Field>
@@ -494,6 +522,12 @@ function MembershipOffersPanel({allServices, form, isError, isFetching, isSaving
                                 <Field label={t("memberships.price")}>
                                     <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" min={0} onChange={(event) => updateField("price", Number(event.target.value))} step="0.01" type="number" value={form.price} />
                                 </Field>
+                                <div className="sm:col-span-2">
+                                    <Field label={t("memberships.externalPaymentUrl")}>
+                                        <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => updateField("externalPaymentUrl", event.target.value)} value={form.externalPaymentUrl ?? ""} />
+                                    </Field>
+                                    <p className="mt-1 text-xs leading-5 text-stone-500">{t("memberships.externalPaymentUrlHint")}</p>
+                                </div>
                                 <Field label={t("memberships.validityDays")}>
                                     <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" min={1} onChange={(event) => updateField("validityDays", Number(event.target.value))} type="number" value={form.validityDays} />
                                 </Field>
@@ -504,6 +538,29 @@ function MembershipOffersPanel({allServices, form, isError, isFetching, isSaving
                                     <span className="min-w-0 break-words">{t("active")}</span>
                                     <input checked={form.active} onChange={(event) => updateField("active", event.target.checked)} type="checkbox" />
                                 </label>
+                                </div>
+                                <div className="min-w-0 rounded-xl border border-stone-200 bg-stone-50 p-3">
+                                    <div className="aspect-[4/3] overflow-hidden rounded-lg border border-stone-200 bg-white">
+                                        {previewUrl ? (
+                                            // eslint-disable-next-line @next/next/no-img-element -- admin offer background preview uses API-served media.
+                                            <img alt="" className="h-full w-full object-cover" src={resolveApiMediaUrl(previewUrl)} />
+                                        ) : form.backgroundMediaId ? (
+                                            <div className="flex h-full items-center justify-center px-3 text-center text-xs leading-5 text-stone-600">{t("memberships.backgroundSelected")}</div>
+                                        ) : (
+                                            <div className="flex h-full items-center justify-center px-3 text-center text-xs leading-5 text-stone-500">{t("memberships.backgroundEmpty")}</div>
+                                        )}
+                                    </div>
+                                    <label className="mt-3 flex min-h-10 cursor-pointer items-center justify-center rounded-lg border border-stone-300 bg-white px-3 py-2 text-center text-xs font-semibold text-stone-800 transition-colors hover:bg-stone-100">
+                                        {isUploadingMedia ? t("memberships.backgroundUploading") : t("memberships.backgroundUpload")}
+                                        <input accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={isUploadingMedia} onChange={uploadBackground} type="file" />
+                                    </label>
+                                    {form.backgroundMediaId ? (
+                                        <button className="mt-2 w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-100" disabled={isUploadingMedia} onClick={() => updateField("backgroundMediaId", null)} type="button">
+                                            {t("memberships.backgroundRemove")}
+                                        </button>
+                                    ) : null}
+                                    <p className="mt-2 text-xs leading-5 text-stone-500">{t("memberships.backgroundHint")}</p>
+                                </div>
                             </div>
                             <Field label={t("memberships.descriptionUa")}>
                                 <textarea className="min-h-20 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => updateField("descriptionUa", event.target.value)} value={form.descriptionUa ?? ""} />

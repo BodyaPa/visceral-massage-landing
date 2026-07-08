@@ -3,7 +3,6 @@
 import {useEffect, useMemo, useState} from "react";
 import type {ReactNode} from "react";
 import {useLocale, useTranslations} from "next-intl";
-import BoundedList from "@/components/ui/list/BoundedList";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {useCreateManualBookingMutation, useGetSpecialistFinanceOverviewQuery, useListSpecialistBookingsQuery} from "@/features/bookings/bookings.api";
 import {bookingServiceTitle} from "@/features/bookings/bookingTitles";
@@ -14,7 +13,6 @@ import {
     useCreateAvailabilityMutation,
     useCopyDayPlanMutation,
     useCreateSpecialistEventMutation,
-    useDeleteAvailabilityMutation,
     useGetScheduleConfigQuery,
     useListAvailabilityQuery,
     useListSpecialistEventEnrollmentsQuery,
@@ -127,8 +125,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const [createSpecialistEvent, {isLoading: isCreatingEvent}] = useCreateSpecialistEventMutation();
     const [updateSpecialistEvent, {isLoading: isUpdatingEvent}] = useUpdateSpecialistEventMutation();
     const [updateAvailability, {isLoading: isUpdatingAvailability}] = useUpdateAvailabilityMutation();
-    const [deleteAvailability, {isLoading: isDeleting}] = useDeleteAvailabilityMutation();
-    const [selectedView, setSelectedView] = useState<CalendarView>("day");
+    const [selectedView, setSelectedView] = useState<CalendarView>("week");
     const [plannerMode, setPlannerMode] = useState<PlannerMode>("all");
     const [form, setForm] = useState<AvailabilityForm>(() => buildDefaultForm());
     const [editingBlock, setEditingBlock] = useState<SpecialistAvailabilityBlock | null>(null);
@@ -136,8 +133,6 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const [selectedCalendarDetail, setSelectedCalendarDetail] = useState<CalendarDetail | null>(null);
     const availableCount = blocks.filter((block) => block.status === "AVAILABLE" && !block.booked).length;
     const blockedCount = blocks.filter((block) => block.status === "BLOCKED").length;
-    const availableBlocks = blocks.filter((block) => block.status === "AVAILABLE");
-    const blockedBlocks = blocks.filter((block) => block.status === "BLOCKED");
     const eventServices = services.filter((service) => service.bookingMode === "FIXED_EVENT");
     const individualServices = services.filter((service) => service.bookingMode === "INDIVIDUAL_APPOINTMENT");
     const appointmentBufferMinutes = scheduleConfig?.appointmentBufferMinutes ?? defaultAppointmentBufferMinutes;
@@ -227,22 +222,6 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
         }
     }
 
-    function editAvailability(block: SpecialistAvailabilityBlock) {
-        setPlannerMode("plan");
-        setEditingBlock(block);
-        setForm({
-            officeId: block.officeId === null ? "" : String(block.officeId),
-            status: block.status,
-            itemType: block.itemType,
-            serviceId: block.serviceId === null ? "" : String(block.serviceId),
-            capacity: block.capacity ?? 1,
-            startsAt: toDateTimeLocalValue(new Date(block.startsAt)),
-            endsAt: toDateTimeLocalValue(new Date(block.endsAt)),
-            notes: block.notes ?? ""
-        });
-        document.getElementById("availability-form")?.scrollIntoView({behavior: "smooth"});
-    }
-
     function editEvent(event: SpecialistFixedEvent) {
         setPlannerMode("plan");
         setEditingEvent(event);
@@ -254,17 +233,15 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
         setForm(buildDefaultForm());
     }
 
-    async function removeAvailability(blockId: number) {
-        try {
-            await deleteAvailability(blockId).unwrap();
-            toast.success(t("form.deleted"));
-        } catch {
-            toast.error(t("form.deleteError"));
-        }
-    }
-
     function openCreatePanel() {
         setPlannerMode("plan");
+        setForm((current) => ({...current, status: "AVAILABLE"}));
+        window.setTimeout(() => document.getElementById("availability-form")?.scrollIntoView({behavior: "smooth"}), 0);
+    }
+
+    function openBlockPanel() {
+        setPlannerMode("plan");
+        setForm((current) => ({...current, status: "BLOCKED", itemType: "BLOCK"}));
         window.setTimeout(() => document.getElementById("availability-form")?.scrollIntoView({behavior: "smooth"}), 0);
     }
 
@@ -298,9 +275,14 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 	                                    {specialistsError ? <span className="mt-1 block text-xs text-red-700">{copy.specialistsError}</span> : null}
 	                                </label>
 	                            ) : null}
-	                            <button className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-stone-700" onClick={openCreatePanel} type="button">
-	                                {t("actions.create")}
-	                            </button>
+	                            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+	                                <button className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-stone-700" onClick={openCreatePanel} type="button">
+	                                    {t("actions.availability")}
+	                                </button>
+	                                <button className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100" onClick={openBlockPanel} type="button">
+	                                    {t("actions.blocking")}
+	                                </button>
+	                            </div>
 	                        </div>
 	                    </div>
                     <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -394,28 +376,18 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                 {selectedCalendarDetail ? <CalendarDetailPanel closeLabel={copy.closeDetails} detail={selectedCalendarDetail} onClose={() => setSelectedCalendarDetail(null)} /> : null}
 
                 <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
-                    <ScheduleBlockList
-                        blocks={availableBlocks}
-                        deleting={isDeleting}
-                        locale={locale}
-                        onDelete={removeAvailability}
-                        onEdit={editAvailability}
-                        subtitle={copy.availabilityListHint}
-                        title={copy.availabilityTitle}
+                    <div className="mb-4 min-w-0">
+                        <h2 className="break-words text-base font-semibold text-stone-950">{copy.detailsTitle}</h2>
+                        <p className="mt-1 break-words text-sm leading-6 text-stone-500">{copy.detailsBody}</p>
+                    </div>
+                    <PlannerAgendaList
+                        blocks={filteredCalendarBlocks}
+                        bookings={filteredCalendarBookings}
+                        buffers={filteredCalendarBuffers}
                         copy={copy}
-                        t={t}
-                    />
-                </section>
-                <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
-                    <ScheduleBlockList
-                        blocks={blockedBlocks}
-                        deleting={isDeleting}
+                        events={filteredCalendarEvents}
                         locale={locale}
-                        onDelete={removeAvailability}
-                        onEdit={editAvailability}
-                        subtitle={copy.blocksListHint}
-                        title={copy.blocksTitle}
-                        copy={copy}
+                        onSelectDetail={setSelectedCalendarDetail}
                         t={t}
                     />
                 </section>
@@ -768,7 +740,9 @@ function CalendarSurface({
             culture={toLanguageTag(locale)}
             date={currentDate}
             events={calendarEvents}
+            max={workingHourDate(20)}
             messages={copy.calendarMessages}
+            min={workingHourDate(8)}
             onNavigate={onNavigate}
             onSelectEvent={(event) => {
                 const detail = detailByEventId.get(event.id);
@@ -1170,117 +1144,6 @@ function CalendarDetailPanel({closeLabel, detail, onClose}: {closeLabel: string;
                 ))}
             </dl>
         </section>
-    );
-}
-
-function ScheduleBlockList({
-    blocks,
-    copy,
-    deleting,
-    locale,
-    onDelete,
-    onEdit,
-    subtitle,
-    title,
-    t,
-    viewOnly = false
-}: {
-    blocks: SpecialistAvailabilityBlock[];
-    copy: ReturnType<typeof scheduleCopy>;
-    deleting: boolean;
-    locale: string;
-    onDelete: (id: number) => void;
-    onEdit?: (block: SpecialistAvailabilityBlock) => void;
-    subtitle?: string;
-    title?: string;
-    t: T;
-    viewOnly?: boolean;
-}) {
-    return (
-        <div className={viewOnly ? "min-w-0 rounded-lg border border-stone-200 bg-white p-3" : "min-w-0"}>
-            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-                <h3 className="min-w-0 break-words text-sm font-semibold text-stone-900">{title ?? t("blocks.title")}</h3>
-                <span className="text-xs text-stone-500">{blocks.length}</span>
-            </div>
-            {subtitle ? <p className="mt-1 break-words text-xs leading-5 text-stone-500">{subtitle}</p> : null}
-            <BoundedList
-                empty={<p className="mt-3 text-sm text-stone-500">{t("blocks.empty")}</p>}
-                initialCount={20}
-                items={blocks}
-                labels={{
-                    showLess: copy.showLess,
-                    showMore: copy.showMore,
-                    showing: copy.showingItems
-                }}
-                renderItems={(visibleBlocks) => (
-                    <div className="mt-3 space-y-2">
-                        {visibleBlocks.map((block) => (
-                            <div className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between" key={block.id}>
-                                <div className="min-w-0">
-                                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                                        <StatusBadge booked={block.booked} status={block.status} t={t} />
-                                        <span className="rounded-full border border-stone-200 bg-white px-2 py-1 text-[10px] font-semibold text-stone-600">{scheduleBlockTypeLabel(block, copy)}</span>
-                                        <span className="break-words text-sm font-medium text-stone-900">
-                                            {formatDateTime(block.startsAt, locale)} - {formatDateTime(block.endsAt, locale)}
-                                        </span>
-                                    </div>
-                                    {block.officeName || block.serviceTitle || block.specialistName || block.notes ? (
-                                        <p className="mt-1 break-words text-xs text-stone-500">
-                                            {[block.serviceTitle, block.officeName, block.specialistName, block.capacity ? `${copy.capacity}: ${block.capacity}` : null, block.notes].filter(Boolean).join(" · ")}
-                                        </p>
-                                    ) : null}
-                                    {block.status === "AVAILABLE" && block.itemType === "OPEN_RANGE" ? (
-                                        <p className="mt-1 break-words text-xs text-stone-500">{copy.availabilityCutHint}</p>
-                                    ) : block.status === "AVAILABLE" ? (
-                                        <p className="mt-1 break-words text-xs text-stone-500">{copy.appointmentSlotHint}</p>
-                                    ) : (
-                                        <p className="mt-1 break-words text-xs text-amber-700">{copy.blockCutHint}</p>
-                                    )}
-                                    {block.booked ? <p className="mt-1 break-words text-xs text-amber-700">{copy.bookedBlockLocked}</p> : null}
-                                </div>
-                                {!viewOnly ? (
-                                    <div className="flex flex-wrap gap-2">
-                                        {onEdit ? (
-                                            <button
-                                                className="w-fit rounded-md border border-stone-300 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-100"
-                                                onClick={() => onEdit(block)}
-                                                type="button"
-                                            >
-                                                {copy.editBlock}
-                                            </button>
-                                        ) : null}
-                                        <button
-                                            className="w-fit rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300"
-                                            disabled={deleting || block.booked}
-                                            onClick={() => onDelete(block.id)}
-                                            title={block.booked ? copy.bookedBlockLocked : undefined}
-                                            type="button"
-                                        >
-                                            {t("blocks.delete")}
-                                        </button>
-                                    </div>
-                                ) : null}
-                            </div>
-                        ))}
-                    </div>
-                )}
-                step={20}
-            />
-        </div>
-    );
-}
-
-function StatusBadge({booked = false, status, t}: {booked?: boolean; status: ScheduleBlockStatus; t: T}) {
-    const className = booked
-        ? "border-stone-300 bg-stone-700 text-white"
-        : status === "AVAILABLE"
-        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-        : "border-amber-200 bg-amber-50 text-amber-800";
-
-    return (
-        <span className={`max-w-full break-words rounded-full border px-2.5 py-1 text-xs font-medium ${className}`}>
-            {booked ? t("statuses.booked") : status === "AVAILABLE" ? t("statuses.available") : t("statuses.blocked")}
-        </span>
     );
 }
 
@@ -1928,7 +1791,7 @@ function compactBlockCalendarLabel(block: SpecialistAvailabilityBlock, copy: Ret
     if (isPastRange(block.endsAt)) return [copy.statusPast, scheduleBlockLabel(block, copy, t), block.officeName].filter(Boolean).join(" · ");
     if (block.booked) return [t("legend.booked"), block.serviceTitle, block.officeName].filter(Boolean).join(" · ");
     if (block.itemType === "APPOINTMENT_SLOT") return [block.serviceTitle ?? copy.appointmentSlot, block.officeName].filter(Boolean).join(" · ");
-    return [scheduleBlockLabel(block, copy, t), block.officeName, block.notes].filter(Boolean).join(" · ");
+    return [scheduleBlockLabel(block, copy, t), block.officeName, publicNote(block.notes)].filter(Boolean).join(" · ");
 }
 
 function blockCalendarDetail(block: SpecialistAvailabilityBlock, copy: ReturnType<typeof scheduleCopy>, locale: string, t: T): CalendarDetail {
@@ -1944,7 +1807,7 @@ function blockCalendarDetail(block: SpecialistAvailabilityBlock, copy: ReturnTyp
             {label: copy.office, value: block.officeName ?? copy.noOffice},
             {label: copy.slotService, value: block.serviceTitle ?? copy.notAssigned},
             {label: copy.capacity, value: block.capacity === null ? copy.notAssigned : String(block.capacity)}
-        ].concat(block.notes ? [{label: copy.note, value: block.notes}] : [])
+        ].concat(publicNote(block.notes) ? [{label: copy.note, value: publicNote(block.notes) as string}] : [])
     };
 }
 
@@ -1978,7 +1841,7 @@ function eventCalendarDetail(event: SpecialistFixedEvent, copy: ReturnType<typeo
             {label: copy.office, value: event.officeName ?? copy.noOffice},
             {label: copy.capacity, value: `${event.enrolledCount}/${event.capacity}`},
             {label: copy.price, value: formatAmount(event.price, locale)}
-        ].concat(event.note ? [{label: copy.note, value: event.note}] : [])
+        ].concat(publicNote(event.note) ? [{label: copy.note, value: publicNote(event.note) as string}] : [])
     };
 }
 
@@ -2002,7 +1865,19 @@ function toOptionalNumber(value: string): number | "" {
 
 function userDisplayName(user: AdminUser) {
     const name = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
-    return name || user.phone || user.email || `#${user.id}`;
+    return name || user.phone || user.email || "Specialist";
+}
+
+function publicNote(value?: string | null) {
+    if (!value) return null;
+    if (/\[DEV_(STRESS|EXTRA):/i.test(value)) return null;
+    return value;
+}
+
+function workingHourDate(hour: number) {
+    const date = new Date();
+    date.setHours(hour, 0, 0, 0);
+    return date;
 }
 
 function toDateInputValue(date: Date) {
@@ -2034,6 +1909,8 @@ function scheduleCopy(t: T) {
         dayFocusNext: t("schedule.dayFocusNext"),
         dayFocusMore: (count: number) => t("schedule.dayFocusMore", {count}),
         dayFocusPending: t("schedule.dayFocusPending"),
+        detailsTitle: t("schedule.detailsTitle"),
+        detailsBody: t("schedule.detailsBody"),
         specialistFilter: t("schedule.specialistFilter"),
         allSpecialists: t("schedule.allSpecialists"),
         specialistsError: t("schedule.specialistsError"),

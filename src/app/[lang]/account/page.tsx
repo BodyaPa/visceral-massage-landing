@@ -64,9 +64,6 @@ export default async function AccountPage({params}: Props) {
                                     <h1 className="text-2xl font-semibold text-stone-950 sm:text-3xl">{t("title")}</h1>
                                     <p className="mt-2 max-w-2xl text-sm text-stone-600 sm:text-base">{t("subtitle")}</p>
                                 </div>
-                                <span className="w-fit rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-600">
-                                    ID {user.id}
-                                </span>
                             </div>
 
                             <section className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">

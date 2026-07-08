@@ -233,7 +233,7 @@ function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boo
 function BookingMetaChips({booking, copy}: {booking: Booking; copy: Copy}) {
     const chips = [
         booking.status === "AWAITING_PAYMENT_CONFIRMATION" ? copy.paymentPendingHint : null,
-        booking.paidWithMembership && booking.membershipPurchaseId ? copy.paidWithMembership(booking.membershipPurchaseId) : null,
+        booking.paidWithMembership ? copy.paidWithMembership : null,
         booking.reminderOptIn ? copy.reminderEnabled : null
     ].filter((chip): chip is string => Boolean(chip));
 
@@ -244,7 +244,7 @@ function BookingMetaChips({booking, copy}: {booking: Booking; copy: Copy}) {
 
 function EventMetaChips({copy, event}: {copy: Copy; event: PublicFixedEvent}) {
     const chips = [
-        event.paidWithMembership && event.membershipPurchaseId ? copy.paidWithMembership(event.membershipPurchaseId) : null
+        event.paidWithMembership ? copy.paidWithMembership : null
     ].filter((chip): chip is string => Boolean(chip));
 
     if (chips.length === 0) return null;
@@ -373,7 +373,7 @@ function labels(t: T) {
         cancel: t("cancel"),
         pay: t("pay"),
         paymentPendingHint: t("paymentPendingHint"),
-        paidWithMembership: (id: number) => t("paidWithMembership", {id}),
+        paidWithMembership: t("paidWithMembership"),
         reminderEnabled: t("reminderEnabled"),
         cancelled: t("cancelled"),
         cancelError: t("cancelError"),

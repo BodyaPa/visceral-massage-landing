@@ -10,10 +10,13 @@ export interface MembershipOffer {
     descriptionUa: string | null;
     descriptionEn: string | null;
     price: number;
+    externalPaymentUrl: string | null;
     visitsTotal: number | null;
     validityDays: number;
     active: boolean;
     eligibleServiceIds: number[];
+    backgroundMediaId: string | null;
+    backgroundMediaUrl: string | null;
 }
 
 export type MembershipOfferUpdateInput = {
@@ -22,10 +25,12 @@ export type MembershipOfferUpdateInput = {
     descriptionUa: string | null;
     descriptionEn: string | null;
     price: number;
+    externalPaymentUrl: string | null;
     visitsTotal: number | null;
     validityDays: number;
     active: boolean;
     eligibleServiceIds: number[];
+    backgroundMediaId: string | null;
 };
 
 export interface MembershipPurchase {

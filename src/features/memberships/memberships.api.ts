@@ -1,6 +1,7 @@
 import {createApi} from "@reduxjs/toolkit/query/react";
 import {baseQuery} from "@/shared/api/baseQuery";
 import type {MembershipOffer, MembershipOfferUpdateInput, MembershipPaymentSession, MembershipPurchase, MembershipPurchaseInput, MembershipPurchaseStatus} from "@/types/memberships";
+import type {MediaAsset} from "@/types/news";
 import type {PageResponse} from "@/types/news";
 
 export const membershipsApi = createApi({
@@ -22,6 +23,13 @@ export const membershipsApi = createApi({
                 {type: "MembershipOffers", id: "ADMIN"},
                 {type: "MembershipOffers", id: "LIST"}
             ]
+        }),
+        uploadAdminMembershipOfferMedia: build.mutation<MediaAsset, File>({
+            query: (file) => {
+                const body = new FormData();
+                body.append("file", file);
+                return {url: "/admin/memberships/offers/media", method: "POST", body};
+            }
         }),
         listMyMembershipPurchases: build.query<PageResponse<MembershipPurchase>, {page?: number; size?: number} | void>({
             query: (args) => {
@@ -67,5 +75,6 @@ export const {
     useListFinanceMembershipPurchasesQuery,
     useListMembershipOffersQuery,
     useListMyMembershipPurchasesQuery,
-    useUpdateAdminMembershipOfferMutation
+    useUpdateAdminMembershipOfferMutation,
+    useUploadAdminMembershipOfferMediaMutation
 } = membershipsApi;

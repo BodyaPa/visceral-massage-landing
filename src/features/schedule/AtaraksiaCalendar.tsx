@@ -22,14 +22,16 @@ type Props = {
     culture: string;
     date: Date;
     events: AtaraksiaCalendarEvent[];
+    max?: Date;
     messages: AtaraksiaCalendarMessages;
+    min?: Date;
     onNavigate?: (date: Date) => void;
     onSelectEvent?: (event: AtaraksiaCalendarEvent) => void;
     variant?: "booking" | "planner";
     view: View;
 };
 
-export default function AtaraksiaCalendar({culture, date, events, messages, onNavigate, onSelectEvent, variant = "planner", view}: Props) {
+export default function AtaraksiaCalendar({culture, date, events, max, messages, min, onNavigate, onSelectEvent, variant = "planner", view}: Props) {
     const languageTag = culture === "uk" || culture === "ua" ? "uk-UA" : "en-US";
     const formats = useMemo(() => calendarFormats(languageTag), [languageTag]);
     const components = useMemo(() => ({event: CalendarEventContent}), []);
@@ -72,7 +74,9 @@ export default function AtaraksiaCalendar({culture, date, events, messages, onNa
                     events={events}
                     formats={formats}
                     localizer={localizer}
+                    max={max}
                     messages={messages}
+                    min={min}
                     onNavigate={onNavigate}
                     onSelectEvent={onSelectEvent}
                     onShowMore={(_, day) => setExpandedDate(day)}

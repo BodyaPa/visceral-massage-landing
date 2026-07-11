@@ -82,9 +82,13 @@ export default async function AccountPage({params}: Props) {
                                 </aside>
                             </section>
 
-                            <AccountMembershipsPanel locale={locale} />
+                            <div className="scroll-mt-24" id="memberships">
+                                <AccountMembershipsPanel locale={locale} />
+                            </div>
 
-                            <AccountBookingsPanel locale={locale} />
+                            <div className="scroll-mt-24" id="bookings">
+                                <AccountBookingsPanel locale={locale} />
+                            </div>
 
                             <section className="rounded-xl border border-red-200 bg-red-50/70 p-4">
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

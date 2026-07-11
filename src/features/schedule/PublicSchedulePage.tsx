@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect, useMemo, useState, type ReactNode} from "react";
+import {useEffect, useMemo, useRef, useState, type ReactNode} from "react";
 import {useLocale, useTranslations} from "next-intl";
 import type {Locale} from "@/i18n";
 import {useToast} from "@/components/ui/toast/ToastProvider";
@@ -37,6 +37,8 @@ import {toLanguageTag} from "@/shared/lib/i18n/toLanguageTag";
 import {withLocale} from "@/shared/lib/locale/withLocale";
 import {resolveApiMediaUrl} from "@/shared/lib/media/resolveApiMediaUrl";
 import {initialsFromName} from "@/shared/lib/text/initials";
+import {useValidatePromoMutation} from "@/features/promos/promos.api";
+import type {PromoValidation} from "@/types/promos";
 import type {Office} from "@/types/offices";
 import type {PublicFixedEvent, PublicScheduleAvailabilityBlock} from "@/types/schedule";
 import type {PublicService} from "@/types/services";
@@ -66,8 +68,10 @@ export default function PublicSchedulePage() {
     const [reminderOptIn, setReminderOptIn] = useState(false);
     const [pendingBooking, setPendingBooking] = useState<PendingBooking | null>(null);
     const [selectedMembershipPurchaseId, setSelectedMembershipPurchaseId] = useState<number | "">("");
+    const [promoCode, setPromoCode] = useState("");
     const [selectedEventDetails, setSelectedEventDetails] = useState<PublicFixedEvent | null>(null);
     const [slotForServiceChoice, setSlotForServiceChoice] = useState<PublicScheduleAvailabilityBlock | null>(null);
+    const modalTriggerRef = useRef<HTMLElement | null>(null);
     const [paymentPrompt, setPaymentPrompt] = useState<PaymentPrompt | null>(null);
     const guidedRange = useMemo(() => buildMonthRange(currentDate), [currentDate]);
 
@@ -155,11 +159,20 @@ export default function PublicSchedulePage() {
     }
 
     function chooseEvent(event: PublicFixedEvent) {
+        rememberModalTrigger();
         setSelectedEventDetails(event);
     }
 
     function chooseSlot(slot: PublicScheduleAvailabilityBlock) {
+        rememberModalTrigger();
         setSlotForServiceChoice(slot);
+    }
+
+    function rememberModalTrigger() {
+        const activeElement = document.activeElement;
+        if (activeElement instanceof HTMLElement && !activeElement.closest('[role="dialog"]')) {
+            modalTriggerRef.current = activeElement;
+        }
     }
 
     async function confirmBooking() {
@@ -171,7 +184,8 @@ export default function PublicSchedulePage() {
                     serviceId: pendingBooking.service.id,
                     startsAt: pendingBooking.slot.startsAt,
                     reminderOptIn,
-                    membershipPurchaseId: selectedMembershipPurchaseId === "" ? null : selectedMembershipPurchaseId
+                    membershipPurchaseId: selectedMembershipPurchaseId === "" ? null : selectedMembershipPurchaseId,
+                    promoCode: promoCode || null
                 }).unwrap();
                 toast.success(booking.paidWithMembership ? copy.bookingCreatedWithMembership : booking.externalPaymentUrl ? copy.bookingCreatedWithPayment : copy.bookingCreated);
                 setPaymentPrompt(booking);
@@ -181,7 +195,8 @@ export default function PublicSchedulePage() {
                     id: pendingBooking.event.id,
                     lang: locale,
                     reminderOptIn,
-                    membershipPurchaseId: selectedMembershipPurchaseId === "" ? null : selectedMembershipPurchaseId
+                    membershipPurchaseId: selectedMembershipPurchaseId === "" ? null : selectedMembershipPurchaseId,
+                    promoCode: promoCode || null
                 }).unwrap();
                 toast.success(event.paidWithMembership ? copy.eventEnrolledWithMembership : copy.eventEnrolled);
                 setPaymentPrompt({externalPaymentUrl: null, paidWithMembership: event.paidWithMembership, title: pendingBooking.event.title, startsAt: pendingBooking.event.startsAt});
@@ -191,6 +206,7 @@ export default function PublicSchedulePage() {
             setPendingBooking(null);
             setSelectedEventDetails(null);
             setSelectedMembershipPurchaseId("");
+            setPromoCode("");
             setReminderOptIn(false);
         } catch {
             toast.error(copy.bookingError);
@@ -241,7 +257,10 @@ export default function PublicSchedulePage() {
                 }}
                 onChooseSpecialist={(specialistId) => updateFilter("specialistId", specialistId)}
                 onChooseEvent={chooseEvent}
-                onEnrollEvent={(event) => setPendingBooking({type: "event", event})}
+                onEnrollEvent={(event) => {
+                    rememberModalTrigger();
+                    setPendingBooking({type: "event", event});
+                }}
                 onChooseEventMode={chooseEventMode}
                 onChooseIndividualMode={chooseIndividualMode}
                 onChooseSlot={chooseSlot}
@@ -252,16 +271,18 @@ export default function PublicSchedulePage() {
             {slotsError ? <p className="mx-auto w-full max-w-[1040px] rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 lg:w-[72vw] xl:w-[58vw]">{copy.loadError}</p> : null}
 
             {paymentPrompt ? (
-                <section className="mx-auto w-full max-w-[1040px] rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm lg:w-[72vw] xl:w-[58vw]">
+                <section className={paymentPrompt.paidWithMembership
+                    ? "mx-auto w-full max-w-[1040px] rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm lg:w-[72vw] xl:w-[58vw]"
+                    : "mx-auto w-full max-w-[1040px] rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm lg:w-[72vw] xl:w-[58vw]"}>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
-                            <h2 className="text-base font-semibold text-emerald-950">{paymentPrompt.paidWithMembership ? copy.membershipPaymentTitle : copy.paymentTitle}</h2>
-                            <p className="mt-1 text-sm leading-6 text-emerald-900">{paymentPrompt.paidWithMembership ? copy.membershipPaymentBody(paymentPromptTitle(paymentPrompt, locale), formatDateTime(paymentPrompt.startsAt, locale)) : copy.paymentBody(paymentPromptTitle(paymentPrompt, locale), formatDateTime(paymentPrompt.startsAt, locale))}</p>
+                            <h2 className={paymentPrompt.paidWithMembership ? "text-base font-semibold text-emerald-950" : "text-base font-semibold text-amber-950"}>{paymentPrompt.paidWithMembership ? copy.membershipPaymentTitle : copy.paymentTitle}</h2>
+                            <p className={paymentPrompt.paidWithMembership ? "mt-1 text-sm leading-6 text-emerald-900" : "mt-1 text-sm leading-6 text-amber-900"}>{paymentPrompt.paidWithMembership ? copy.membershipPaymentBody(paymentPromptTitle(paymentPrompt, locale), formatDateTime(paymentPrompt.startsAt, locale)) : copy.paymentBody(paymentPromptTitle(paymentPrompt, locale), formatDateTime(paymentPrompt.startsAt, locale))}</p>
                         </div>
-                        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-                            {paymentPrompt.externalPaymentUrl ? <a className="rounded-lg bg-emerald-900 px-4 py-2 text-center text-sm font-semibold text-white transition-colors hover:bg-emerald-800" href={paymentPrompt.externalPaymentUrl} rel="noreferrer" target="_blank">{copy.paymentAction}</a> : null}
-                            <a className="rounded-lg border border-emerald-300 bg-white px-4 py-2 text-center text-sm font-semibold text-emerald-900 transition-colors hover:bg-emerald-100" href={withLocale("/account", locale)}>{copy.accountAction}</a>
-                            <button className="rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-900 transition-colors hover:bg-emerald-100" onClick={() => setPaymentPrompt(null)} type="button">{copy.dismissPayment}</button>
+                        <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
+                            {paymentPrompt.externalPaymentUrl ? <a className="inline-flex min-h-11 items-center justify-center rounded-lg bg-stone-950 px-4 py-2 text-center text-sm font-semibold text-white outline-none transition-[background-color,box-shadow,transform] hover:bg-stone-800 hover:shadow-sm active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2 motion-reduce:transition-none" href={paymentPrompt.externalPaymentUrl} rel="noreferrer" target="_blank">{copy.paymentAction}</a> : null}
+                            <a className="inline-flex min-h-11 items-center justify-center rounded-lg border border-stone-300 bg-white px-4 py-2 text-center text-sm font-semibold text-stone-800 outline-none transition-colors hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2" href={`${withLocale("/account", locale)}#bookings`}>{copy.accountAction}</a>
+                            <button className="min-h-11 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 outline-none transition-colors hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2" onClick={() => setPaymentPrompt(null)} type="button">{copy.dismissPayment}</button>
                         </div>
                     </div>
                 </section>
@@ -276,12 +297,16 @@ export default function PublicSchedulePage() {
                     onClose={() => {
                         setPendingBooking(null);
                         setSelectedMembershipPurchaseId("");
+                        setPromoCode("");
                     }}
                     onConfirm={confirmBooking}
                     pending={pendingBooking}
+                    returnFocusTo={modalTriggerRef.current}
                     reminderOptIn={reminderOptIn}
                     selectedMembershipPurchaseId={selectedMembershipPurchaseId}
                     setSelectedMembershipPurchaseId={setSelectedMembershipPurchaseId}
+                    promoCode={promoCode}
+                    setPromoCode={setPromoCode}
                     setReminderOptIn={setReminderOptIn}
                 />
             ) : null}
@@ -294,6 +319,7 @@ export default function PublicSchedulePage() {
                     onCancelEnrollment={cancelSelectedEventEnrollment}
                     onClose={() => setSelectedEventDetails(null)}
                     onEnroll={(event) => setPendingBooking({type: "event", event})}
+                    returnFocusTo={modalTriggerRef.current}
                 />
             ) : null}
             {slotForServiceChoice ? (
@@ -313,6 +339,7 @@ export default function PublicSchedulePage() {
                     }}
                     services={individualServices}
                     slot={slotForServiceChoice}
+                    returnFocusTo={modalTriggerRef.current}
                 />
             ) : null}
         </main>
@@ -483,7 +510,8 @@ function GuidedBookingFlow({
                     </div>
                     <div className="grid gap-2 sm:grid-cols-2">
                         <button
-                            className={filters.mode === "individual" ? "rounded-xl border border-stone-900 bg-stone-900 p-4 text-left text-white" : "rounded-xl border border-stone-200 bg-stone-50 p-4 text-left transition-colors hover:border-stone-400 hover:bg-white"}
+                            aria-pressed={filters.mode === "individual"}
+                            className={filters.mode === "individual" ? "min-h-24 rounded-xl border border-stone-900 bg-stone-900 p-4 text-left text-white shadow-sm outline-none transition-[background-color,border-color,box-shadow,transform] duration-200 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 motion-reduce:transition-none" : "min-h-24 rounded-xl border border-stone-200 bg-stone-50 p-4 text-left outline-none transition-[background-color,border-color,box-shadow,transform] duration-200 hover:border-stone-400 hover:bg-white hover:shadow-sm active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 motion-reduce:transition-none"}
                             onClick={onChooseIndividualMode}
                             type="button"
                         >
@@ -491,7 +519,8 @@ function GuidedBookingFlow({
                             <span className={filters.mode === "individual" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.chooseIndividualMode}</span>
                         </button>
                         <button
-                            className={filters.mode === "events" ? "rounded-xl border border-stone-900 bg-stone-900 p-4 text-left text-white" : "rounded-xl border border-stone-200 bg-stone-50 p-4 text-left transition-colors hover:border-stone-400 hover:bg-white"}
+                            aria-pressed={filters.mode === "events"}
+                            className={filters.mode === "events" ? "min-h-24 rounded-xl border border-stone-900 bg-stone-900 p-4 text-left text-white shadow-sm outline-none transition-[background-color,border-color,box-shadow,transform] duration-200 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 motion-reduce:transition-none" : "min-h-24 rounded-xl border border-stone-200 bg-stone-50 p-4 text-left outline-none transition-[background-color,border-color,box-shadow,transform] duration-200 hover:border-stone-400 hover:bg-white hover:shadow-sm active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 motion-reduce:transition-none"}
                             onClick={onChooseEventMode}
                             type="button"
                         >
@@ -615,7 +644,7 @@ function GuidedBookingFlow({
                             {visibleDays.map((day) => (
                                 <button
                                     aria-pressed={day.key === selectedKey}
-                                    className={day.key === selectedKey ? "min-w-28 rounded-xl border border-stone-900 bg-white px-3 py-2 text-left shadow-sm" : "min-w-28 rounded-xl border border-stone-200 bg-white px-3 py-2 text-left transition-colors hover:border-stone-400"}
+                                    className={day.key === selectedKey ? "min-h-16 min-w-28 rounded-xl border border-stone-900 bg-white px-3 py-2 text-left shadow-sm outline-none transition-[border-color,box-shadow,transform] duration-200 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 motion-reduce:transition-none" : "min-h-16 min-w-28 rounded-xl border border-stone-200 bg-white px-3 py-2 text-left outline-none transition-[border-color,box-shadow,transform] duration-200 hover:border-stone-400 hover:shadow-sm active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 motion-reduce:transition-none"}
                                     key={day.key}
                                     onClick={() => onChooseDate(day.date)}
                                     type="button"
@@ -737,7 +766,7 @@ function CompactOpenSlotRow({copy, locale, onChoose, slot}: {copy: Copy; locale:
                 </div>
             </div>
             <OfficeDetailsInline copy={copy} details={slot} />
-            <button className="mt-3 w-full rounded-xl bg-emerald-800 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700" onClick={onChoose} type="button">{copy.chooseTime}</button>
+            <button className="mt-3 min-h-11 w-full rounded-xl bg-stone-950 px-4 py-3 text-sm font-semibold text-white outline-none transition-[background-color,box-shadow,transform] duration-200 hover:bg-stone-800 hover:shadow-sm active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2 motion-reduce:transition-none" onClick={onChoose} type="button">{copy.chooseTime}</button>
         </article>
     );
 }
@@ -760,16 +789,18 @@ function CompactEventRow({copy, event, locale, onDetails, onEnroll}: {copy: Copy
             </div>
             <OfficeDetailsInline copy={copy} details={event} />
             <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                <button className="w-full rounded-xl bg-stone-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={!canEnroll} onClick={onEnroll} type="button">
+                <button className="min-h-11 w-full rounded-xl bg-stone-950 px-4 py-3 text-sm font-semibold text-white outline-none transition-[background-color,box-shadow,transform] duration-200 hover:bg-stone-800 hover:shadow-sm active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-stone-300 disabled:shadow-none motion-reduce:transition-none" disabled={!canEnroll} onClick={onEnroll} type="button">
                     {event.enrolled ? copy.enrolled : event.full ? copy.full : copy.bookEvent}
                 </button>
-                <button className="w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100 sm:w-fit" onClick={onDetails} type="button">{copy.details}</button>
+                <button className="min-h-11 w-full rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm font-semibold text-stone-800 outline-none transition-[background-color,border-color,transform] duration-200 hover:border-stone-400 hover:bg-stone-100 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 sm:w-fit motion-reduce:transition-none" onClick={onDetails} type="button">{copy.details}</button>
             </div>
         </article>
     );
 }
 
 function OfficeDetailsInline({copy, details}: {copy: Copy; details: OfficeDetailsSource}) {
+    const [open, setOpen] = useState(false);
+    const triggerRef = useRef<HTMLButtonElement>(null);
     const rows = [
         details.officeAddress,
         details.officeDirections,
@@ -781,25 +812,53 @@ function OfficeDetailsInline({copy, details}: {copy: Copy; details: OfficeDetail
     if (rows.length === 0) return null;
 
     return (
-        <details className="mt-3 rounded-lg border border-stone-200 bg-white px-3 py-2">
-            <summary className="cursor-pointer text-xs font-semibold text-stone-700">{copy.officeDetails}</summary>
-            <OfficeDetailsBlock compact copy={copy} details={details} />
-        </details>
+        <>
+            <button
+                className="mt-3 inline-flex min-h-10 w-full items-center justify-between gap-3 rounded-lg border border-stone-200 bg-white px-3 py-2 text-left text-xs font-semibold text-stone-700 outline-none transition-[background-color,border-color,box-shadow,transform] duration-200 hover:border-stone-400 hover:bg-stone-50 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 motion-reduce:transition-none"
+                onClick={() => setOpen(true)}
+                ref={triggerRef}
+                type="button"
+            >
+                <span>{copy.officeDetails}</span>
+                <span aria-hidden="true" className="text-base leading-none">→</span>
+            </button>
+            {open ? <OfficeDetailsModal copy={copy} details={details} onClose={() => setOpen(false)} returnFocusTo={triggerRef.current} /> : null}
+        </>
     );
 }
 
-function EventDetailsModal({copy, event, isSaving, locale, onCancelEnrollment, onClose, onEnroll}: {copy: Copy; event: PublicFixedEvent; isSaving: boolean; locale: string; onCancelEnrollment: (event: PublicFixedEvent) => void; onClose: () => void; onEnroll: (event: PublicFixedEvent) => void}) {
+function OfficeDetailsModal({copy, details, onClose, returnFocusTo}: {copy: Copy; details: OfficeDetailsSource; onClose: () => void; returnFocusTo: HTMLElement | null}) {
+    const dialogRef = useModalFocus(onClose, returnFocusTo);
+
+    return (
+        <div aria-labelledby="office-details-title" aria-modal="true" className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 px-3 py-3 backdrop-blur-[2px] sm:items-center sm:px-4 sm:py-6" ref={dialogRef} role="dialog" tabIndex={-1}>
+            <div className="ataraksia-booking-enter max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-4 shadow-2xl sm:rounded-2xl sm:p-5">
+                <div className="flex items-start justify-between gap-4 border-b border-stone-100 pb-3">
+                    <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">Ataraksia</p>
+                        <h2 className="mt-1 text-xl font-semibold text-stone-950" id="office-details-title">{copy.officeDetails}</h2>
+                    </div>
+                    <button className="shrink-0 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 outline-none transition-colors hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2" onClick={onClose} type="button">{copy.close}</button>
+                </div>
+                <OfficeDetailsBlock compact copy={copy} details={details} />
+            </div>
+        </div>
+    );
+}
+
+function EventDetailsModal({copy, event, isSaving, locale, onCancelEnrollment, onClose, onEnroll, returnFocusTo}: {copy: Copy; event: PublicFixedEvent; isSaving: boolean; locale: string; onCancelEnrollment: (event: PublicFixedEvent) => void; onClose: () => void; onEnroll: (event: PublicFixedEvent) => void; returnFocusTo: HTMLElement | null}) {
     const [confirmingCancel, setConfirmingCancel] = useState(false);
+    const dialogRef = useModalFocus(onClose, returnFocusTo);
     const canCancel = event.enrolled && new Date(event.startsAt).getTime() > Date.now();
     const canEnroll = !event.enrolled && !event.full && new Date(event.startsAt).getTime() > Date.now();
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6">
+        <div aria-labelledby="event-details-title" aria-modal="true" className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6" ref={dialogRef} role="dialog" tabIndex={-1}>
             <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5">
                 <div className="flex min-w-0 flex-wrap items-start justify-between gap-3 sm:gap-4">
                     <div className="min-w-0">
                         <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{copy.fixedEvent}</p>
-                        <h2 className="mt-1 break-words text-xl font-semibold text-stone-950">{event.title}</h2>
+                        <h2 className="mt-1 break-words text-xl font-semibold text-stone-950" id="event-details-title">{event.title}</h2>
                     </div>
                     <span className={event.enrolled ? "rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800" : event.full ? "rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700" : "rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-semibold text-stone-700"}>
                         {event.enrolled ? copy.enrolled : event.full ? copy.full : copy.remaining(event.remainingPlaces)}
@@ -844,8 +903,11 @@ function ConfirmationModal({
     onConfirm,
     pending,
     reminderOptIn,
+    returnFocusTo,
     selectedMembershipPurchaseId,
     setSelectedMembershipPurchaseId,
+    promoCode,
+    setPromoCode,
     setReminderOptIn
 }: {
     copy: Copy;
@@ -856,11 +918,18 @@ function ConfirmationModal({
     onConfirm: () => void;
     pending: PendingBooking;
     reminderOptIn: boolean;
+    returnFocusTo: HTMLElement | null;
     selectedMembershipPurchaseId: number | "";
     setSelectedMembershipPurchaseId: (value: number | "") => void;
+    promoCode: string;
+    setPromoCode: (value: string) => void;
     setReminderOptIn: (value: boolean) => void;
 }) {
     const [acknowledged, setAcknowledged] = useState(false);
+    const [promoResult, setPromoResult] = useState<PromoValidation | null>(null);
+    const [promoError, setPromoError] = useState(false);
+    const [validatePromo, {isLoading: validatingPromo}] = useValidatePromoMutation();
+    const dialogRef = useModalFocus(onClose, returnFocusTo);
     const title = pending.type === "individual" ? pending.service.title : pending.event.title;
     const specialist = pending.type === "individual" ? pending.slot.specialistName : pending.event.specialistName;
     const office = pending.type === "individual" ? pending.slot.officeName : pending.event.officeName;
@@ -872,11 +941,12 @@ function ConfirmationModal({
     const price = pending.type === "individual" ? pending.service.basePrice : pending.event.price;
     const capacity = pending.type === "event" ? copy.remaining(pending.event.remainingPlaces) : null;
     const selectedMembership = memberships.find((membership) => membership.id === selectedMembershipPurchaseId);
+    async function applyPromo() { try { const result=await validatePromo({code:promoCode,targetType:pending.type==="individual"?"SERVICE":"EVENT",targetId:pending.type==="individual"?pending.service.id:pending.event.id}).unwrap();setPromoResult(result);setPromoError(false);setSelectedMembershipPurchaseId(""); } catch {setPromoResult(null);setPromoError(true);} }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6">
+        <div aria-labelledby="booking-confirmation-title" aria-modal="true" className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6" ref={dialogRef} role="dialog" tabIndex={-1}>
             <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5">
-                <h2 className="break-words text-xl font-semibold text-stone-950">{pending.type === "individual" ? copy.confirmAppointment : copy.confirmEvent}</h2>
+                <h2 className="break-words text-xl font-semibold text-stone-950" id="booking-confirmation-title">{pending.type === "individual" ? copy.confirmAppointment : copy.confirmEvent}</h2>
                 <dl className="mt-5 space-y-3 text-sm">
                     <InfoRow label={copy.service} value={title} />
                     <InfoRow label={copy.specialist} value={specialist} />
@@ -896,7 +966,7 @@ function ConfirmationModal({
                         <select
                             className="mt-3 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none transition-colors focus:border-stone-900"
                             id="membership-use"
-                            onChange={(event) => setSelectedMembershipPurchaseId(event.target.value ? Number(event.target.value) : "")}
+                            onChange={(event) => {setSelectedMembershipPurchaseId(event.target.value ? Number(event.target.value) : "");setPromoCode("");setPromoResult(null);setPromoError(false)}}
                             value={selectedMembershipPurchaseId}
                         >
                             <option value="">{copy.membershipDoNotUse}</option>
@@ -908,6 +978,13 @@ function ConfirmationModal({
                         </select>
                     ) : null}
                     {selectedMembership ? <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-900">{copy.membershipWillUse(selectedMembership.title)}</p> : null}
+                </div>
+                <div className="mt-4 rounded-xl border border-stone-200 bg-white px-4 py-3">
+                    <label className="block text-sm font-semibold text-stone-900" htmlFor="promo-code">{copy.promoTitle}</label>
+                    <div className="mt-2 flex gap-2"><input className="min-h-11 min-w-0 flex-1 rounded-lg border border-stone-300 px-3 text-sm uppercase outline-none focus:border-stone-950" disabled={selectedMembershipPurchaseId!==""} id="promo-code" onChange={e=>{setPromoCode(e.target.value.toUpperCase());setPromoResult(null);setPromoError(false)}} placeholder={copy.promoPlaceholder} value={promoCode}/><button className="min-h-11 rounded-lg bg-stone-950 px-4 text-sm font-semibold text-white hover:bg-stone-800 disabled:bg-stone-300" disabled={!promoCode.trim()||validatingPromo||selectedMembershipPurchaseId!==""} onClick={()=>void applyPromo()} type="button">{validatingPromo?copy.promoChecking:copy.promoApply}</button></div>
+                    {promoResult?<div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"><strong>{promoResult.discountPercent}%</strong> · <s>{formatAmount(promoResult.originalPrice,locale)}</s> → {formatAmount(promoResult.finalPrice,locale)}{promoResult.remainingUserUses!==null?<span className="block text-xs">{copy.promoRemaining(promoResult.remainingUserUses)}</span>:null}</div>:null}
+                    {promoError?<p className="mt-2 text-xs font-medium text-red-700">{copy.promoInvalid}</p>:null}
+                    {selectedMembershipPurchaseId!==""?<p className="mt-2 text-xs text-stone-500">{copy.promoMembershipExclusive}</p>:null}
                 </div>
                 <OfficeDetailsBlock copy={copy} details={officeDetails} />
                 <label className="mt-5 flex min-w-0 gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
@@ -957,13 +1034,14 @@ function localeTitle(titleUa: string, titleEn: string, locale: string) {
     return locale === "en" ? titleEn || titleUa : titleUa || titleEn;
 }
 
-function ServiceChoiceModal({copy, locale, onClose, onSelect, services, slot}: {copy: Copy; locale: string; onClose: () => void; onSelect: (service: PublicService) => void; services: PublicService[]; slot: PublicScheduleAvailabilityBlock}) {
+function ServiceChoiceModal({copy, locale, onClose, onSelect, returnFocusTo, services, slot}: {copy: Copy; locale: string; onClose: () => void; onSelect: (service: PublicService) => void; returnFocusTo: HTMLElement | null; services: PublicService[]; slot: PublicScheduleAvailabilityBlock}) {
     const fittingServices = services.filter((service) => Boolean(serviceDurationSlot(slot, service)));
+    const dialogRef = useModalFocus(onClose, returnFocusTo);
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6">
+        <div aria-labelledby="service-choice-title" aria-modal="true" className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6" ref={dialogRef} role="dialog" tabIndex={-1}>
             <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5">
-                <h2 className="break-words text-xl font-semibold text-stone-950">{copy.chooseServiceForTime}</h2>
+                <h2 className="break-words text-xl font-semibold text-stone-950" id="service-choice-title">{copy.chooseServiceForTime}</h2>
                 <p className="mt-2 break-words text-sm leading-6 text-stone-500">{formatDateTimeRange(slot.startsAt, slot.endsAt, locale)} · {slot.specialistName} · {slot.officeName ?? copy.withoutOffice}</p>
                 {fittingServices.length === 0 ? <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-800">{copy.slotTooShort}</p> : null}
                 <div className="mt-5 space-y-2">
@@ -984,6 +1062,61 @@ function ServiceChoiceModal({copy, locale, onClose, onSelect, services, slot}: {
             </div>
         </div>
     );
+}
+
+function useModalFocus(onClose: () => void, returnFocusTo: HTMLElement | null) {
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const onCloseRef = useRef(onClose);
+    const returnFocusRef = useRef(returnFocusTo);
+    onCloseRef.current = onClose;
+    returnFocusRef.current = returnFocusTo;
+
+    useEffect(() => {
+        const dialog = dialogRef.current;
+
+        if (!dialog) return;
+
+        const focusableElements = () => Array.from(dialog.querySelectorAll<HTMLElement>(
+            "button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex='-1'])"
+        )).filter((element) => !element.hasAttribute("hidden"));
+        const initialFocus = focusableElements()[0] ?? dialog;
+        initialFocus.focus();
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                event.preventDefault();
+                onCloseRef.current();
+                return;
+            }
+
+            if (event.key !== "Tab") return;
+
+            const elements = focusableElements();
+            if (elements.length === 0) {
+                event.preventDefault();
+                dialog.focus();
+                return;
+            }
+
+            const first = elements[0];
+            const last = elements[elements.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        };
+
+        dialog.addEventListener("keydown", handleKeyDown);
+        return () => {
+            dialog.removeEventListener("keydown", handleKeyDown);
+            if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus();
+        };
+    }, []);
+
+    return dialogRef;
 }
 
 function InfoRow({label, value}: {label: string; value: string}) {
@@ -1327,6 +1460,13 @@ function labels(t: T) {
         membershipUseEmpty: t("public.membershipUseEmpty"),
         membershipDoNotUse: t("public.membershipDoNotUse"),
         membershipVisits: (count: number) => t("public.membershipVisits", {count}),
-        membershipWillUse: (title: string) => t("public.membershipWillUse", {title})
+        membershipWillUse: (title: string) => t("public.membershipWillUse", {title}),
+        promoTitle: t("public.promoTitle"),
+        promoPlaceholder: t("public.promoPlaceholder"),
+        promoApply: t("public.promoApply"),
+        promoChecking: t("public.promoChecking"),
+        promoInvalid: t("public.promoInvalid"),
+        promoMembershipExclusive: t("public.promoMembershipExclusive"),
+        promoRemaining: (count: number) => t("public.promoRemaining", {count})
     };
 }

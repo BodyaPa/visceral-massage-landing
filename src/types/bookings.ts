@@ -182,6 +182,7 @@ export type BookingInput = {
     startsAt?: string;
     reminderOptIn: boolean;
     membershipPurchaseId?: number | null;
+    promoCode?: string | null;
 };
 
 export type ManualBookingInput = BookingInput & {

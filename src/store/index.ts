@@ -8,6 +8,7 @@ import { scheduleApi } from "@/features/schedule/schedule.api";
 import { bookingsApi } from "@/features/bookings/bookings.api";
 import { siteSettingsApi } from "@/features/siteSettings/siteSettings.api";
 import { membershipsApi } from "@/features/memberships/memberships.api";
+import { promosApi } from "@/features/promos/promos.api";
 
 export const makeStore = () =>
     configureStore({
@@ -20,6 +21,7 @@ export const makeStore = () =>
             scheduleApi.middleware,
             bookingsApi.middleware,
             membershipsApi.middleware,
+            promosApi.middleware,
             siteSettingsApi.middleware
         ),
         devTools: process.env.NODE_ENV !== "production",

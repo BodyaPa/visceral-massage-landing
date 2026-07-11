@@ -36,12 +36,14 @@ export default function ManagementNavigation({locale, showNews, showUsers, showO
     const scheduleHref = withLocale("/admin/schedule", locale);
     const financeHref = withLocale("/admin/finance", locale);
     const siteSettingsHref = withLocale("/admin/site-settings", locale);
+    const promosHref = withLocale("/admin/promo-codes", locale);
     const items: NavigationItem[] = [
         {href: newsHref, label: t("news"), visible: showNews},
         {href: usersHref, label: t("users"), visible: showUsers},
         {href: officesHref, label: t("offices"), visible: showOffices},
         {href: siteSettingsHref, label: t("siteSettings"), visible: showUsers},
         {href: servicesHref, label: t("services"), visible: showServices},
+        {href: promosHref, label: t("promos"), visible: showServices},
         {href: scheduleHref, label: t("specialist"), visible: showSpecialist},
         {href: financeHref, label: t("finance"), visible: showFinance}
     ];
@@ -60,7 +62,7 @@ export default function ManagementNavigation({locale, showNews, showUsers, showO
                             key={item.href}
                         >
                             <span className={active ? "h-1.5 w-1.5 shrink-0 rounded-full bg-white" : "h-1.5 w-1.5 shrink-0 rounded-full bg-stone-300 transition-colors group-hover:bg-stone-700"} />
-                            <span className="truncate">{item.label}</span>
+                            <span className="whitespace-nowrap">{item.label}</span>
                         </Link>
                     );
                 })}

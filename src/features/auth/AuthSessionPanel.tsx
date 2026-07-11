@@ -12,6 +12,7 @@ import {hasAdministrationSection} from "./auth.roles";
 import AuthenticatedLink from "./AuthenticatedLink";
 import Link from "next/link";
 import {resolveApiMediaUrl} from "@/shared/lib/media/resolveApiMediaUrl";
+import {initialsFromName} from "@/shared/lib/text/initials";
 
 type Props = {
     user: AuthenticatedUser | null;
@@ -34,9 +35,14 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
         ? [user.firstName, user.lastName].filter(Boolean).join(" ") || t("account")
         : "";
     const accountHref = withLocale("/account", locale);
+    const bookingsHref = `${accountHref}#bookings`;
+    const membershipsHref = `${accountHref}#memberships`;
     const adminHref = withLocale("/admin", locale);
     const accountActive = isActivePath(pathname, accountHref);
     const adminActive = isActivePath(pathname, adminHref);
+    const accountTriggerClassName = tone === "light"
+        ? "group inline-flex min-h-10 max-w-full items-center gap-2 rounded-full border border-stone-300 bg-white px-2 py-1.5 text-stone-900 shadow-sm outline-none transition-[background-color,border-color,box-shadow,transform] duration-200 hover:border-stone-400 hover:bg-stone-50 hover:shadow active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 motion-reduce:transition-none"
+        : "group inline-flex min-h-10 max-w-full items-center gap-2 rounded-full border border-white/25 bg-black/25 px-2 py-1.5 text-white shadow-sm outline-none backdrop-blur-md transition-[background-color,border-color,box-shadow,transform] duration-200 hover:border-white/45 hover:bg-black/40 hover:shadow active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-stone-900 motion-reduce:transition-none";
 
     useEffect(() => {
         function closeOnOutsideClick(event: MouseEvent) {
@@ -91,22 +97,26 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
     return (
         <div className={`${styles.accountMenu} ${variant === "management" ? styles.managementAccountMenu : ""} ${variant === "account" ? styles.personalAccountMenu : ""} ${tone === "light" ? styles.accountMenuLight : ""}`} ref={menuRef}>
             <button
+                aria-label={t("accountMenu", {name: displayName})}
                 aria-expanded={menuOpen}
                 aria-haspopup="menu"
-                className={styles.accountTrigger}
+                className={accountTriggerClassName}
                 onClick={() => setMenuOpen((current) => !current)}
                 type="button"
             >
                 {user.avatarMediaUrl ? (
                     <span
-                        aria-label={displayName}
-                        className={styles.accountAvatar}
+                        aria-hidden="true"
+                        className="h-8 w-8 shrink-0 rounded-full border border-current/20 bg-stone-200 bg-cover bg-center shadow-sm"
                         style={{backgroundImage: `url(${resolveApiMediaUrl(user.avatarMediaUrl)})`}}
                     />
                 ) : (
-                    <span className={styles.accountText}>{displayName}</span>
+                    <span aria-hidden="true" className={tone === "light" ? "grid h-8 w-8 shrink-0 place-items-center rounded-full bg-stone-900 text-xs font-bold text-white" : "grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white text-xs font-bold text-stone-950"}>
+                        {initialsFromName(displayName, t("account").slice(0, 1).toUpperCase())}
+                    </span>
                 )}
-                <span aria-hidden="true" className={`${styles.accountChevron} ${menuOpen ? styles.isOpen : ""}`} />
+                <span className="hidden min-w-0 max-w-40 truncate text-sm font-semibold sm:block">{displayName}</span>
+                <span aria-hidden="true" className={`text-base leading-none transition-transform duration-200 motion-reduce:transition-none ${menuOpen ? "rotate-180" : ""}`}>⌄</span>
             </button>
             {menuOpen ? (
                 <div className={styles.accountDropdown} role="menu">
@@ -119,6 +129,24 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
                         role="menuitem"
                     >
                         {t("personalAccount")}
+                    </AuthenticatedLink>
+                    <AuthenticatedLink
+                        className={styles.accountMenuLink}
+                        fallbackHref={withLocale("/auth?mode=login", locale)}
+                        href={bookingsHref}
+                        onSessionExpired={onLogout}
+                        role="menuitem"
+                    >
+                        {t("myBookings")}
+                    </AuthenticatedLink>
+                    <AuthenticatedLink
+                        className={styles.accountMenuLink}
+                        fallbackHref={withLocale("/auth?mode=login", locale)}
+                        href={membershipsHref}
+                        onSessionExpired={onLogout}
+                        role="menuitem"
+                    >
+                        {t("myMemberships")}
                     </AuthenticatedLink>
                     {hasAdministrationSection(user) ? (
                         <AuthenticatedLink

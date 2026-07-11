@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect, useMemo, useState} from "react";
+import {useEffect, useMemo, useRef, useState} from "react";
 import type {ReactNode} from "react";
 import {useLocale, useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
@@ -131,6 +131,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const [editingBlock, setEditingBlock] = useState<SpecialistAvailabilityBlock | null>(null);
     const [editingEvent, setEditingEvent] = useState<SpecialistFixedEvent | null>(null);
     const [selectedCalendarDetail, setSelectedCalendarDetail] = useState<CalendarDetail | null>(null);
+    const calendarDetailTriggerRef = useRef<HTMLElement | null>(null);
     const availableCount = blocks.filter((block) => block.status === "AVAILABLE" && !block.booked).length;
     const blockedCount = blocks.filter((block) => block.status === "BLOCKED").length;
     const eventServices = services.filter((service) => service.bookingMode === "FIXED_EVENT");
@@ -162,6 +163,13 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 
     function updateCalendarFilter<K extends keyof CalendarFilterState>(field: K, value: CalendarFilterState[K]) {
         setCalendarFilters((current) => ({...current, [field]: value}));
+    }
+
+    function openCalendarDetail(detail: CalendarDetail) {
+        if (document.activeElement instanceof HTMLElement) {
+            calendarDetailTriggerRef.current = document.activeElement;
+        }
+        setSelectedCalendarDetail(detail);
     }
 
     function updateSlotService(serviceId: string) {
@@ -306,7 +314,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     }}
                     onOpenBookings={() => setPlannerMode("bookings")}
                     onOpenPlan={() => setPlannerMode("plan")}
-                    onSelectDetail={setSelectedCalendarDetail}
+                    onSelectDetail={openCalendarDetail}
                     t={t}
                 />
 
@@ -364,7 +372,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                             events={filteredCalendarEvents}
                             locale={locale}
                             onNavigate={setCurrentDate}
-                            onSelectDetail={setSelectedCalendarDetail}
+                            onSelectDetail={openCalendarDetail}
                             plannerMode={plannerMode}
                             selectedView={selectedView}
                             copy={copy}
@@ -373,7 +381,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     </div>
                     <p className="border-t border-stone-100 px-4 py-3 text-xs leading-5 text-stone-500">{t("calendar.source")}</p>
                 </section>
-                {selectedCalendarDetail ? <CalendarDetailPanel closeLabel={copy.closeDetails} detail={selectedCalendarDetail} onClose={() => setSelectedCalendarDetail(null)} /> : null}
+                {selectedCalendarDetail ? <CalendarDetailPanel closeLabel={copy.closeDetails} detail={selectedCalendarDetail} onClose={() => setSelectedCalendarDetail(null)} returnFocusTo={calendarDetailTriggerRef.current} /> : null}
 
                 <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
                     <div className="mb-4 min-w-0">
@@ -387,7 +395,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         copy={copy}
                         events={filteredCalendarEvents}
                         locale={locale}
-                        onSelectDetail={setSelectedCalendarDetail}
+                        onSelectDetail={openCalendarDetail}
                         t={t}
                     />
                 </section>
@@ -1110,7 +1118,12 @@ function CompactSelect({children, label}: {children: ReactNode; label: string}) 
     );
 }
 
-function CalendarDetailPanel({closeLabel, detail, onClose}: {closeLabel: string; detail: CalendarDetail; onClose: () => void}) {
+function CalendarDetailPanel({closeLabel, detail, onClose, returnFocusTo}: {closeLabel: string; detail: CalendarDetail; onClose: () => void; returnFocusTo: HTMLElement | null}) {
+    const panelRef = useRef<HTMLElement>(null);
+    const onCloseRef = useRef(onClose);
+    const returnFocusRef = useRef(returnFocusTo);
+    onCloseRef.current = onClose;
+    returnFocusRef.current = returnFocusTo;
     const toneClass = detail.tone === "available"
         ? "border-emerald-200 bg-emerald-50 text-emerald-800"
         : detail.tone === "blocked"
@@ -1125,11 +1138,29 @@ function CalendarDetailPanel({closeLabel, detail, onClose}: {closeLabel: string;
         ? "border-red-200 bg-red-50 text-red-800"
         : "border-stone-300 bg-stone-800 text-white";
 
+    useEffect(() => {
+        const panel = panelRef.current;
+        if (!panel) return;
+
+        panel.focus();
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                event.preventDefault();
+                onCloseRef.current();
+            }
+        };
+        panel.addEventListener("keydown", handleKeyDown);
+        return () => {
+            panel.removeEventListener("keydown", handleKeyDown);
+            if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus();
+        };
+    }, []);
+
     return (
-        <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm" id="fixed-event-form">
+        <section aria-labelledby="planner-detail-title" className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-stone-400" id="fixed-event-form" ref={panelRef} role="region" tabIndex={-1}>
             <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                    <span className={`inline-flex max-w-full rounded-full border px-2.5 py-1 text-xs font-semibold ${toneClass}`}>{detail.title}</span>
+                    <h2 className={`inline-flex max-w-full rounded-full border px-2.5 py-1 text-xs font-semibold ${toneClass}`} id="planner-detail-title">{detail.title}</h2>
                 </div>
                 <button className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-100" onClick={onClose} type="button">
                     {closeLabel}

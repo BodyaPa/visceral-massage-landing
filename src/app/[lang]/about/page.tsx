@@ -35,11 +35,6 @@ export default async function AboutPage({params}: Props) {
     });
     const settings = await getPublicSiteSettings();
     const body = localizedSetting(settings, locale, "aboutBody");
-    const details = [
-        {title: t("detail1Title"), body: t("detail1Body")},
-        {title: t("detail2Title"), body: t("detail2Body")},
-        {title: t("detail3Title"), body: t("detail3Body")}
-    ];
 
     return (
         <main className="container mx-auto px-4 py-10" id="public-page-content">
@@ -49,7 +44,7 @@ export default async function AboutPage({params}: Props) {
                     {t("subtitle")}
                 </p>
             </section>
-            <PublicCmsPageContent body={body} details={details} />
+            <PublicCmsPageContent body={body} />
         </main>
     );
 }

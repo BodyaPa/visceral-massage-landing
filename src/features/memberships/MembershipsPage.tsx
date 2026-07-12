@@ -94,7 +94,7 @@ export default function MembershipsPage() {
                 </div>
             </section>
 
-            <section className="mx-auto w-full max-w-[1180px] px-4 py-8 sm:px-6 lg:px-8">
+            <section className="mx-auto w-full max-w-[1180px] px-4 py-8 pb-20 sm:px-6 lg:px-8 lg:pb-24">
                 {isError ? <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("loadError")}</p> : null}
                 {isFetching ? <p className="mb-4 text-sm text-stone-500">{t("loading")}</p> : null}
                 <div className="grid gap-4 lg:grid-cols-3">

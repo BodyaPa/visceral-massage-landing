@@ -42,30 +42,38 @@ export default function MembershipsPage() {
     }
 
     async function confirmPayment(offer: MembershipOffer) {
+        const paymentWindow = window.open("about:blank", "_blank");
         try {
             const purchase = await createPurchase({offerId: offer.id}).unwrap();
             const session = await createPaymentSession(purchase.id).unwrap();
             if (session.checkoutUrl) {
-                window.open(session.checkoutUrl, "_blank", "noopener,noreferrer");
+                openCheckoutInPreparedWindow(paymentWindow, session.checkoutUrl);
                 setCheckoutOffer(null);
                 return;
             }
+            paymentWindow?.close();
             if (session.requiresManualConfirmation) {
                 setCheckoutOffer(null);
                 setManualPaymentOffer(offer);
             }
             toast.success(session.requiresManualConfirmation ? t("manualSessionCreated") : t("purchaseCreated"));
         } catch {
+            paymentWindow?.close();
             toast.error(t("purchaseError"));
         }
     }
 
     async function resumePayment(purchase: MembershipPurchase) {
+        const paymentWindow = window.open("about:blank", "_blank");
         try {
             const session = await createPaymentSession(purchase.id).unwrap();
-            if (session.checkoutUrl) window.open(session.checkoutUrl, "_blank", "noopener,noreferrer");
-            else toast.success(t("manualSessionCreated"));
+            if (session.checkoutUrl) openCheckoutInPreparedWindow(paymentWindow, session.checkoutUrl);
+            else {
+                paymentWindow?.close();
+                toast.success(t("manualSessionCreated"));
+            }
         } catch {
+            paymentWindow?.close();
             toast.error(t("purchaseError"));
         }
     }
@@ -295,4 +303,13 @@ function localizedDescription(offer: MembershipOffer, locale: Locale) {
 
 function kindLabel(offer: MembershipOffer, t: T) {
     return offer.kind === "CERTIFICATE" ? t("kinds.certificate") : t("kinds.membership");
+}
+
+function openCheckoutInPreparedWindow(paymentWindow: Window | null, checkoutUrl: string) {
+    if (paymentWindow) {
+        paymentWindow.opener = null;
+        paymentWindow.location.href = checkoutUrl;
+    } else {
+        window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+    }
 }

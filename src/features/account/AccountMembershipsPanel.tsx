@@ -17,14 +17,17 @@ export default function AccountMembershipsPanel({locale}: {locale: Locale}) {
     const [createPaymentSession, {isLoading: paymentOpening}] = useCreateMembershipPaymentSessionMutation();
 
     async function openPayment(purchaseId: number) {
+        const paymentWindow = window.open("about:blank", "_blank");
         try {
             const session = await createPaymentSession(purchaseId).unwrap();
             if (session.checkoutUrl) {
-                window.open(session.checkoutUrl, "_blank", "noopener,noreferrer");
+                openCheckoutInPreparedWindow(paymentWindow, session.checkoutUrl);
                 return;
             }
+            paymentWindow?.close();
             toast.success(t("manualPayment"));
         } catch {
+            paymentWindow?.close();
             toast.error(t("paymentError"));
         }
     }
@@ -83,4 +86,13 @@ function Info({label, value}: {label: string; value: string}) {
 
 function formatDate(value: string, locale: Locale) {
     return new Intl.DateTimeFormat(locale === "ua" ? "uk-UA" : "en-US", {dateStyle: "medium"}).format(new Date(value));
+}
+
+function openCheckoutInPreparedWindow(paymentWindow: Window | null, checkoutUrl: string) {
+    if (paymentWindow) {
+        paymentWindow.opener = null;
+        paymentWindow.location.href = checkoutUrl;
+    } else {
+        window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+    }
 }

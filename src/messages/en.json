@@ -341,7 +341,7 @@
     "deleteText": "Self-service account deletion is disabled: bookings, payments, memberships, and audit records are business history. A disable or anonymization request must go through manual review.",
     "deleteAction": "Contact about account",
     "deleteDeferred": "Current policy: do not cascade-delete business records; a future server action must disable access, preserve finance history, and be audit-logged.",
-    "deleteReviewHint": "Include the account ID from this page and a reply contact in your request. The team will review bookings, payments, and memberships before any action.",
+    "deleteReviewHint": "Include the account email or phone and a reply contact in your request. The team will review bookings, payments, and memberships before any action.",
     "loyalty": {
       "vouchersTitle": "Certificates and codes",
       "vouchersBody": "Personal rewards and gift codes are kept here with their validity and status.",
@@ -372,8 +372,8 @@
       "personal": "Personal reward",
       "previous": "Previous",
       "next": "Next",
-      "bookingSource": "Booking #{id}",
-      "eventSource": "Event enrollment #{id}",
+      "bookingSource": "Individual booking award",
+      "eventSource": "Event enrollment award",
       "statuses": {"AVAILABLE": "Awaiting activation", "ACTIVE": "Active", "USED": "Used", "CANCELLED": "Cancelled"},
       "entryTypes": {"EARN": "Earned", "SPEND": "Spent", "REVERSAL": "Reversal", "MANUAL_ADJUSTMENT": "Manual adjustment"}
     },
@@ -479,7 +479,13 @@
       "discount": "Discount, %",
       "totalLimit": "Total limit",
       "perUserLimit": "Per-user limit",
-      "assignedUser": "Assigned user ID",
+      "assignedUser": "Assign to user",
+      "userSearch": "Enter a name, email, or phone",
+      "usersLoading": "Searching users…",
+      "noUsers": "No users found.",
+      "clearUser": "Clear",
+      "optional": "Optional",
+      "assignedTo": "Assigned to: {user}",
       "startsAt": "Starts at",
       "endsAt": "Ends at",
       "generate": "Generate promo code",
@@ -499,10 +505,11 @@
     },
     "loyalty": {
       "title": "Loyalty and rewards", "subtitle": "Configure service points, the reward catalog, gift behavior, and controlled manual adjustments.",
-      "newReward": "New reward", "editReward": "Edit reward", "rewardHint": "Personal and transferable rewards use one voucher engine.",
-      "titleUa": "UA title", "titleEn": "EN title", "descriptionUa": "UA description", "descriptionEn": "EN description", "pointCost": "Point cost", "validityDays": "Validity, days", "eventIds": "Specific event IDs", "transferable": "Transferable", "personal": "Personal", "active": "Active", "inactive": "Inactive", "eligibleServices": "Eligible services", "noServices": "No services yet.",
+      "newReward": "New reward", "editReward": "Edit reward", "rewardHint": "Personal rewards and gift codes share one voucher mechanism.",
+      "titleUa": "Ukrainian title", "titleEn": "English title", "descriptionUa": "Ukrainian description", "descriptionEn": "English description", "pointCost": "Point cost", "validityDays": "Validity, days", "transferable": "Transferable", "personal": "Personal", "active": "Active", "inactive": "Inactive", "eligibleServices": "Eligible services", "noServices": "No services yet.",
+      "eligibleEvents": "Eligible events", "eligibleEventsHint": "Optionally select specific events. With none selected, the reward is not restricted to an individual event.", "eventsLoading": "Loading events…", "noEvents": "No upcoming active events.",
       "save": "Save reward", "saving": "Saving…", "created": "Reward created.", "updated": "Reward updated.", "saveError": "Unable to save the reward.", "cancelEdit": "Cancel", "catalog": "Reward catalog", "loading": "Loading…", "loadError": "Unable to load the catalog.", "empty": "No rewards yet.", "pointsShort": "points", "daysShort": "days", "edit": "Edit",
-      "userId": "User ID", "amount": "Point adjustment", "reason": "Reason", "adjust": "Apply", "adjusted": "Balance adjusted.", "adjustError": "Unable to adjust the balance. Check the user, amount, and current balance."
+      "user": "User", "userSearch": "Enter a name, email, or phone", "usersLoading": "Searching users…", "noUsers": "No users found.", "clearUser": "Change", "amount": "Point adjustment", "reason": "Reason", "adjust": "Apply", "adjusted": "Balance adjusted.", "adjustError": "Unable to adjust the balance. Check the user, amount, and current balance."
     },
     "siteSettings": {
       "meta": {

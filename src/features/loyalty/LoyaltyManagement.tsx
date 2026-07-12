@@ -29,6 +29,7 @@ export default function LoyaltyManagement({locale}: {locale: Locale}) {
     const [updateReward, {isLoading: updating}] = useUpdateAdminLoyaltyRewardMutation();
     const [adjust, {isLoading: adjusting}] = useCreateLoyaltyAdjustmentMutation();
     const [editing, setEditing] = useState<LoyaltyReward | null>(null);
+    const [editorOpen, setEditorOpen] = useState(false);
     const [adjustmentUser, setAdjustmentUser] = useState<AdminUser | null>(null);
     const services = servicesData?.content ?? [];
 
@@ -52,6 +53,7 @@ export default function LoyaltyManagement({locale}: {locale: Locale}) {
             else await createReward(body).unwrap();
             toast.success(t(editing ? "updated" : "created"));
             setEditing(null);
+            setEditorOpen(false);
             event.currentTarget.reset();
         } catch {
             toast.error(t("saveError"));
@@ -74,14 +76,17 @@ export default function LoyaltyManagement({locale}: {locale: Locale}) {
 
     return (
         <main className="space-y-6">
-            <header>
-                <p className="text-xs font-semibold uppercase tracking-[.18em] text-stone-500">MASTER</p>
-                <h1 className="mt-2 text-2xl font-semibold text-stone-950">{t("title")}</h1>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">{t("subtitle")}</p>
+            <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div><p className="text-xs font-semibold uppercase tracking-[.18em] text-stone-500">MASTER</p>
+                    <h1 className="mt-2 text-2xl font-semibold text-stone-950">{t("title")}</h1>
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">{t("subtitle")}</p>
+                </div>
+                <button className={`${primaryButton} w-full sm:w-auto`} onClick={() => {setEditing(null);setEditorOpen(true)}} type="button">{t("newReward")}</button>
             </header>
 
-            <form className="space-y-4 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5" key={editing?.id ?? "new"} onSubmit={submitReward}>
-                <div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold text-stone-950">{editing ? t("editReward") : t("newReward")}</h2><p className="mt-1 text-xs text-stone-500">{t("rewardHint")}</p></div>{editing ? <button className={secondaryButton} onClick={() => setEditing(null)} type="button">{t("cancelEdit")}</button> : null}</div>
+            {editorOpen ? <div aria-modal="true" className="fixed inset-0 z-50 flex items-end justify-center bg-stone-950/25 p-2 sm:items-center sm:p-5" role="dialog">
+            <form className="max-h-[94dvh] w-full max-w-4xl space-y-4 overflow-y-auto rounded-2xl border border-stone-200 bg-white p-4 shadow-2xl sm:p-5" key={editing?.id ?? "new"} onSubmit={submitReward}>
+                <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-stone-100 bg-white pb-3"><div><h2 className="font-semibold text-stone-950">{editing ? t("editReward") : t("newReward")}</h2><p className="mt-1 text-xs text-stone-500">{t("rewardHint")}</p></div><button aria-label={t("cancelEdit")} className={secondaryButton} onClick={() => {setEditing(null);setEditorOpen(false)}} type="button">×</button></div>
                 <div className="grid gap-3 md:grid-cols-2">
                     <Field label={t("titleUa")}><input className={inputClass} defaultValue={editing?.titleUa} name="titleUa" required /></Field>
                     <Field label={t("titleEn")}><input className={inputClass} defaultValue={editing?.titleEn ?? ""} name="titleEn" /></Field>
@@ -111,15 +116,15 @@ export default function LoyaltyManagement({locale}: {locale: Locale}) {
                     {!eventsFetching && events.length === 0 ? <p className="text-sm text-stone-500">{t("noEvents")}</p> : null}
                 </fieldset>
                 <div className="flex justify-end"><button className={primaryButton} disabled={creating || updating}>{creating || updating ? t("saving") : t("save")}</button></div>
-            </form>
+            </form></div> : null}
 
             <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
-                <h2 className="font-semibold text-stone-950">{t("catalog")}</h2>
+                <div className="flex items-center justify-between gap-3"><h2 className="font-semibold text-stone-950">{t("catalog")}</h2><button className={secondaryButton} onClick={() => {setEditing(null);setEditorOpen(true)}} type="button">{t("newReward")}</button></div>
                 {isLoading ? <p className="mt-3 text-sm text-stone-500">{t("loading")}</p> : null}
                 {isError ? <p className="mt-3 text-sm text-red-700">{t("loadError")}</p> : null}
                 {!isLoading && rewards.length === 0 ? <p className="mt-3 text-sm text-stone-500">{t("empty")}</p> : null}
                 <div className="mt-3 grid gap-3 lg:grid-cols-2">
-                    {rewards.map((reward) => <article className="rounded-xl border border-stone-200 p-4" key={reward.id}><div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold text-stone-950">{reward.titleUa}</h3><p className="mt-1 text-sm text-stone-600">{reward.pointCost} · {t("pointsShort")} · {reward.validityDays} {t("daysShort")}</p></div><span className={reward.active ? activeBadge : inactiveBadge}>{t(reward.active ? "active" : "inactive")}</span></div><p className="mt-2 text-xs text-stone-500">{reward.transferable ? t("transferable") : t("personal")}</p><button className={`${secondaryButton} mt-3`} onClick={() => setEditing(reward)} type="button">{t("edit")}</button></article>)}
+                    {rewards.map((reward) => <article className="rounded-xl border border-stone-200 p-4" key={reward.id}><div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold text-stone-950">{reward.titleUa}</h3><p className="mt-1 text-sm text-stone-600">{reward.pointCost} · {t("pointsShort")} · {reward.validityDays} {t("daysShort")}</p></div><span className={reward.active ? activeBadge : inactiveBadge}>{t(reward.active ? "active" : "inactive")}</span></div><p className="mt-2 text-xs text-stone-500">{reward.transferable ? t("transferable") : t("personal")}</p><div className="mt-3 flex justify-end"><button className={secondaryButton} onClick={() => {setEditing(reward);setEditorOpen(true)}} type="button">{t("edit")}</button></div></article>)}
                 </div>
             </section>
 

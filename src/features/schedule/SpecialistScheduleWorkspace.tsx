@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect, useMemo, useRef, useState} from "react";
+import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import type {ReactNode} from "react";
 import {createPortal} from "react-dom";
 import {useLocale, useTranslations} from "next-intl";
@@ -132,6 +132,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const [selectedView, setSelectedView] = useState<CalendarView>("week");
     const [plannerMode, setPlannerMode] = useState<PlannerMode>("all");
     const [toolsOpen, setToolsOpen] = useState(false);
+    const [toolsVisible, setToolsVisible] = useState(false);
     const [form, setForm] = useState<AvailabilityForm>(() => buildDefaultForm());
     const [editingBlock, setEditingBlock] = useState<SpecialistAvailabilityBlock | null>(null);
     const [editingEvent, setEditingEvent] = useState<SpecialistFixedEvent | null>(null);
@@ -154,6 +155,10 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const filteredCalendarEvents = useMemo(() => filterCalendarEvents(calendarEventsSource, calendarFilters), [calendarEventsSource, calendarFilters]);
     const filteredCalendarBookings = useMemo(() => filterCalendarBookings(calendarBookingsSource, calendarFilters), [calendarBookingsSource, calendarFilters]);
     const filteredCalendarBuffers = useMemo(() => filterCalendarBuffers(buildCalendarBuffers(calendarBookingsSource, calendarEventsSource, appointmentBufferMinutes), calendarFilters), [calendarBookingsSource, calendarEventsSource, appointmentBufferMinutes, calendarFilters]);
+    const closeTools = useCallback(() => {
+        setToolsVisible(false);
+        window.setTimeout(() => setToolsOpen(false), 180);
+    }, []);
 
     useEffect(() => {
         const mobileQuery = window.matchMedia("(max-width: 639px)");
@@ -166,6 +171,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 
     useEffect(() => {
         if (!toolsOpen) return;
+        const frame = window.requestAnimationFrame(() => setToolsVisible(true));
         if (document.activeElement instanceof HTMLElement && !toolsPanelRef.current?.contains(document.activeElement)) {
             toolsTriggerRef.current = document.activeElement;
         }
@@ -174,7 +180,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
         const closeOnEscape = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
                 event.preventDefault();
-                setToolsOpen(false);
+                closeTools();
             } else if (event.key === "Tab" && toolsPanelRef.current) {
                 trapDialogTab(event, toolsPanelRef.current);
             }
@@ -183,10 +189,11 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
         toolsPanelRef.current?.focus();
         return () => {
             document.removeEventListener("keydown", closeOnEscape);
+            window.cancelAnimationFrame(frame);
             document.body.style.overflow = previousOverflow;
             if (toolsTriggerRef.current?.isConnected) toolsTriggerRef.current.focus();
         };
-    }, [toolsOpen]);
+    }, [closeTools, toolsOpen]);
 
     function updateForm<K extends keyof AvailabilityForm>(field: K, value: AvailabilityForm[K]) {
         setForm((current) => ({...current, [field]: value}));
@@ -402,7 +409,6 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     </div>
                     <PlannerModeSwitch copy={copy} mode={plannerMode} onChange={(mode) => {
                         setPlannerMode(mode);
-                        if (mode !== "all") setToolsOpen(true);
                     }} />
                     <CalendarFilters
                         copy={copy}
@@ -447,11 +453,11 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
             </div>
 
             {toolsOpen ? <OverlayPortal>
-            <div aria-hidden="true" className="fixed inset-0 z-40 bg-stone-950/30 backdrop-blur-[1px]" onClick={() => setToolsOpen(false)} />
-            <aside aria-label={copy.toolsTitle} aria-modal="true" className="fixed inset-x-0 bottom-0 z-50 max-h-[88dvh] min-w-0 space-y-5 overflow-y-auto rounded-t-2xl border border-stone-200 bg-stone-50 p-4 shadow-2xl outline-none motion-safe:transition-transform focus-visible:ring-2 focus-visible:ring-stone-500 sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[min(440px,92vw)] sm:rounded-none sm:p-5" ref={toolsPanelRef} role="dialog" tabIndex={-1}>
+            <div aria-hidden="true" className={`fixed inset-0 z-40 bg-stone-950/30 transition-opacity duration-180 motion-reduce:transition-none ${toolsVisible ? "opacity-100" : "opacity-0"}`} />
+            <aside aria-label={copy.toolsTitle} aria-modal="true" className={`fixed inset-x-0 bottom-0 z-50 max-h-[88dvh] min-w-0 space-y-5 overflow-y-auto rounded-t-2xl border border-stone-200 bg-stone-50 p-4 shadow-2xl outline-none transition-transform duration-180 ease-out focus-visible:ring-2 focus-visible:ring-stone-500 motion-reduce:transition-none sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[min(440px,92vw)] sm:rounded-none sm:p-5 ${toolsVisible ? "translate-y-0 sm:translate-x-0" : "translate-y-full sm:translate-x-full sm:translate-y-0"}`} ref={toolsPanelRef} role="dialog" tabIndex={-1}>
                 <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-stone-200 bg-stone-50 pb-3">
                     <h2 className="text-base font-semibold text-stone-950">{copy.toolsTitle}</h2>
-                    <button className={controlButtonClass} onClick={() => setToolsOpen(false)} type="button">{copy.closeDetails}</button>
+                    <button aria-label={copy.closeDetails} className={controlButtonClass} onClick={closeTools} type="button">×</button>
                 </div>
                 {plannerMode === "plan" ? (
                     <>
@@ -1320,7 +1326,7 @@ function CalendarDetailPanel({closeLabel, detail, onClose, returnFocusTo}: {clos
 
     return (
         <OverlayPortal>
-        <button aria-label={closeLabel} className="fixed inset-0 z-40 cursor-default bg-stone-950/30 backdrop-blur-[1px]" onClick={onClose} type="button" />
+        <div aria-hidden="true" className="fixed inset-0 z-40 bg-stone-950/30" />
         <section aria-labelledby="planner-detail-title" aria-modal="true" className="fixed inset-x-0 bottom-0 z-50 max-h-[82dvh] overflow-y-auto rounded-t-2xl border border-stone-200 bg-white p-4 shadow-2xl outline-none motion-safe:transition-transform focus-visible:ring-2 focus-visible:ring-stone-400 sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[min(400px,92vw)] sm:rounded-none" ref={panelRef} role="dialog" tabIndex={-1}>
             <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">

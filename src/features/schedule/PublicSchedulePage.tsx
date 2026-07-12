@@ -206,7 +206,7 @@ export default function PublicSchedulePage() {
                     promoCode: promoCode || null
                 }).unwrap();
                 toast.success(event.paidWithMembership ? copy.eventEnrolledWithMembership : event.paidWithLoyaltyVoucher ? copy.eventEnrolledWithVoucher : copy.eventEnrolled);
-                setPaymentPrompt({externalPaymentUrl: null, paidWithMembership: event.paidWithMembership, paidWithLoyaltyVoucher: event.paidWithLoyaltyVoucher, title: pendingBooking.event.title, startsAt: pendingBooking.event.startsAt});
+                setPaymentPrompt({externalPaymentUrl: event.externalPaymentUrl, paidWithMembership: event.paidWithMembership, paidWithLoyaltyVoucher: event.paidWithLoyaltyVoucher, title: pendingBooking.event.title, startsAt: pendingBooking.event.startsAt});
                 void refetchEvents();
             }
             void refetchMemberships();

@@ -83,6 +83,8 @@ export interface PublicFixedEvent {
     enrolled: boolean;
     enrollmentStatus: "ACTIVE" | "CANCELLED" | null;
     price: number;
+    externalPaymentUrl: string | null;
+    paymentConfirmed: boolean;
     note: string | null;
     membershipPurchaseId: number | null;
     paidWithMembership: boolean;

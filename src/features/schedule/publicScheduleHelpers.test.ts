@@ -63,6 +63,8 @@ function event(overrides: Partial<PublicFixedEvent> = {}): PublicFixedEvent {
         enrolled: false,
         enrollmentStatus: null,
         price: 1000,
+        externalPaymentUrl: null,
+        paymentConfirmed: false,
         note: null,
         membershipPurchaseId: null,
         paidWithMembership: false,

@@ -206,6 +206,11 @@ function BookingCard({booking, cancelling, copy, locale, onCancel}: {booking: Bo
 function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boolean; copy: Copy; event: PublicFixedEvent; locale: Locale; onCancel: (event: PublicFixedEvent) => void}) {
     const status = eventStatus(event);
     const cancellable = status === "ACTIVE" && new Date(event.startsAt).getTime() > Date.now();
+    const canPay = status === "ACTIVE"
+        && !event.paymentConfirmed
+        && !event.paidWithMembership
+        && !event.paidWithLoyaltyVoucher
+        && Boolean(event.externalPaymentUrl);
 
     return (
         <article className="rounded-lg border border-stone-200 bg-stone-50 p-3">
@@ -218,7 +223,10 @@ function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boo
             </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs font-medium text-stone-700">{formatDateTimeRange(event.startsAt, event.endsAt, locale)}</p>
-                {cancellable ? <button className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300" disabled={cancelling} onClick={() => onCancel(event)} type="button">{copy.cancel}</button> : null}
+                <div className="flex flex-wrap justify-end gap-2">
+                    {canPay ? <a className="inline-flex min-h-9 items-center rounded-md bg-stone-950 px-3 py-1.5 text-xs font-semibold text-white outline-none transition-[background-color,box-shadow,transform] hover:bg-stone-800 hover:shadow-sm active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2" href={event.externalPaymentUrl ?? undefined} rel="noreferrer" target="_blank">{copy.pay}</a> : null}
+                    {cancellable ? <button className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300" disabled={cancelling} onClick={() => onCancel(event)} type="button">{copy.cancel}</button> : null}
+                </div>
             </div>
             <EventMetaChips copy={copy} event={event} />
             <OfficeDetails
@@ -248,6 +256,7 @@ function BookingMetaChips({booking, copy}: {booking: Booking; copy: Copy}) {
 
 function EventMetaChips({copy, event}: {copy: Copy; event: PublicFixedEvent}) {
     const chips = [
+        event.enrollmentStatus === "ACTIVE" && !event.paymentConfirmed && !event.paidWithMembership && !event.paidWithLoyaltyVoucher ? copy.paymentPendingHint : null,
         event.paidWithMembership ? copy.paidWithMembership : null,
         event.paidWithLoyaltyVoucher ? copy.paidWithLoyaltyVoucher : null
     ].filter((chip): chip is string => Boolean(chip));

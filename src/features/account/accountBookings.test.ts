@@ -60,6 +60,8 @@ function event(id: number, endsAt: string, enrollmentStatus: PublicFixedEvent["e
         enrolled: true,
         enrollmentStatus,
         price: 1000,
+        externalPaymentUrl: null,
+        paymentConfirmed: false,
         note: null,
         membershipPurchaseId: null,
         paidWithMembership: false

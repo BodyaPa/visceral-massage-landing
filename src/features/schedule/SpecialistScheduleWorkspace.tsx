@@ -2,6 +2,7 @@
 
 import {useEffect, useMemo, useRef, useState} from "react";
 import type {ReactNode} from "react";
+import {createPortal} from "react-dom";
 import {useLocale, useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {useCreateManualBookingMutation, useGetSpecialistFinanceOverviewQuery, useListSpecialistBookingsQuery} from "@/features/bookings/bookings.api";
@@ -45,11 +46,13 @@ import type {Locale} from "@/i18n";
 import {formatCurrencyAmount as formatAmount, formatPercentAmount as formatPercent} from "@/shared/lib/i18n/formatNumbers";
 import {toLanguageTag} from "@/shared/lib/i18n/toLanguageTag";
 
-const views = ["month", "week", "day", "list"] as const;
+const personalViews = ["day", "week", "list"] as const;
+const teamViews = ["day", "list"] as const;
 const emptyBlocks: SpecialistAvailabilityBlock[] = [];
 const defaultAppointmentBufferMinutes = 30;
-type CalendarView = typeof views[number];
+type CalendarView = typeof personalViews[number];
 type PlannerMode = "plan" | "bookings" | "all";
+type PlannerScope = "mine" | "team";
 
 type Props = {
     canManageAllSpecialists: boolean;
@@ -78,7 +81,8 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const copy = scheduleCopy(t);
     const toast = useToast();
     const [currentDate, setCurrentDate] = useState(() => new Date());
-    const [selectedSpecialistId, setSelectedSpecialistId] = useState<number | "">(canManageAllSpecialists ? "" : currentUserId);
+    const [plannerScope, setPlannerScope] = useState<PlannerScope>("mine");
+    const [selectedSpecialistId, setSelectedSpecialistId] = useState<number | "">(currentUserId);
     const [calendarFilters, setCalendarFilters] = useState<CalendarFilterState>({officeId: "", serviceId: "", itemType: "all", status: "all"});
     const range = useMemo(() => buildCalendarRange(currentDate), [currentDate]);
     const scheduleQuery = useMemo(() => ({
@@ -127,11 +131,14 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const [updateAvailability, {isLoading: isUpdatingAvailability}] = useUpdateAvailabilityMutation();
     const [selectedView, setSelectedView] = useState<CalendarView>("week");
     const [plannerMode, setPlannerMode] = useState<PlannerMode>("all");
+    const [toolsOpen, setToolsOpen] = useState(false);
     const [form, setForm] = useState<AvailabilityForm>(() => buildDefaultForm());
     const [editingBlock, setEditingBlock] = useState<SpecialistAvailabilityBlock | null>(null);
     const [editingEvent, setEditingEvent] = useState<SpecialistFixedEvent | null>(null);
     const [selectedCalendarDetail, setSelectedCalendarDetail] = useState<CalendarDetail | null>(null);
     const calendarDetailTriggerRef = useRef<HTMLElement | null>(null);
+    const toolsPanelRef = useRef<HTMLElement | null>(null);
+    const toolsTriggerRef = useRef<HTMLElement | null>(null);
     const availableCount = blocks.filter((block) => block.status === "AVAILABLE" && !block.booked).length;
     const blockedCount = blocks.filter((block) => block.status === "BLOCKED").length;
     const eventServices = services.filter((service) => service.bookingMode === "FIXED_EVENT");
@@ -156,6 +163,30 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
             setPlannerMode("all");
         }
     }, []);
+
+    useEffect(() => {
+        if (!toolsOpen) return;
+        if (document.activeElement instanceof HTMLElement && !toolsPanelRef.current?.contains(document.activeElement)) {
+            toolsTriggerRef.current = document.activeElement;
+        }
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                event.preventDefault();
+                setToolsOpen(false);
+            } else if (event.key === "Tab" && toolsPanelRef.current) {
+                trapDialogTab(event, toolsPanelRef.current);
+            }
+        };
+        document.addEventListener("keydown", closeOnEscape);
+        toolsPanelRef.current?.focus();
+        return () => {
+            document.removeEventListener("keydown", closeOnEscape);
+            document.body.style.overflow = previousOverflow;
+            if (toolsTriggerRef.current?.isConnected) toolsTriggerRef.current.focus();
+        };
+    }, [toolsOpen]);
 
     function updateForm<K extends keyof AvailabilityForm>(field: K, value: AvailabilityForm[K]) {
         setForm((current) => ({...current, [field]: value}));
@@ -243,18 +274,20 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 
     function openCreatePanel() {
         setPlannerMode("plan");
+        setToolsOpen(true);
         setForm((current) => ({...current, status: "AVAILABLE"}));
         window.setTimeout(() => document.getElementById("availability-form")?.scrollIntoView({behavior: "smooth"}), 0);
     }
 
     function openBlockPanel() {
         setPlannerMode("plan");
+        setToolsOpen(true);
         setForm((current) => ({...current, status: "BLOCKED", itemType: "BLOCK"}));
         window.setTimeout(() => document.getElementById("availability-form")?.scrollIntoView({behavior: "smooth"}), 0);
     }
 
     return (
-        <section className="grid w-full min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-6 2xl:grid-cols-[minmax(0,1fr)_340px]">
+        <section className="w-full min-w-0">
             <div className="min-w-0 space-y-5">
                 <header className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
                     <div className="flex min-w-0 flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -263,9 +296,27 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                             <h1 className="mt-2 break-words text-2xl font-semibold text-stone-950 sm:text-3xl">{t("title")}</h1>
 	                            <p className="mt-2 max-w-3xl break-words text-sm leading-6 text-stone-600">{t("description")}</p>
 	                        </div>
-	                        <div className="flex w-full min-w-0 flex-col gap-2 lg:w-72">
+	                        <div className="flex w-full min-w-0 flex-col gap-2 lg:w-80">
 	                            {canManageAllSpecialists ? (
-	                                <label className="block min-w-0">
+	                                <>
+	                                <div className="grid grid-cols-2 rounded-lg bg-stone-100 p-1" aria-label={copy.scopeLabel}>
+	                                    {(["mine", "team"] as const).map((scope) => (
+	                                        <button
+	                                            aria-pressed={plannerScope === scope}
+	                                            className={plannerScope === scope ? activeViewClass : viewClass}
+	                                            key={scope}
+	                                            onClick={() => {
+	                                                setPlannerScope(scope);
+	                                                setSelectedSpecialistId(scope === "mine" ? currentUserId : "");
+	                                                if (scope === "team" && selectedView === "week") setSelectedView("day");
+	                                            }}
+	                                            type="button"
+	                                        >
+	                                            {scope === "mine" ? copy.mySchedule : copy.team}
+	                                        </button>
+	                                    ))}
+	                                </div>
+	                                {plannerScope === "team" ? <label className="block min-w-0">
 	                                    <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-stone-500">{copy.specialistFilter}</span>
 	                                    <select
 	                                        className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-700"
@@ -281,7 +332,8 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 	                                        ))}
 	                                    </select>
 	                                    {specialistsError ? <span className="mt-1 block text-xs text-red-700">{copy.specialistsError}</span> : null}
-	                                </label>
+	                                </label> : null}
+	                                </>
 	                            ) : null}
 	                            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
 	                                <button className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-stone-700" onClick={openCreatePanel} type="button">
@@ -293,7 +345,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 	                            </div>
 	                        </div>
 	                    </div>
-                    <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="mt-6 grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
                         <StatCard label={t("stats.available")} value={availableCount} tone="success" />
                         <StatCard label={t("stats.blocked")} value={blockedCount} tone="warning" />
                         <StatCard label={copy.eventsTitle} value={events.length} />
@@ -312,8 +364,14 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         setPlannerMode("all");
                         setSelectedView("list");
                     }}
-                    onOpenBookings={() => setPlannerMode("bookings")}
-                    onOpenPlan={() => setPlannerMode("plan")}
+                    onOpenBookings={() => {
+                        setPlannerMode("bookings");
+                        setToolsOpen(true);
+                    }}
+                    onOpenPlan={() => {
+                        setPlannerMode("plan");
+                        setToolsOpen(true);
+                    }}
                     onSelectDetail={openCalendarDetail}
                     t={t}
                 />
@@ -335,14 +393,17 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                             <button className={controlButtonClass} onClick={() => setCurrentDate((date) => navigateDate(date, selectedView, 1))} type="button">→</button>
                         </div>
                         <div className="grid w-full min-w-0 grid-cols-2 gap-1 rounded-lg bg-stone-100 p-1 sm:flex sm:w-auto">
-                            {views.map((view) => (
+                            {(plannerScope === "team" && selectedSpecialistId === "" ? teamViews : personalViews).map((view) => (
                                 <button aria-pressed={view === selectedView} className={view === selectedView ? activeViewClass : viewClass} key={view} onClick={() => setSelectedView(view)} type="button">
                                     {t(`views.${view}`)}
                                 </button>
                             ))}
                         </div>
                     </div>
-                    <PlannerModeSwitch copy={copy} mode={plannerMode} onChange={setPlannerMode} />
+                    <PlannerModeSwitch copy={copy} mode={plannerMode} onChange={(mode) => {
+                        setPlannerMode(mode);
+                        if (mode !== "all") setToolsOpen(true);
+                    }} />
                     <CalendarFilters
                         copy={copy}
                         filters={calendarFilters}
@@ -375,6 +436,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                             onSelectDetail={openCalendarDetail}
                             plannerMode={plannerMode}
                             selectedView={selectedView}
+                            teamScope={plannerScope === "team" && selectedSpecialistId === ""}
                             copy={copy}
                             t={t}
                         />
@@ -382,26 +444,15 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     <p className="border-t border-stone-100 px-4 py-3 text-xs leading-5 text-stone-500">{t("calendar.source")}</p>
                 </section>
                 {selectedCalendarDetail ? <CalendarDetailPanel closeLabel={copy.closeDetails} detail={selectedCalendarDetail} onClose={() => setSelectedCalendarDetail(null)} returnFocusTo={calendarDetailTriggerRef.current} /> : null}
-
-                <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
-                    <div className="mb-4 min-w-0">
-                        <h2 className="break-words text-base font-semibold text-stone-950">{copy.detailsTitle}</h2>
-                        <p className="mt-1 break-words text-sm leading-6 text-stone-500">{copy.detailsBody}</p>
-                    </div>
-                    <PlannerAgendaList
-                        blocks={filteredCalendarBlocks}
-                        bookings={filteredCalendarBookings}
-                        buffers={filteredCalendarBuffers}
-                        copy={copy}
-                        events={filteredCalendarEvents}
-                        locale={locale}
-                        onSelectDetail={openCalendarDetail}
-                        t={t}
-                    />
-                </section>
             </div>
 
-            <aside className="min-w-0 space-y-5">
+            {toolsOpen ? <OverlayPortal>
+            <div aria-hidden="true" className="fixed inset-0 z-40 bg-stone-950/30 backdrop-blur-[1px]" onClick={() => setToolsOpen(false)} />
+            <aside aria-label={copy.toolsTitle} aria-modal="true" className="fixed inset-x-0 bottom-0 z-50 max-h-[88dvh] min-w-0 space-y-5 overflow-y-auto rounded-t-2xl border border-stone-200 bg-stone-50 p-4 shadow-2xl outline-none motion-safe:transition-transform focus-visible:ring-2 focus-visible:ring-stone-500 sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[min(440px,92vw)] sm:rounded-none sm:p-5" ref={toolsPanelRef} role="dialog" tabIndex={-1}>
+                <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-stone-200 bg-stone-50 pb-3">
+                    <h2 className="text-base font-semibold text-stone-950">{copy.toolsTitle}</h2>
+                    <button className={controlButtonClass} onClick={() => setToolsOpen(false)} type="button">{copy.closeDetails}</button>
+                </div>
                 {plannerMode === "plan" ? (
                     <>
                 <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm 2xl:sticky 2xl:top-4" id="availability-form">
@@ -629,6 +680,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     </>
                 ) : null}
             </aside>
+            </OverlayPortal> : null}
         </section>
     );
 }
@@ -652,6 +704,7 @@ function CalendarSurface({
     onSelectDetail,
     plannerMode,
     selectedView,
+    teamScope,
     t
 }: {
     bookings: SpecialistBooking[];
@@ -665,6 +718,7 @@ function CalendarSurface({
     onSelectDetail: (detail: CalendarDetail) => void;
     plannerMode: PlannerMode;
     selectedView: CalendarView;
+    teamScope: boolean;
     t: T;
 }) {
     const detailByEventId = new Map<string, CalendarDetail>();
@@ -672,6 +726,22 @@ function CalendarSurface({
     const visibleBookings = plannerMode === "plan" ? [] : bookings;
     const visibleEvents = plannerMode === "bookings" ? [] : events;
     const visibleBuffers = plannerMode === "all" ? buffers.slice(0, 80) : buffers.slice(0, 40);
+
+    if (teamScope && selectedView === "day") {
+        return (
+            <TeamResourceDay
+                bookings={visibleBookings}
+                blocks={visibleBlocks}
+                buffers={visibleBuffers}
+                copy={copy}
+                currentDate={currentDate}
+                events={visibleEvents}
+                locale={locale}
+                onSelectDetail={onSelectDetail}
+                t={t}
+            />
+        );
+    }
 
     if (selectedView === "list") {
         return (
@@ -759,6 +829,96 @@ function CalendarSurface({
             variant="planner"
             view={toCalendarView(selectedView)}
         />
+    );
+}
+
+function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, locale, onSelectDetail, t}: {
+    bookings: SpecialistBooking[];
+    blocks: SpecialistAvailabilityBlock[];
+    buffers: CalendarBuffer[];
+    copy: ReturnType<typeof scheduleCopy>;
+    currentDate: Date;
+    events: SpecialistFixedEvent[];
+    locale: string;
+    onSelectDetail: (detail: CalendarDetail) => void;
+    t: T;
+}) {
+    const selectedDay = dateKey(currentDate);
+    const entries = [
+        ...blocks.map((block) => ({
+            detail: blockCalendarDetail(block, copy, locale, t),
+            end: block.endsAt,
+            id: `block-${block.id}`,
+            meta: [blockStatusLabel(block, copy, t), block.officeName ?? copy.noOffice, block.serviceTitle].filter(Boolean).join(" · "),
+            specialistName: block.specialistName,
+            start: block.startsAt,
+            tone: calendarToneForBlock(block)
+        })),
+        ...bookings.map((booking) => ({
+            detail: teamBookingCalendarDetail(booking, copy, locale, t),
+            end: booking.endsAt,
+            id: `booking-${booking.id}`,
+            meta: [bookingStatusLabel(booking, copy, t), booking.officeName ?? copy.noOffice].join(" · "),
+            specialistName: booking.specialistName,
+            start: booking.startsAt,
+            tone: calendarToneForBooking(booking)
+        })),
+        ...events.map((event) => ({
+            detail: eventCalendarDetail(event, copy, locale),
+            end: event.endsAt,
+            id: `event-${event.id}`,
+            meta: [eventStatusLabel(event, copy), `${event.enrolledCount}/${event.capacity}`, event.officeName ?? copy.noOffice].join(" · "),
+            specialistName: event.specialistName,
+            start: event.startsAt,
+            tone: calendarToneForEvent(event)
+        })),
+        ...buffers.map((buffer) => ({
+            detail: bufferCalendarDetail(buffer, copy, locale),
+            end: buffer.endsAt,
+            id: `buffer-${buffer.id}`,
+            meta: [copy.buffer, buffer.officeName ?? copy.noOffice].join(" · "),
+            specialistName: buffer.specialistName,
+            start: buffer.startsAt,
+            tone: "buffer" as const
+        }))
+    ]
+        .filter((entry) => dateKey(new Date(entry.start)) === selectedDay)
+        .sort((first, second) => new Date(first.start).getTime() - new Date(second.start).getTime());
+    const groups = entries.reduce<Map<string, typeof entries>>((result, entry) => {
+        const name = entry.specialistName || copy.notAssigned;
+        result.set(name, [...(result.get(name) ?? []), entry]);
+        return result;
+    }, new Map());
+
+    if (groups.size === 0) {
+        return <p className="rounded-xl border border-dashed border-stone-200 bg-stone-50 px-4 py-10 text-center text-sm text-stone-500">{copy.teamDayEmpty}</p>;
+    }
+
+    return (
+        <div className="overflow-x-auto pb-2">
+            <div className="grid min-w-max auto-cols-[minmax(260px,320px)] grid-flow-col gap-3" role="list">
+                {Array.from(groups.entries()).map(([specialistName, groupEntries]) => (
+                    <section className="rounded-xl border border-stone-200 bg-stone-50 p-3" key={specialistName} role="listitem">
+                        <div className="mb-3 border-b border-stone-200 pb-2">
+                            <h3 className="text-sm font-semibold text-stone-950">{specialistName}</h3>
+                            <p className="mt-0.5 text-xs text-stone-500">{copy.teamDayItems(groupEntries.length)}</p>
+                        </div>
+                        <div className="space-y-2">
+                            {groupEntries.map((entry) => (
+                                <button className="w-full rounded-lg border border-stone-200 bg-white p-3 text-left transition-colors hover:border-stone-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500" key={entry.id} onClick={() => onSelectDetail(entry.detail)} type="button">
+                                    <span className="flex items-center gap-2">
+                                        <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${agendaToneDot(entry.tone)}`} />
+                                        <span className="text-sm font-semibold text-stone-950">{formatTimeRange(entry.start, entry.end, locale)}</span>
+                                    </span>
+                                    <span className="mt-1 block text-sm font-medium text-stone-800">{entry.detail.title}</span>
+                                    <span className="mt-1 block text-xs leading-5 text-stone-500">{entry.meta}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </section>
+                ))}
+            </div>
+        </div>
     );
 }
 
@@ -1147,6 +1307,8 @@ function CalendarDetailPanel({closeLabel, detail, onClose, returnFocusTo}: {clos
             if (event.key === "Escape") {
                 event.preventDefault();
                 onCloseRef.current();
+            } else if (event.key === "Tab") {
+                trapDialogTab(event, panel);
             }
         };
         panel.addEventListener("keydown", handleKeyDown);
@@ -1157,7 +1319,9 @@ function CalendarDetailPanel({closeLabel, detail, onClose, returnFocusTo}: {clos
     }, []);
 
     return (
-        <section aria-labelledby="planner-detail-title" className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-stone-400" id="fixed-event-form" ref={panelRef} role="region" tabIndex={-1}>
+        <OverlayPortal>
+        <button aria-label={closeLabel} className="fixed inset-0 z-40 cursor-default bg-stone-950/30 backdrop-blur-[1px]" onClick={onClose} type="button" />
+        <section aria-labelledby="planner-detail-title" aria-modal="true" className="fixed inset-x-0 bottom-0 z-50 max-h-[82dvh] overflow-y-auto rounded-t-2xl border border-stone-200 bg-white p-4 shadow-2xl outline-none motion-safe:transition-transform focus-visible:ring-2 focus-visible:ring-stone-400 sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[min(400px,92vw)] sm:rounded-none" ref={panelRef} role="dialog" tabIndex={-1}>
             <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                     <h2 className={`inline-flex max-w-full rounded-full border px-2.5 py-1 text-xs font-semibold ${toneClass}`} id="planner-detail-title">{detail.title}</h2>
@@ -1175,7 +1339,32 @@ function CalendarDetailPanel({closeLabel, detail, onClose, returnFocusTo}: {clos
                 ))}
             </dl>
         </section>
+        </OverlayPortal>
     );
+}
+
+function OverlayPortal({children}: {children: ReactNode}) {
+    return createPortal(children, document.body);
+}
+
+function trapDialogTab(event: KeyboardEvent, container: HTMLElement) {
+    const focusable = Array.from(container.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )).filter((element) => !element.hasAttribute("hidden") && element.getAttribute("aria-hidden") !== "true");
+    if (focusable.length === 0) {
+        event.preventDefault();
+        container.focus();
+        return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === container)) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+    }
 }
 
 function scheduleBlockLabel(block: SpecialistAvailabilityBlock, copy: ReturnType<typeof scheduleCopy>, t: T) {
@@ -1749,7 +1938,7 @@ function FinanceMetric({label, value}: {label: string; value: string}) {
 
 function StatCard({label, tone = "neutral", value}: {label: string; tone?: "neutral" | "success" | "warning"; value: number}) {
     const valueClass = tone === "success" ? "text-emerald-800" : tone === "warning" ? "text-amber-800" : "text-stone-950";
-    return <div className="flex min-h-24 min-w-0 flex-col justify-center rounded-xl border border-stone-200 bg-stone-50 px-4 py-4"><p className={`break-words text-2xl font-semibold ${valueClass}`}>{value}</p><p className="mt-2 break-words text-xs font-medium text-stone-500">{label}</p></div>;
+    return <div className="flex min-h-20 min-w-0 flex-col justify-center rounded-xl border border-stone-200 bg-stone-50 px-3 py-3 sm:px-4"><p className={`break-words text-xl font-semibold sm:text-2xl ${valueClass}`}>{value}</p><p className="mt-1.5 break-words text-xs font-medium text-stone-500">{label}</p></div>;
 }
 
 function LegendItem({className, label}: {className: string; label: string}) {
@@ -1859,6 +2048,22 @@ function bookingCalendarDetail(booking: SpecialistBooking, copy: ReturnType<type
     };
 }
 
+function teamBookingCalendarDetail(booking: SpecialistBooking, copy: ReturnType<typeof scheduleCopy>, locale: string, t: T): CalendarDetail {
+    return {
+        title: bookingServiceTitle(booking, locale),
+        tone: calendarToneForBooking(booking),
+        rows: [
+            {label: copy.detailType, value: copy.bookingsTitle},
+            {label: copy.detailStatus, value: bookingStatusLabel(booking, copy, t)},
+            {label: copy.startsAt, value: formatDateTime(booking.startsAt, locale)},
+            {label: copy.endsAt, value: formatDateTime(booking.endsAt, locale)},
+            {label: copy.specialistFilter, value: booking.specialistName},
+            {label: copy.slotService, value: bookingServiceTitle(booking, locale)},
+            {label: copy.office, value: booking.officeName ?? copy.noOffice}
+        ]
+    };
+}
+
 function eventCalendarDetail(event: SpecialistFixedEvent, copy: ReturnType<typeof scheduleCopy>, locale: string): CalendarDetail {
     return {
         title: event.serviceTitle,
@@ -1942,6 +2147,12 @@ function scheduleCopy(t: T) {
         dayFocusPending: t("schedule.dayFocusPending"),
         detailsTitle: t("schedule.detailsTitle"),
         detailsBody: t("schedule.detailsBody"),
+        scopeLabel: t("schedule.scopeLabel"),
+        mySchedule: t("schedule.mySchedule"),
+        team: t("schedule.team"),
+        toolsTitle: t("schedule.toolsTitle"),
+        teamDayEmpty: t("schedule.teamDayEmpty"),
+        teamDayItems: (count: number) => t("schedule.teamDayItems", {count}),
         specialistFilter: t("schedule.specialistFilter"),
         allSpecialists: t("schedule.allSpecialists"),
         specialistsError: t("schedule.specialistsError"),
@@ -2184,9 +2395,6 @@ function formatMinutes(value: number, copy: ReturnType<typeof scheduleCopy>) {
 function formatCalendarTitle(view: CalendarView, currentDate: Date, locale: string) {
     const languageTag = toLanguageTag(locale);
 
-    if (view === "month") {
-        return new Intl.DateTimeFormat(languageTag, {month: "long", year: "numeric"}).format(currentDate);
-    }
     if (view === "day") {
         return new Intl.DateTimeFormat(languageTag, {day: "numeric", month: "long", weekday: "long"}).format(currentDate);
     }
@@ -2207,8 +2415,7 @@ function startOfWeek(date: Date) {
 
 function navigateDate(date: Date, view: CalendarView, direction: -1 | 1) {
     const next = new Date(date);
-    if (view === "month") next.setMonth(next.getMonth() + direction);
-    else if (view === "day") next.setDate(next.getDate() + direction);
+    if (view === "day") next.setDate(next.getDate() + direction);
     else next.setDate(next.getDate() + direction * 7);
     return next;
 }

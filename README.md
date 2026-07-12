@@ -115,3 +115,17 @@ npm run start
 ```
 
 `NEXT_PUBLIC_API_URL` must point to the API available to browser clients.
+
+## Personal Account Routes
+
+Authenticated account areas use separate localized pages instead of scrolling
+one oversized profile page:
+
+- `/[lang]/account` — profile and security;
+- `/[lang]/account/bookings` — appointment and event history;
+- `/[lang]/account/certificates` — memberships, certificates and gift codes;
+- `/[lang]/account/points` — point balance, rewards and immutable activity.
+
+Pending membership payments remain available from the offer card, purchase
+history and account certificates page. External checkout opens in a new browser
+tab so the Ataraksia session remains open.

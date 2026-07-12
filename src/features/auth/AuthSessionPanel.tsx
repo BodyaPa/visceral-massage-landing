@@ -35,9 +35,9 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
         ? [user.firstName, user.lastName].filter(Boolean).join(" ") || t("account")
         : "";
     const accountHref = withLocale("/account", locale);
-    const bookingsHref = `${accountHref}#bookings`;
-    const membershipsHref = `${accountHref}#memberships`;
-    const pointsHref = `${accountHref}#points-activity`;
+    const bookingsHref = withLocale("/account/bookings", locale);
+    const membershipsHref = withLocale("/account/certificates", locale);
+    const pointsHref = withLocale("/account/points", locale);
     const adminHref = withLocale("/admin", locale);
     const accountActive = isActivePath(pathname, accountHref);
     const adminActive = isActivePath(pathname, adminHref);

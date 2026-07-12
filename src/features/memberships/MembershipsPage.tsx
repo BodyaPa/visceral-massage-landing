@@ -33,7 +33,7 @@ export default function MembershipsPage() {
     const [checkoutOffer, setCheckoutOffer] = useState<MembershipOffer | null>(null);
     const [manualPaymentOffer, setManualPaymentOffer] = useState<MembershipOffer | null>(null);
     const purchases = useMemo(() => purchasesData?.content ?? [], [purchasesData?.content]);
-    const pendingOfferIds = new Set(purchases.filter((item) => item.status === "AWAITING_PAYMENT_CONFIRMATION").map((item) => item.offerId));
+    const pendingPurchases = new Map(purchases.filter((item) => item.status === "AWAITING_PAYMENT_CONFIRMATION").map((item) => [item.offerId, item]));
     const isProcessingCheckout = isLoading || isCreatingPaymentSession;
 
     function openPaymentDialog(offer: MembershipOffer) {
@@ -46,7 +46,8 @@ export default function MembershipsPage() {
             const purchase = await createPurchase({offerId: offer.id}).unwrap();
             const session = await createPaymentSession(purchase.id).unwrap();
             if (session.checkoutUrl) {
-                window.location.assign(session.checkoutUrl);
+                window.open(session.checkoutUrl, "_blank", "noopener,noreferrer");
+                setCheckoutOffer(null);
                 return;
             }
             if (session.requiresManualConfirmation) {
@@ -54,6 +55,16 @@ export default function MembershipsPage() {
                 setManualPaymentOffer(offer);
             }
             toast.success(session.requiresManualConfirmation ? t("manualSessionCreated") : t("purchaseCreated"));
+        } catch {
+            toast.error(t("purchaseError"));
+        }
+    }
+
+    async function resumePayment(purchase: MembershipPurchase) {
+        try {
+            const session = await createPaymentSession(purchase.id).unwrap();
+            if (session.checkoutUrl) window.open(session.checkoutUrl, "_blank", "noopener,noreferrer");
+            else toast.success(t("manualSessionCreated"));
         } catch {
             toast.error(t("purchaseError"));
         }
@@ -81,21 +92,25 @@ export default function MembershipsPage() {
                 <div className="grid gap-4 lg:grid-cols-3">
                     {offers.map((offer) => (
                         <OfferCard
-                            disabled={isProcessingCheckout || pendingOfferIds.has(offer.id)}
+                            disabled={isProcessingCheckout}
                             key={offer.id}
                             locale={locale}
                             offer={offer}
                             onBuy={openPaymentDialog}
+                            onPayPending={() => {
+                                const purchase = pendingPurchases.get(offer.id);
+                                if (purchase) void resumePayment(purchase);
+                            }}
                             onDetails={setSelectedOffer}
-                            pending={pendingOfferIds.has(offer.id)}
+                            pending={pendingPurchases.has(offer.id)}
                             t={t}
                         />
                     ))}
                 </div>
-                <PurchaseSummary locale={locale} purchases={purchases} t={t} />
+                <PurchaseSummary locale={locale} onPay={(purchase) => void resumePayment(purchase)} purchases={purchases} t={t} />
             </section>
 
-            {selectedOffer ? <OfferDetails locale={locale} offer={selectedOffer} onBuy={openPaymentDialog} onClose={() => setSelectedOffer(null)} pending={pendingOfferIds.has(selectedOffer.id)} t={t} /> : null}
+            {selectedOffer ? <OfferDetails locale={locale} offer={selectedOffer} onBuy={openPaymentDialog} onClose={() => setSelectedOffer(null)} pending={pendingPurchases.has(selectedOffer.id)} t={t} /> : null}
             {checkoutOffer ? (
                 <PaymentConfirmationDialog
                     isLoading={isProcessingCheckout}
@@ -113,7 +128,7 @@ export default function MembershipsPage() {
 
 type T = ReturnType<typeof useTranslations<"memberships.page">>;
 
-function OfferCard({disabled, locale, offer, onBuy, onDetails, pending, t}: {disabled: boolean; locale: Locale; offer: MembershipOffer; onBuy: (offer: MembershipOffer) => void; onDetails: (offer: MembershipOffer) => void; pending: boolean; t: T}) {
+function OfferCard({disabled, locale, offer, onBuy, onDetails, onPayPending, pending, t}: {disabled: boolean; locale: Locale; offer: MembershipOffer; onBuy: (offer: MembershipOffer) => void; onDetails: (offer: MembershipOffer) => void; onPayPending: () => void; pending: boolean; t: T}) {
     return (
         <article className="flex min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
             {offer.backgroundMediaUrl ? (
@@ -140,8 +155,8 @@ function OfferCard({disabled, locale, offer, onBuy, onDetails, pending, t}: {dis
                 <button className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100" onClick={() => onDetails(offer)} type="button">
                     {t("details")}
                 </button>
-                <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={disabled} onClick={() => onBuy(offer)} type="button">
-                    {pending ? t("pending") : t("buy")}
+                <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={disabled} onClick={() => pending ? onPayPending() : onBuy(offer)} type="button">
+                    {pending ? t("payPending") : t("buy")}
                 </button>
             </div>
             </div>
@@ -227,7 +242,7 @@ function ManualPaymentDialog({locale, offer, onClose, t}: {locale: Locale; offer
     );
 }
 
-function PurchaseSummary({locale, purchases, t}: {locale: Locale; purchases: MembershipPurchase[]; t: T}) {
+function PurchaseSummary({locale, onPay, purchases, t}: {locale: Locale; onPay: (purchase: MembershipPurchase) => void; purchases: MembershipPurchase[]; t: T}) {
     if (purchases.length === 0) return null;
     return (
         <section className="mt-8 rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
@@ -251,6 +266,7 @@ function PurchaseSummary({locale, purchases, t}: {locale: Locale; purchases: Mem
                                     </div>
                                     <strong className="shrink-0 text-sm text-stone-950">{formatAmount(purchase.priceSnapshot, locale)}</strong>
                                 </div>
+                                {purchase.status === "AWAITING_PAYMENT_CONFIRMATION" ? <button className="mt-3 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100" onClick={() => onPay(purchase)} type="button">{t("payPending")}</button> : null}
                             </article>
                         ))}
                     </div>

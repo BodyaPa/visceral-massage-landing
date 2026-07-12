@@ -2,16 +2,32 @@
 
 import {useState} from "react";
 import {useTranslations} from "next-intl";
+import {useToast} from "@/components/ui/toast/ToastProvider";
 import BoundedList from "@/components/ui/list/BoundedList";
-import {useListMyMembershipPurchasesQuery} from "@/features/memberships/memberships.api";
+import {useCreateMembershipPaymentSessionMutation, useListMyMembershipPurchasesQuery} from "@/features/memberships/memberships.api";
 import type {Locale} from "@/i18n";
 import {formatWholeCurrencyAmount as formatAmount} from "@/shared/lib/i18n/formatNumbers";
 
 export default function AccountMembershipsPanel({locale}: {locale: Locale}) {
     const t = useTranslations("accountPage.memberships");
+    const toast = useToast();
     const [page, setPage] = useState(0);
     const {data, isError, isFetching} = useListMyMembershipPurchasesQuery({page, size: 12});
     const purchases = data?.content ?? [];
+    const [createPaymentSession, {isLoading: paymentOpening}] = useCreateMembershipPaymentSessionMutation();
+
+    async function openPayment(purchaseId: number) {
+        try {
+            const session = await createPaymentSession(purchaseId).unwrap();
+            if (session.checkoutUrl) {
+                window.open(session.checkoutUrl, "_blank", "noopener,noreferrer");
+                return;
+            }
+            toast.success(t("manualPayment"));
+        } catch {
+            toast.error(t("paymentError"));
+        }
+    }
 
     return (
         <section className="rounded-xl border border-stone-200 bg-white p-4">
@@ -48,6 +64,7 @@ export default function AccountMembershipsPanel({locale}: {locale: Locale}) {
                                         <Info label={t("visits")} value={purchase.visitsRemaining == null ? t("certificate") : String(purchase.visitsRemaining)} />
                                         {purchase.expiresAt ? <Info label={t("expires")} value={formatDate(purchase.expiresAt, locale)} /> : null}
                                     </dl>
+                                    {purchase.status === "AWAITING_PAYMENT_CONFIRMATION" ? <button className="mt-3 inline-flex min-h-10 items-center justify-center rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100 disabled:opacity-50" disabled={paymentOpening} onClick={() => openPayment(purchase.id)} type="button">{paymentOpening ? t("paymentOpening") : t("pay")}</button> : null}
                                 </article>
                             ))}
                         </div>

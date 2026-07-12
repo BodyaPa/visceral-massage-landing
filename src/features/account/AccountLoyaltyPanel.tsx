@@ -14,7 +14,7 @@ import {
 import type {LoyaltyReward, LoyaltyVoucherStatus} from "@/types/loyalty";
 import {toLanguageTag} from "@/shared/lib/i18n/toLanguageTag";
 
-export default function AccountLoyaltyPanel() {
+export default function AccountLoyaltyPanel({view}: {view: "certificates" | "points"}) {
     const t = useTranslations("accountPage.loyalty");
     const locale = useLocale();
     const toast = useToast();
@@ -50,7 +50,7 @@ export default function AccountLoyaltyPanel() {
 
     return (
         <div className="space-y-5">
-            <section className="scroll-mt-24 rounded-xl border border-stone-200 bg-stone-50/70 p-4 sm:p-5" id="certificates-codes">
+            {view === "certificates" ? <section className="rounded-xl border border-stone-200 bg-stone-50/70 p-4 sm:p-5">
                 <div className="flex flex-col gap-3 border-b border-stone-200 pb-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                         <h2 className="text-lg font-semibold text-stone-950">{t("vouchersTitle")}</h2>
@@ -80,9 +80,9 @@ export default function AccountLoyaltyPanel() {
                     </div>
                 ) : null}
                 {vouchers ? <Pager page={voucherPage} totalPages={vouchers.totalPages} onPage={setVoucherPage} previous={t("previous")} next={t("next")} /> : null}
-            </section>
+            </section> : null}
 
-            <section className="scroll-mt-24 rounded-xl border border-stone-200 bg-white p-4 sm:p-5" id="points-activity">
+            {view === "points" ? <section className="rounded-xl border border-stone-200 bg-white p-4 sm:p-5">
                 <div className="flex flex-col gap-3 border-b border-stone-100 pb-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <h2 className="text-lg font-semibold text-stone-950">{t("pointsTitle")}</h2>
@@ -129,7 +129,7 @@ export default function AccountLoyaltyPanel() {
                     ) : null}
                     {ledger ? <Pager page={ledgerPage} totalPages={ledger.totalPages} onPage={setLedgerPage} previous={t("previous")} next={t("next")} /> : null}
                 </div>
-            </section>
+            </section> : null}
         </div>
     );
 }

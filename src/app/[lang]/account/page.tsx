@@ -1,36 +1,14 @@
 import type {Metadata} from "next";
 import {getTranslations} from "next-intl/server";
-import {requireAuthenticatedUser} from "@/features/auth/auth.server";
-import type {Locale} from "@/i18n";
-import {Suspense} from "react";
-import Link from "next/link";
-import {withLocale} from "@/shared/lib/locale/withLocale";
-import LanguageSwitcher from "@/components/common/LanguageSwitcher";
-import AuthSessionPanel from "@/features/auth/AuthSessionPanel";
-import AccountBookingsPanel from "@/features/account/AccountBookingsPanel";
-import AccountMembershipsPanel from "@/features/account/AccountMembershipsPanel";
 import AccountProfilePanel from "@/features/account/AccountProfilePanel";
 import AccountSecuritySettings from "@/features/account/AccountSecuritySettings";
-import AccountLoyaltyPanel from "@/features/account/AccountLoyaltyPanel";
+import AccountWorkspaceShell from "@/features/account/AccountWorkspaceShell";
+import {requireAuthenticatedUser} from "@/features/auth/auth.server";
+import type {Locale} from "@/i18n";
 
-type Props = {
-    params: Promise<{lang: string}>;
-};
-
+type Props = {params: Promise<{lang: string}>};
 export const dynamic = "force-dynamic";
-
-export async function generateMetadata({params}: Props): Promise<Metadata> {
-    const {lang} = await params;
-    const t = await getTranslations({locale: lang as Locale, namespace: "accountPage.meta"});
-
-    return {
-        title: t("title"),
-        robots: {
-            index: false,
-            follow: false
-        }
-    };
-}
+export async function generateMetadata({params}: Props): Promise<Metadata> { const {lang} = await params; const t = await getTranslations({locale: lang as Locale, namespace: "accountPage.meta"}); return {title: t("title"), robots: {index: false, follow: false}}; }
 
 export default async function AccountPage({params}: Props) {
     const {lang} = await params;
@@ -39,103 +17,8 @@ export default async function AccountPage({params}: Props) {
     const user = await requireAuthenticatedUser(locale);
     const displayName = [user.firstName, user.lastName].filter(Boolean).join(" ") || t("nameUnavailable");
     const contactValue = user.email ?? user.phone ?? t("notProvided");
-    const dateOfBirth = user.dateOfBirth ? formatDate(user.dateOfBirth, locale) : t("notProvided");
-
-    return (
-        <main className="fixed inset-0 z-[5] overflow-y-auto overflow-x-clip p-2 sm:p-5">
-            <section className="account-workspace mx-auto flex w-full max-w-6xl flex-col rounded-2xl border border-stone-200/80 bg-stone-50/95 shadow-2xl backdrop-blur-sm">
-                <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-stone-200 px-3 py-3 sm:gap-4 sm:px-6 sm:py-4">
-                    <Link
-                        className="shrink-0 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100"
-                        href={withLocale("/", locale)}
-                    >
-                        {t("back")}
-                    </Link>
-                    <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 sm:gap-4">
-                        <Suspense fallback={null}>
-                            <LanguageSwitcher requiresSession tone="light" />
-                        </Suspense>
-                        <AuthSessionPanel loading={false} tone="light" user={user} variant="account" />
-                    </div>
-                </div>
-                <div className="account-layout min-w-0 p-3 sm:p-6">
-                    <div className="w-full min-w-0 space-y-5 rounded-2xl border border-stone-200 bg-white/90 p-4 shadow-sm sm:p-8">
-                            <div className="flex flex-col gap-3 border-b border-stone-100 pb-5 md:flex-row md:items-end md:justify-between">
-                                <div>
-                                    <h1 className="text-2xl font-semibold text-stone-950 sm:text-3xl">{t("title")}</h1>
-                                    <p className="mt-2 max-w-2xl text-sm text-stone-600 sm:text-base">{t("subtitle")}</p>
-                                </div>
-                            </div>
-
-                            <nav aria-label={t("sectionNavigation")} className="flex max-w-full gap-2 overflow-x-auto rounded-xl border border-stone-200 bg-stone-50 p-2">
-                                <AccountAnchor href="#profile" label={t("sections.profile")} />
-                                <AccountAnchor href="#bookings" label={t("sections.bookings")} />
-                                <AccountAnchor href="#memberships" label={t("sections.certificates")} />
-                                <AccountAnchor href="#points-activity" label={t("sections.points")} />
-                            </nav>
-
-                            <section className="scroll-mt-24 grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]" id="profile">
-                                <div className="space-y-4">
-                                    <AccountProfilePanel contactValue={contactValue} dateOfBirth={dateOfBirth} displayName={displayName} user={user} />
-
-                                    <div className="grid gap-3 sm:grid-cols-2">
-                                        <InfoCard label={t("phone")} value={user.phone ?? t("notProvided")} />
-                                        <InfoCard label={t("email")} value={user.email ?? t("notProvided")} />
-                                        <InfoCard label={t("dateOfBirth")} value={dateOfBirth} />
-                                    </div>
-                                </div>
-
-                                <aside className="space-y-4">
-                                    <AccountSecuritySettings user={user} />
-                                </aside>
-                            </section>
-
-                            <div className="scroll-mt-24" id="bookings">
-                                <AccountBookingsPanel locale={locale} />
-                            </div>
-
-                            <div className="scroll-mt-24" id="memberships">
-                                <AccountMembershipsPanel locale={locale} />
-                            </div>
-
-                            <AccountLoyaltyPanel />
-
-                            <section className="rounded-xl border border-red-200 bg-red-50/70 p-4">
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                    <div>
-                                        <h2 className="text-base font-semibold text-red-950">{t("deleteSection")}</h2>
-                                        <p className="mt-1 max-w-2xl text-sm text-red-900/75">{t("deleteText")}</p>
-                                    </div>
-                                    <Link
-                                        className="w-fit rounded-lg border border-red-200 bg-white/80 px-3 py-2 text-sm font-medium text-red-800 transition-colors hover:bg-white"
-                                        href={withLocale("/contact", locale)}
-                                    >
-                                        {t("deleteAction")}
-                                    </Link>
-                                </div>
-                                <p className="mt-3 text-xs text-red-900/65">{t("deleteDeferred")}</p>
-                                <p className="mt-2 text-xs text-red-900/65">{t("deleteReviewHint")}</p>
-                            </section>
-                    </div>
-                </div>
-            </section>
-        </main>
-    );
+    const dateOfBirth = user.dateOfBirth ? new Intl.DateTimeFormat(locale === "ua" ? "uk-UA" : "en-US", {dateStyle: "medium"}).format(new Date(`${user.dateOfBirth}T00:00:00`)) : t("notProvided");
+    return <AccountWorkspaceShell active="profile" locale={locale} user={user}><section className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]"><div className="space-y-4"><AccountProfilePanel contactValue={contactValue} dateOfBirth={dateOfBirth} displayName={displayName} user={user} /><div className="grid gap-3 sm:grid-cols-2"><InfoCard label={t("phone")} value={user.phone ?? t("notProvided")} /><InfoCard label={t("email")} value={user.email ?? t("notProvided")} /><InfoCard label={t("dateOfBirth")} value={dateOfBirth} /></div></div><aside><AccountSecuritySettings user={user} /></aside></section></AccountWorkspaceShell>;
 }
 
-function AccountAnchor({href, label}: {href: string; label: string}) {
-    return <a className="shrink-0 rounded-lg border border-transparent px-3 py-2 text-sm font-semibold text-stone-600 transition-colors hover:border-stone-300 hover:bg-white hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500" href={href}>{label}</a>;
-}
-
-function InfoCard({label, value}: {label: string; value: string}) {
-    return (
-        <div className="rounded-xl border border-stone-200 bg-white p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-stone-500">{label}</p>
-            <p className="mt-2 break-words text-sm font-medium text-stone-950">{value}</p>
-        </div>
-    );
-}
-
-function formatDate(value: string, locale: Locale) {
-    return new Intl.DateTimeFormat(locale === "ua" ? "uk-UA" : "en-US", {dateStyle: "medium"}).format(new Date(`${value}T00:00:00`));
-}
+function InfoCard({label, value}: {label: string; value: string}) { return <div className="rounded-xl border border-stone-200 bg-white p-4"><p className="text-xs font-medium uppercase tracking-wide text-stone-500">{label}</p><p className="mt-2 break-words text-sm font-medium text-stone-950">{value}</p></div>; }

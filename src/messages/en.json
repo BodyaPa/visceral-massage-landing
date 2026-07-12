@@ -99,6 +99,7 @@
       "purchaseError": "Unable to create request.",
       "alreadyPending": "This offer already has a pending request.",
       "pending": "Pending confirmation",
+      "payPending": "Pay ↗",
       "myPurchases": "My memberships and certificates",
       "showing": "Showing {visible} of {total}",
       "showMore": "Show more",
@@ -329,6 +330,8 @@
     "dateOfBirth": "Date of birth",
     "sectionNavigation": "Personal account sections",
     "sections": {"profile": "Profile", "bookings": "My bookings", "certificates": "Certificates and codes", "points": "Points and activity"},
+    "pageTitles": {"profile": "Personal account", "bookings": "My bookings", "certificates": "Certificates and codes", "points": "Points and activity"},
+    "pageSubtitles": {"profile": "Personal details, contacts, and account security.", "bookings": "Upcoming, completed, and cancelled appointments and events.", "certificates": "Memberships, certificates, personal rewards, and gift codes.", "points": "Current balance, reward catalog, and immutable activity history."},
     "profilePanel": {"title": "Profile", "edit": "Edit", "closeEdit": "Close editing", "birthDate": "Date of birth: {date}", "birthDateEmpty": "Date of birth is not set", "avatarTitle": "Profile icon", "avatarHint": "Choose a square JPEG, PNG, or WebP image. The file uploads only after you save it.", "upload": "Choose icon", "chooseAnotherAvatar": "Choose another", "saveAvatar": "Save icon", "cancelAvatar": "Cancel", "uploading": "Uploading...", "avatarSaved": "Profile icon updated.", "avatarError": "Unable to update profile icon."},
     "profileForm": {"title": "Edit profile", "body": "Update your first name, last name, and date of birth.", "firstName": "First name", "lastName": "Last name", "dateOfBirth": "Date of birth", "save": "Save profile", "saving": "Saving...", "saved": "Profile updated.", "saveError": "Unable to update profile.", "contactHint": "Phone and email changes will be handled separately through contact verification."},
     "rolesSection": "Roles",
@@ -417,7 +420,7 @@
       "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Payment pending", "CONFIRMED": "Confirmed", "CANCELLED": "Cancelled", "PAST": "Past"},
       "eventStatuses": {"ACTIVE": "Enrolled", "PAST": "Past", "CANCELLED": "Cancelled"}
     },
-    "memberships": {"title": "My memberships", "body": "Memberships and certificates are shown separately from calendar bookings.", "loading": "Updating memberships...", "loadError": "Unable to load memberships.", "empty": "No memberships or certificates yet.", "visits": "Remaining", "certificate": "Certificate", "expires": "Valid until", "showing": "Showing {visible} of {total}", "showMore": "Show more", "showLess": "Collapse", "previous": "Previous", "next": "Next", "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Awaiting payment", "ACTIVE": "Active", "CANCELLED": "Cancelled"}},
+    "memberships": {"title": "My memberships", "body": "Memberships and certificates are shown separately from calendar bookings.", "loading": "Updating memberships...", "loadError": "Unable to load memberships.", "empty": "No memberships or certificates yet.", "visits": "Remaining", "certificate": "Certificate", "expires": "Valid until", "pay": "Pay ↗", "paymentOpening": "Opening…", "manualPayment": "Payment awaits manual confirmation.", "paymentError": "Unable to open payment.", "showing": "Showing {visible} of {total}", "showMore": "Show more", "showLess": "Collapse", "previous": "Previous", "next": "Next", "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Awaiting payment", "ACTIVE": "Active", "CANCELLED": "Cancelled"}},
     "roles": {
       "USER": "User",
       "MASTER": "Master",
@@ -506,7 +509,7 @@
     "loyalty": {
       "title": "Loyalty and rewards", "subtitle": "Configure service points, the reward catalog, gift behavior, and controlled manual adjustments.",
       "newReward": "New reward", "editReward": "Edit reward", "rewardHint": "Personal rewards and gift codes share one voucher mechanism.",
-      "titleUa": "Ukrainian title", "titleEn": "English title", "descriptionUa": "Ukrainian description", "descriptionEn": "English description", "pointCost": "Point cost", "validityDays": "Validity, days", "transferable": "Transferable", "personal": "Personal", "active": "Active", "inactive": "Inactive", "eligibleServices": "Eligible services", "noServices": "No services yet.",
+      "titleUa": "Ukrainian title", "titleEn": "English title", "descriptionUa": "Ukrainian description", "descriptionEn": "English description", "pointCost": "Point cost", "validityDays": "Reward validity after redemption, days", "transferable": "Transferable", "personal": "Personal", "active": "Active", "inactive": "Inactive", "eligibleServices": "Eligible services", "noServices": "No services yet.",
       "eligibleEvents": "Eligible events", "eligibleEventsHint": "Optionally select specific events. With none selected, the reward is not restricted to an individual event.", "eventsLoading": "Loading events…", "noEvents": "No upcoming active events.",
       "save": "Save reward", "saving": "Saving…", "created": "Reward created.", "updated": "Reward updated.", "saveError": "Unable to save the reward.", "cancelEdit": "Cancel", "catalog": "Reward catalog", "loading": "Loading…", "loadError": "Unable to load the catalog.", "empty": "No rewards yet.", "pointsShort": "points", "daysShort": "days", "edit": "Edit",
       "user": "User", "userSearch": "Enter a name, email, or phone", "usersLoading": "Searching users…", "noUsers": "No users found.", "clearUser": "Change", "amount": "Point adjustment", "reason": "Reason", "adjust": "Apply", "adjusted": "Balance adjusted.", "adjustError": "Unable to adjust the balance. Check the user, amount, and current balance."

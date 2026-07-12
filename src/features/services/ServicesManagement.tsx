@@ -21,7 +21,8 @@ const emptyForm: ServiceInput = {
     basePrice: 0,
     bookingMode: "INDIVIDUAL_APPOINTMENT",
     active: true,
-    externalPaymentUrl: ""
+    externalPaymentUrl: "",
+    loyaltyPointsAward: 0
 };
 const emptyOfferForm: MembershipOfferUpdateInput = {
     titleUa: "",
@@ -90,7 +91,8 @@ export default function ServicesManagement() {
             basePrice: selectedService.basePrice,
             bookingMode: selectedService.bookingMode,
             active: selectedService.active,
-            externalPaymentUrl: selectedService.externalPaymentUrl ?? ""
+            externalPaymentUrl: selectedService.externalPaymentUrl ?? "",
+            loyaltyPointsAward: selectedService.loyaltyPointsAward
         });
     }, [selectedService]);
 
@@ -149,6 +151,7 @@ export default function ServicesManagement() {
             descriptionEn: form.descriptionEn?.trim() || null,
             durationMinutes: Number(form.durationMinutes),
             basePrice: Number(form.basePrice),
+            loyaltyPointsAward: Number(form.loyaltyPointsAward),
             externalPaymentUrl: form.externalPaymentUrl?.trim() || null
         };
     }
@@ -270,6 +273,7 @@ export default function ServicesManagement() {
                                             <MetaBadge active={selected} label={service.bookingMode === "FIXED_EVENT" ? t("fixedEvent") : t("individualAppointment")} />
                                             <MetaBadge active={selected} label={String(service.basePrice)} />
                                             {service.externalPaymentUrl ? <MetaBadge active={selected} label={t("externalPaymentUrl")} /> : null}
+                                            {service.loyaltyPointsAward > 0 ? <MetaBadge active={selected} label={t("loyaltyPointsBadge", {count: service.loyaltyPointsAward})} /> : null}
                                         </span>
                                     </span>
                                 </button>
@@ -395,6 +399,15 @@ export default function ServicesManagement() {
                                 value={form.basePrice}
                             />
                         </Field>
+                        <Field label={t("loyaltyPointsAward")} tooltip={t("loyaltyPointsAwardHint")}>
+                            <input
+                                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                                min={0}
+                                onChange={(event) => updateField("loyaltyPointsAward", Number(event.target.value))}
+                                type="number"
+                                value={form.loyaltyPointsAward}
+                            />
+                        </Field>
                     </div>
                     <label className={`flex min-w-0 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition-colors ${
                         form.active ? "border-stone-300 bg-stone-100 text-stone-950" : "border-stone-200 bg-stone-50 text-stone-700"
@@ -408,7 +421,7 @@ export default function ServicesManagement() {
                     </label>
                     <button
                         className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-400 sm:w-fit"
-                        disabled={saving || !form.titleUa.trim() || form.durationMinutes < 1 || form.basePrice < 0}
+                        disabled={saving || !form.titleUa.trim() || form.durationMinutes < 1 || form.basePrice < 0 || form.loyaltyPointsAward < 0}
                         onClick={saveService}
                         type="button"
                     >

@@ -29,8 +29,9 @@ export default function AccountBookingsPanel({locale}: {locale: Locale}) {
     const toast = useToast();
     const range = useMemo(() => buildAccountRange(), []);
     const [filter, setFilter] = useState<AccountBookingFilter>("upcoming");
+    const [bookingsPage, setBookingsPage] = useState(0);
     const [pendingCancel, setPendingCancel] = useState<{id: number; title: string; type: "booking" | "event"} | null>(null);
-    const {data: bookingsData, isFetching: bookingsFetching, isError: bookingsError} = useListMyBookingsQuery({page: 0, size: 100});
+    const {data: bookingsData, isFetching: bookingsFetching, isError: bookingsError} = useListMyBookingsQuery({page: bookingsPage, size: 20});
     const {data: events = [], isFetching: eventsFetching, isError: eventsError} = useListMyFixedEventEnrollmentsQuery({...range, lang: locale});
     const [cancelBooking, {isLoading: cancellingBooking}] = useCancelBookingMutation();
     const [cancelEnrollment, {isLoading: cancellingEnrollment}] = useCancelFixedEventEnrollmentMutation();
@@ -73,7 +74,7 @@ export default function AccountBookingsPanel({locale}: {locale: Locale}) {
             </div>
             <div className="mt-4 grid gap-1 rounded-xl bg-stone-100 p-1 sm:grid-cols-4">
                 {(["upcoming", "history", "cancelled", "all"] as const).map((item) => (
-                    <button aria-pressed={filter === item} className={filter === item ? activeFilterClass : filterClass} key={item} onClick={() => setFilter(item)} type="button">
+                    <button aria-pressed={filter === item} className={filter === item ? activeFilterClass : filterClass} key={item} onClick={() => {setFilter(item);setBookingsPage(0)}} type="button">
                         <span>{copy.filters[item]}</span>
                         <span className={filter === item ? "rounded-full bg-white/15 px-1.5 py-0.5 text-[10px]" : "rounded-full bg-white px-1.5 py-0.5 text-[10px] text-stone-500"}>{counts[item]}</span>
                     </button>
@@ -84,6 +85,7 @@ export default function AccountBookingsPanel({locale}: {locale: Locale}) {
                 <BookingList bookings={filteredBookings} cancelling={cancellingBooking} copy={copy} isError={bookingsError} locale={locale} onCancel={(booking) => setPendingCancel({id: booking.id, title: bookingServiceTitle(booking, locale), type: "booking"})} />
                 <EventList cancelling={cancellingEnrollment} copy={copy} events={filteredEvents} isError={eventsError} locale={locale} onCancel={(event) => setPendingCancel({id: event.id, title: event.title, type: "event"})} />
             </div>
+            {bookingsData && bookingsData.totalPages > 1 ? <div className="mt-4 flex justify-end gap-2"><button className={pagerButtonClass} disabled={bookingsPage === 0} onClick={() => setBookingsPage((page) => page - 1)} type="button">{copy.previous}</button><button className={pagerButtonClass} disabled={bookingsPage + 1 >= bookingsData.totalPages} onClick={() => setBookingsPage((page) => page + 1)} type="button">{copy.next}</button></div> : null}
 
             {pendingCancel ? (
                 <CancelConfirmationModal
@@ -107,6 +109,7 @@ export default function AccountBookingsPanel({locale}: {locale: Locale}) {
 
 const filterClass = "flex min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-stone-600 transition-colors hover:bg-white hover:text-stone-900";
 const activeFilterClass = "flex min-w-0 items-center justify-center gap-2 rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white shadow-sm";
+const pagerButtonClass = "rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-40";
 
 function BookingList({bookings, cancelling, copy, isError, locale, onCancel}: {bookings: Booking[]; cancelling: boolean; copy: Copy; isError: boolean; locale: Locale; onCancel: (booking: Booking) => void}) {
     const [expanded, setExpanded] = useState(false);
@@ -234,6 +237,7 @@ function BookingMetaChips({booking, copy}: {booking: Booking; copy: Copy}) {
     const chips = [
         booking.status === "AWAITING_PAYMENT_CONFIRMATION" ? copy.paymentPendingHint : null,
         booking.paidWithMembership ? copy.paidWithMembership : null,
+        booking.paidWithLoyaltyVoucher ? copy.paidWithLoyaltyVoucher : null,
         booking.reminderOptIn ? copy.reminderEnabled : null
     ].filter((chip): chip is string => Boolean(chip));
 
@@ -244,7 +248,8 @@ function BookingMetaChips({booking, copy}: {booking: Booking; copy: Copy}) {
 
 function EventMetaChips({copy, event}: {copy: Copy; event: PublicFixedEvent}) {
     const chips = [
-        event.paidWithMembership ? copy.paidWithMembership : null
+        event.paidWithMembership ? copy.paidWithMembership : null,
+        event.paidWithLoyaltyVoucher ? copy.paidWithLoyaltyVoucher : null
     ].filter((chip): chip is string => Boolean(chip));
 
     if (chips.length === 0) return null;
@@ -357,6 +362,8 @@ function labels(t: T) {
         findEvent: t("findEvent"),
         showMore: (count: number) => t("showMore", {count}),
         showLess: t("showLess"),
+        previous: t("previous"),
+        next: t("next"),
         filters: {
             upcoming: t("filters.upcoming"),
             history: t("filters.history"),
@@ -374,6 +381,7 @@ function labels(t: T) {
         pay: t("pay"),
         paymentPendingHint: t("paymentPendingHint"),
         paidWithMembership: t("paidWithMembership"),
+        paidWithLoyaltyVoucher: t("paidWithLoyaltyVoucher"),
         reminderEnabled: t("reminderEnabled"),
         cancelled: t("cancelled"),
         cancelError: t("cancelError"),

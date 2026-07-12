@@ -57,6 +57,10 @@ export default function FinanceBookingsManagement() {
     const [membershipToConfirm, setMembershipToConfirm] = useState<MembershipPurchase | null>(null);
     const [membershipToCancel, setMembershipToCancel] = useState<MembershipPurchase | null>(null);
     const [eventEnrollmentToConfirm, setEventEnrollmentToConfirm] = useState<FinanceEventEnrollment | null>(null);
+    const [bookingPage, setBookingPage] = useState(0);
+    const [membershipPage, setMembershipPage] = useState(0);
+    const [eventPage, setEventPage] = useState(0);
+    const [expensePage, setExpensePage] = useState(0);
     const {data: officesData} = useListPublicOfficesQuery({size: 100});
     const activeOffices = useMemo(() => officesData?.content ?? [], [officesData?.content]);
     const bookingStatusFilter = tab === "pending" ? "AWAITING_PAYMENT_CONFIRMATION" : status;
@@ -64,7 +68,9 @@ export default function FinanceBookingsManagement() {
         status: bookingStatusFilter,
         officeId: officeId ? Number(officeId) : undefined,
         from: toStartOfDayIso(from),
-        to: toNextDayIso(to)
+        to: toNextDayIso(to),
+        page: bookingPage,
+        size: 25
     });
     const {data: summary, isError: summaryError} = useGetFinanceSummaryQuery({
         officeId: officeId ? Number(officeId) : undefined,
@@ -76,15 +82,21 @@ export default function FinanceBookingsManagement() {
     const {data: expensesData, isFetching: expensesFetching, isError: expensesError} = useListFinanceExpensesQuery({
         officeId: officeId ? Number(officeId) : undefined,
         from: from || undefined,
-        to: to || undefined
+        to: to || undefined,
+        page: expensePage,
+        size: 20
     });
     const {data: membershipPurchasesData, isFetching: membershipPurchasesFetching, isError: membershipPurchasesError} = useListFinanceMembershipPurchasesQuery({
-        status: ""
+        status: "",
+        page: membershipPage,
+        size: 25
     });
     const {data: eventEnrollmentsData, isFetching: eventEnrollmentsFetching, isError: eventEnrollmentsError} = useListFinanceEventEnrollmentsQuery({
         officeId: officeId ? Number(officeId) : undefined,
         from: toStartOfDayIso(from),
-        to: toNextDayIso(to)
+        to: toNextDayIso(to),
+        page: eventPage,
+        size: 25
     });
     const [confirmPayment, {isLoading: isConfirming}] = useConfirmPaymentMutation();
     const [confirmEventEnrollmentPayment, {isLoading: isConfirmingEventEnrollment}] = useConfirmEventEnrollmentPaymentMutation();
@@ -99,7 +111,7 @@ export default function FinanceBookingsManagement() {
     const pendingCount = summary?.pendingCount ?? 0;
     const confirmedCount = summary?.confirmedCount ?? 0;
     const pendingMembershipCount = membershipPurchases.filter((purchase) => purchase.status === "AWAITING_PAYMENT_CONFIRMATION").length;
-    const pendingEventEnrollmentCount = eventEnrollments.filter((enrollment) => enrollment.status === "ACTIVE" && !enrollment.paymentConfirmed && !enrollment.paidWithMembership).length;
+    const pendingEventEnrollmentCount = eventEnrollments.filter((enrollment) => enrollment.status === "ACTIVE" && !enrollment.paymentConfirmed && !enrollment.paidWithMembership && !enrollment.paidWithLoyaltyVoucher).length;
     const selectedOffice = officeId ? activeOffices.find((office) => String(office.id) === officeId) : undefined;
     const scopeChips = [
         tab === "pending" ? t("statuses.AWAITING_PAYMENT_CONFIRMATION") : status ? t(`statuses.${status}`) : t("statuses.all"),
@@ -114,6 +126,13 @@ export default function FinanceBookingsManagement() {
     const estimatedTax = summary?.estimatedTax ?? 0;
     const quarterlyTaxPercent = summary?.quarterlyTaxPercent ?? 0;
     const result = summary?.result ?? 0;
+
+    useEffect(() => {
+        setBookingPage(0);
+        setMembershipPage(0);
+        setEventPage(0);
+        setExpensePage(0);
+    }, [status, officeId, from, to, tab]);
 
     async function confirm(bookingId: number) {
         try {
@@ -240,11 +259,11 @@ export default function FinanceBookingsManagement() {
                 {isError ? <p className="m-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("loadError")}</p> : null}
                 {summaryError ? <p className="m-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("loadError")}</p> : null}
                 {tab === "pending" || tab === "transactions" ? (
-                    <BookingSection bookings={bookings} confirming={isConfirming} isFetching={isFetching} locale={locale} markingPayout={isMarkingPayout} onConfirm={requestConfirm} onMarkPayout={markPayout} onSelect={setSelectedBooking} tab={tab} t={t} />
+                    <><BookingSection bookings={bookings} confirming={isConfirming} isFetching={isFetching} locale={locale} markingPayout={isMarkingPayout} onConfirm={requestConfirm} onMarkPayout={markPayout} onSelect={setSelectedBooking} tab={tab} t={t} /><ServerPager page={bookingPage} totalPages={data?.totalPages ?? 0} onPage={setBookingPage} t={t} /></>
                 ) : null}
-                {tab === "memberships" ? <MembershipFinanceSection cancelling={isCancellingMembership} confirming={isConfirmingMembership} isError={membershipPurchasesError} isFetching={membershipPurchasesFetching} locale={locale} onCancel={setMembershipToCancel} onConfirm={setMembershipToConfirm} purchases={membershipPurchases} t={t} /> : null}
-                {tab === "events" ? <EventEnrollmentsFinanceSection confirming={isConfirmingEventEnrollment} enrollments={eventEnrollments} isError={eventEnrollmentsError} isFetching={eventEnrollmentsFetching} locale={locale} onConfirm={setEventEnrollmentToConfirm} t={t} /> : null}
-                {tab === "expenses" ? <ExpensesSection expenses={expenses} isError={expensesError} isFetching={expensesFetching} locale={locale} offices={activeOffices} t={t} /> : null}
+                {tab === "memberships" ? <><MembershipFinanceSection cancelling={isCancellingMembership} confirming={isConfirmingMembership} isError={membershipPurchasesError} isFetching={membershipPurchasesFetching} locale={locale} onCancel={setMembershipToCancel} onConfirm={setMembershipToConfirm} purchases={membershipPurchases} t={t} /><ServerPager page={membershipPage} totalPages={membershipPurchasesData?.totalPages ?? 0} onPage={setMembershipPage} t={t} /></> : null}
+                {tab === "events" ? <><EventEnrollmentsFinanceSection confirming={isConfirmingEventEnrollment} enrollments={eventEnrollments} isError={eventEnrollmentsError} isFetching={eventEnrollmentsFetching} locale={locale} onConfirm={setEventEnrollmentToConfirm} t={t} /><ServerPager page={eventPage} totalPages={eventEnrollmentsData?.totalPages ?? 0} onPage={setEventPage} t={t} /></> : null}
+                {tab === "expenses" ? <><ExpensesSection expenses={expenses} isError={expensesError} isFetching={expensesFetching} locale={locale} offices={activeOffices} t={t} /><ServerPager page={expensePage} totalPages={expensesData?.totalPages ?? 0} onPage={setExpensePage} t={t} /></> : null}
                 {tab === "reports" ? <ReportsSection businessIncome={businessIncome} estimatedTax={estimatedTax} expenses={expenseTotal} income={income} locale={locale} officeId={officeId} quarterlyTaxPercent={quarterlyTaxPercent} result={result} specialistEarnings={specialistEarnings} status={status} taxableIncome={taxableIncome} t={t} to={to} from={from} /> : null}
             </section>
 
@@ -261,6 +280,12 @@ type T = ReturnType<typeof useTranslations<"admin.finance.page">>;
 const inputClass = "h-10 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 outline-none transition-colors focus:border-stone-800";
 const tabClass = "whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium text-stone-600 transition-colors hover:bg-white hover:text-stone-900";
 const activeTabClass = "whitespace-nowrap rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white shadow-sm";
+
+function ServerPager({page, totalPages, onPage, t}: {page: number; totalPages: number; onPage: (page: number) => void; t: T}) {
+    if (totalPages <= 1) return null;
+    return <div className="flex justify-end gap-2 border-t border-stone-100 px-4 py-3"><button className={pagerClass} disabled={page === 0} onClick={() => onPage(page - 1)} type="button">{t("bounded.previous")}</button><button className={pagerClass} disabled={page + 1 >= totalPages} onClick={() => onPage(page + 1)} type="button">{t("bounded.next")}</button></div>;
+}
+const pagerClass = "rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-40";
 
 function Filter({children, label}: {children: React.ReactNode; label: string}) {
     return <label className="block min-w-0"><span className="mb-1.5 block break-words text-[11px] font-semibold uppercase tracking-wide text-stone-500">{label}</span>{children}</label>;
@@ -323,7 +348,7 @@ function BookingCard({booking, confirming, locale, markingPayout, onConfirm, onM
 }
 
 function MoneyBreakdown({booking, locale, t}: {booking: FinanceBooking; locale: string; t: T}) {
-    return <div className="min-w-0"><strong className="break-words text-sm text-stone-950">{formatAmount(booking.bookedPrice, locale)}</strong>{booking.paidWithMembership ? <p className="mt-1 w-fit rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">{t("table.paidWithMembership")}</p> : null}<p className="mt-1 break-words text-xs text-stone-500">{t("table.businessShare")}: {formatAmount(booking.businessShare, locale)}</p><p className="mt-0.5 break-words text-xs text-stone-500">{t("table.specialistShare")}: {formatAmount(booking.specialistShare, locale)} · {formatPercent(booking.specialistSharePercent, locale)}</p></div>;
+    return <div className="min-w-0"><strong className="break-words text-sm text-stone-950">{formatAmount(booking.bookedPrice, locale)}</strong>{booking.paidWithMembership ? <p className="mt-1 w-fit rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">{t("table.paidWithMembership")}</p> : null}{booking.paidWithLoyaltyVoucher ? <p className="mt-1 w-fit rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">{t("table.paidWithLoyaltyVoucher")}</p> : null}<p className="mt-1 break-words text-xs text-stone-500">{t("table.businessShare")}: {formatAmount(booking.businessShare, locale)}</p><p className="mt-0.5 break-words text-xs text-stone-500">{t("table.specialistShare")}: {formatAmount(booking.specialistShare, locale)} · {formatPercent(booking.specialistSharePercent, locale)}</p></div>;
 }
 
 function PayoutBadge({booking, t}: {booking: FinanceBooking; t: T}) {
@@ -363,7 +388,7 @@ function EventEnrollmentsFinanceSection({confirming, enrollments, isError, isFet
 
 function EventEnrollmentFinanceCard({confirming, enrollment, locale, onConfirm, t}: {confirming: boolean; enrollment: FinanceEventEnrollment; locale: string; onConfirm: (enrollment: FinanceEventEnrollment) => void; t: T}) {
     const serviceTitle = locale === "ua" ? enrollment.serviceTitleUa : enrollment.serviceTitleEn || enrollment.serviceTitleUa;
-    return <article className="rounded-xl border border-stone-200 bg-white p-4"><div className="flex min-w-0 items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{t("events.itemEyebrow")}</p><h3 className="mt-1 break-words text-base font-semibold text-stone-950">{serviceTitle}</h3><p className="mt-1 break-words text-xs text-stone-500">{formatDateTime(enrollment.startsAt, locale)} · {enrollment.officeName ?? t("withoutOffice")}</p></div><div className="flex shrink-0 flex-col items-end gap-1"><span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${enrollment.status === "ACTIVE" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-stone-200 bg-stone-100 text-stone-600"}`}>{t(`events.statuses.${enrollment.status}`)}</span><span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${enrollment.paymentConfirmed ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>{enrollment.paymentConfirmed ? t("events.paymentConfirmed") : t("events.paymentPending")}</span></div></div><dl className="mt-4 grid gap-2 text-sm text-stone-600 sm:grid-cols-2"><Detail label={t("table.client")} value={enrollment.clientName} /><Detail label={t("table.specialist")} value={enrollment.specialistName} /><Detail label={t("table.amount")} value={formatAmount(enrollment.bookedPrice, locale)} /></dl>{enrollment.paymentConfirmedAt ? <p className="mt-3 break-words text-xs text-stone-500">{t("events.confirmedAt", {date: formatDateTime(enrollment.paymentConfirmedAt, locale)})}</p> : null}{enrollment.paidWithMembership ? <p className="mt-3 w-fit rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">{t("table.paidWithMembership")}</p> : null}{enrollment.externalPaymentUrl ? <a className="mt-3 inline-block break-all text-xs font-medium text-emerald-800 underline-offset-2 hover:underline" href={enrollment.externalPaymentUrl} rel="noreferrer" target="_blank">{t("details.paymentLink")}</a> : null}{!enrollment.paymentConfirmed && !enrollment.paidWithMembership && enrollment.status === "ACTIVE" ? <button className="mt-4 rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={confirming} onClick={() => onConfirm(enrollment)} type="button">{confirming ? t("confirming") : t("events.confirm")}</button> : null}</article>;
+    return <article className="rounded-xl border border-stone-200 bg-white p-4"><div className="flex min-w-0 items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{t("events.itemEyebrow")}</p><h3 className="mt-1 break-words text-base font-semibold text-stone-950">{serviceTitle}</h3><p className="mt-1 break-words text-xs text-stone-500">{formatDateTime(enrollment.startsAt, locale)} · {enrollment.officeName ?? t("withoutOffice")}</p></div><div className="flex shrink-0 flex-col items-end gap-1"><span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${enrollment.status === "ACTIVE" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-stone-200 bg-stone-100 text-stone-600"}`}>{t(`events.statuses.${enrollment.status}`)}</span><span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${enrollment.paymentConfirmed ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>{enrollment.paymentConfirmed ? t("events.paymentConfirmed") : t("events.paymentPending")}</span></div></div><dl className="mt-4 grid gap-2 text-sm text-stone-600 sm:grid-cols-2"><Detail label={t("table.client")} value={enrollment.clientName} /><Detail label={t("table.specialist")} value={enrollment.specialistName} /><Detail label={t("table.amount")} value={formatAmount(enrollment.bookedPrice, locale)} /></dl>{enrollment.paymentConfirmedAt ? <p className="mt-3 break-words text-xs text-stone-500">{t("events.confirmedAt", {date: formatDateTime(enrollment.paymentConfirmedAt, locale)})}</p> : null}{enrollment.paidWithMembership ? <p className="mt-3 w-fit rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">{t("table.paidWithMembership")}</p> : null}{enrollment.paidWithLoyaltyVoucher ? <p className="mt-3 w-fit rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">{t("table.paidWithLoyaltyVoucher")}</p> : null}{enrollment.externalPaymentUrl ? <a className="mt-3 inline-block break-all text-xs font-medium text-emerald-800 underline-offset-2 hover:underline" href={enrollment.externalPaymentUrl} rel="noreferrer" target="_blank">{t("details.paymentLink")}</a> : null}{!enrollment.paymentConfirmed && !enrollment.paidWithMembership && !enrollment.paidWithLoyaltyVoucher && enrollment.status === "ACTIVE" ? <button className="mt-4 rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={confirming} onClick={() => onConfirm(enrollment)} type="button">{confirming ? t("confirming") : t("events.confirm")}</button> : null}</article>;
 }
 
 function ExpensesSection({expenses, isError, isFetching, locale, offices, t}: {expenses: FinanceExpense[]; isError: boolean; isFetching: boolean; locale: string; offices: Office[]; t: T}) {

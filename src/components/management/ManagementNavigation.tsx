@@ -37,6 +37,7 @@ export default function ManagementNavigation({locale, showNews, showUsers, showO
     const financeHref = withLocale("/admin/finance", locale);
     const siteSettingsHref = withLocale("/admin/site-settings", locale);
     const promosHref = withLocale("/admin/promo-codes", locale);
+    const loyaltyHref = withLocale("/admin/loyalty", locale);
     const items: NavigationItem[] = [
         {href: newsHref, label: t("news"), visible: showNews},
         {href: usersHref, label: t("users"), visible: showUsers},
@@ -44,6 +45,7 @@ export default function ManagementNavigation({locale, showNews, showUsers, showO
         {href: siteSettingsHref, label: t("siteSettings"), visible: showUsers},
         {href: servicesHref, label: t("services"), visible: showServices},
         {href: promosHref, label: t("promos"), visible: showServices},
+        {href: loyaltyHref, label: t("loyalty"), visible: showServices},
         {href: scheduleHref, label: t("specialist"), visible: showSpecialist},
         {href: financeHref, label: t("finance"), visible: showFinance}
     ];

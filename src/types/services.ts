@@ -13,6 +13,7 @@ export interface AdminService {
     bookingMode: ServiceBookingMode;
     active: boolean;
     externalPaymentUrl: string | null;
+    loyaltyPointsAward: number;
     createdAt: string;
     updatedAt: string;
 }
@@ -24,6 +25,7 @@ export interface PublicService {
     durationMinutes: number;
     basePrice: number;
     bookingMode: ServiceBookingMode;
+    loyaltyPointsAward?: number;
 }
 
 export type AdminServicePageResponse = PageResponse<AdminService>;
@@ -39,4 +41,5 @@ export type ServiceInput = {
     bookingMode: ServiceBookingMode;
     active: boolean;
     externalPaymentUrl?: string | null;
+    loyaltyPointsAward: number;
 };

@@ -86,6 +86,8 @@ export interface PublicFixedEvent {
     note: string | null;
     membershipPurchaseId: number | null;
     paidWithMembership: boolean;
+    loyaltyVoucherId?: number | null;
+    paidWithLoyaltyVoucher?: boolean;
 }
 
 export interface SpecialistFixedEvent {

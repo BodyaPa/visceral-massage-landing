@@ -24,6 +24,8 @@ export interface Booking {
     externalPaymentUrl: string | null;
     membershipPurchaseId: number | null;
     paidWithMembership: boolean;
+    loyaltyVoucherId?: number | null;
+    paidWithLoyaltyVoucher?: boolean;
 }
 
 export interface FinanceBooking {
@@ -40,6 +42,8 @@ export interface FinanceBooking {
     externalPaymentUrl: string | null;
     membershipPurchaseId: number | null;
     paidWithMembership: boolean;
+    loyaltyVoucherId?: number | null;
+    paidWithLoyaltyVoucher?: boolean;
     bookedPrice: number;
     specialistSharePercent: number;
     specialistShare: number;
@@ -71,6 +75,8 @@ export interface FinanceEventEnrollment {
     externalPaymentUrl: string | null;
     membershipPurchaseId: number | null;
     paidWithMembership: boolean;
+    loyaltyVoucherId?: number | null;
+    paidWithLoyaltyVoucher?: boolean;
     bookedPrice: number;
     paymentConfirmed: boolean;
     paymentConfirmedAt: string | null;
@@ -182,6 +188,7 @@ export type BookingInput = {
     startsAt?: string;
     reminderOptIn: boolean;
     membershipPurchaseId?: number | null;
+    loyaltyVoucherId?: number | null;
     promoCode?: string | null;
 };
 

@@ -43,6 +43,8 @@ import type {Office} from "@/types/offices";
 import type {PublicFixedEvent, PublicScheduleAvailabilityBlock} from "@/types/schedule";
 import type {PublicService} from "@/types/services";
 import type {MembershipOffer, MembershipPurchase} from "@/types/memberships";
+import {useGetLoyaltyVouchersQuery} from "@/features/loyalty/loyalty.api";
+import type {LoyaltyVoucher} from "@/types/loyalty";
 
 const savedFiltersKey = "ataraksia.publicScheduleFilters";
 type PendingBooking =
@@ -52,6 +54,7 @@ type ChoiceSectionKey = "office" | "specialist";
 type PaymentPrompt = {
     externalPaymentUrl: string | null;
     paidWithMembership?: boolean;
+    paidWithLoyaltyVoucher?: boolean;
     serviceTitleUa?: string;
     serviceTitleEn?: string | null;
     title?: string;
@@ -68,6 +71,7 @@ export default function PublicSchedulePage() {
     const [reminderOptIn, setReminderOptIn] = useState(false);
     const [pendingBooking, setPendingBooking] = useState<PendingBooking | null>(null);
     const [selectedMembershipPurchaseId, setSelectedMembershipPurchaseId] = useState<number | "">("");
+    const [selectedLoyaltyVoucherId, setSelectedLoyaltyVoucherId] = useState<number | "">("");
     const [promoCode, setPromoCode] = useState("");
     const [selectedEventDetails, setSelectedEventDetails] = useState<PublicFixedEvent | null>(null);
     const [slotForServiceChoice, setSlotForServiceChoice] = useState<PublicScheduleAvailabilityBlock | null>(null);
@@ -79,6 +83,7 @@ export default function PublicSchedulePage() {
     const {data: servicesData} = useListServicesQuery({lang: locale, size: 100});
     const {data: membershipOffers = []} = useListMembershipOffersQuery();
     const {data: myMembershipsData, refetch: refetchMemberships} = useListMyMembershipPurchasesQuery({size: 50});
+    const {data: loyaltyVouchersData, refetch: refetchLoyaltyVouchers} = useGetLoyaltyVouchersQuery({page: 0, size: 100});
     const {data: guidedSlotsData = [], isError: slotsError, refetch: refetchSlots} = useListPublicAvailabilityQuery({
         from: guidedRange.from,
         to: guidedRange.to,
@@ -185,9 +190,10 @@ export default function PublicSchedulePage() {
                     startsAt: pendingBooking.slot.startsAt,
                     reminderOptIn,
                     membershipPurchaseId: selectedMembershipPurchaseId === "" ? null : selectedMembershipPurchaseId,
+                    loyaltyVoucherId: selectedLoyaltyVoucherId === "" ? null : selectedLoyaltyVoucherId,
                     promoCode: promoCode || null
                 }).unwrap();
-                toast.success(booking.paidWithMembership ? copy.bookingCreatedWithMembership : booking.externalPaymentUrl ? copy.bookingCreatedWithPayment : copy.bookingCreated);
+                toast.success(booking.paidWithMembership ? copy.bookingCreatedWithMembership : booking.paidWithLoyaltyVoucher ? copy.bookingCreatedWithVoucher : booking.externalPaymentUrl ? copy.bookingCreatedWithPayment : copy.bookingCreated);
                 setPaymentPrompt(booking);
                 void refetchSlots();
             } else {
@@ -196,16 +202,19 @@ export default function PublicSchedulePage() {
                     lang: locale,
                     reminderOptIn,
                     membershipPurchaseId: selectedMembershipPurchaseId === "" ? null : selectedMembershipPurchaseId,
+                    loyaltyVoucherId: selectedLoyaltyVoucherId === "" ? null : selectedLoyaltyVoucherId,
                     promoCode: promoCode || null
                 }).unwrap();
-                toast.success(event.paidWithMembership ? copy.eventEnrolledWithMembership : copy.eventEnrolled);
-                setPaymentPrompt({externalPaymentUrl: null, paidWithMembership: event.paidWithMembership, title: pendingBooking.event.title, startsAt: pendingBooking.event.startsAt});
+                toast.success(event.paidWithMembership ? copy.eventEnrolledWithMembership : event.paidWithLoyaltyVoucher ? copy.eventEnrolledWithVoucher : copy.eventEnrolled);
+                setPaymentPrompt({externalPaymentUrl: null, paidWithMembership: event.paidWithMembership, paidWithLoyaltyVoucher: event.paidWithLoyaltyVoucher, title: pendingBooking.event.title, startsAt: pendingBooking.event.startsAt});
                 void refetchEvents();
             }
             void refetchMemberships();
+            void refetchLoyaltyVouchers();
             setPendingBooking(null);
             setSelectedEventDetails(null);
             setSelectedMembershipPurchaseId("");
+            setSelectedLoyaltyVoucherId("");
             setPromoCode("");
             setReminderOptIn(false);
         } catch {
@@ -271,13 +280,13 @@ export default function PublicSchedulePage() {
             {slotsError ? <p className="mx-auto w-full max-w-[1040px] rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 lg:w-[72vw] xl:w-[58vw]">{copy.loadError}</p> : null}
 
             {paymentPrompt ? (
-                <section className={paymentPrompt.paidWithMembership
+                <section className={paymentPrompt.paidWithMembership || paymentPrompt.paidWithLoyaltyVoucher
                     ? "mx-auto w-full max-w-[1040px] rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm lg:w-[72vw] xl:w-[58vw]"
                     : "mx-auto w-full max-w-[1040px] rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm lg:w-[72vw] xl:w-[58vw]"}>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
-                            <h2 className={paymentPrompt.paidWithMembership ? "text-base font-semibold text-emerald-950" : "text-base font-semibold text-amber-950"}>{paymentPrompt.paidWithMembership ? copy.membershipPaymentTitle : copy.paymentTitle}</h2>
-                            <p className={paymentPrompt.paidWithMembership ? "mt-1 text-sm leading-6 text-emerald-900" : "mt-1 text-sm leading-6 text-amber-900"}>{paymentPrompt.paidWithMembership ? copy.membershipPaymentBody(paymentPromptTitle(paymentPrompt, locale), formatDateTime(paymentPrompt.startsAt, locale)) : copy.paymentBody(paymentPromptTitle(paymentPrompt, locale), formatDateTime(paymentPrompt.startsAt, locale))}</p>
+                            <h2 className={paymentPrompt.paidWithMembership || paymentPrompt.paidWithLoyaltyVoucher ? "text-base font-semibold text-emerald-950" : "text-base font-semibold text-amber-950"}>{paymentPrompt.paidWithMembership ? copy.membershipPaymentTitle : paymentPrompt.paidWithLoyaltyVoucher ? copy.voucherPaymentTitle : copy.paymentTitle}</h2>
+                            <p className={paymentPrompt.paidWithMembership || paymentPrompt.paidWithLoyaltyVoucher ? "mt-1 text-sm leading-6 text-emerald-900" : "mt-1 text-sm leading-6 text-amber-900"}>{paymentPrompt.paidWithMembership ? copy.membershipPaymentBody(paymentPromptTitle(paymentPrompt, locale), formatDateTime(paymentPrompt.startsAt, locale)) : paymentPrompt.paidWithLoyaltyVoucher ? copy.voucherPaymentBody(paymentPromptTitle(paymentPrompt, locale), formatDateTime(paymentPrompt.startsAt, locale)) : copy.paymentBody(paymentPromptTitle(paymentPrompt, locale), formatDateTime(paymentPrompt.startsAt, locale))}</p>
                         </div>
                         <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
                             {paymentPrompt.externalPaymentUrl ? <a className="inline-flex min-h-11 items-center justify-center rounded-lg bg-stone-950 px-4 py-2 text-center text-sm font-semibold text-white outline-none transition-[background-color,box-shadow,transform] hover:bg-stone-800 hover:shadow-sm active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2 motion-reduce:transition-none" href={paymentPrompt.externalPaymentUrl} rel="noreferrer" target="_blank">{copy.paymentAction}</a> : null}
@@ -294,9 +303,11 @@ export default function PublicSchedulePage() {
                     isSaving={isSaving}
                     locale={locale}
                     memberships={eligibleMembershipsForPending(pendingBooking, myMemberships, membershipOffers, locale)}
+                    vouchers={eligibleVouchersForPending(pendingBooking, loyaltyVouchersData?.content ?? [])}
                     onClose={() => {
                         setPendingBooking(null);
                         setSelectedMembershipPurchaseId("");
+                        setSelectedLoyaltyVoucherId("");
                         setPromoCode("");
                     }}
                     onConfirm={confirmBooking}
@@ -305,6 +316,8 @@ export default function PublicSchedulePage() {
                     reminderOptIn={reminderOptIn}
                     selectedMembershipPurchaseId={selectedMembershipPurchaseId}
                     setSelectedMembershipPurchaseId={setSelectedMembershipPurchaseId}
+                    selectedLoyaltyVoucherId={selectedLoyaltyVoucherId}
+                    setSelectedLoyaltyVoucherId={setSelectedLoyaltyVoucherId}
                     promoCode={promoCode}
                     setPromoCode={setPromoCode}
                     setReminderOptIn={setReminderOptIn}
@@ -899,6 +912,7 @@ function ConfirmationModal({
     isSaving,
     locale,
     memberships,
+    vouchers,
     onClose,
     onConfirm,
     pending,
@@ -906,6 +920,8 @@ function ConfirmationModal({
     returnFocusTo,
     selectedMembershipPurchaseId,
     setSelectedMembershipPurchaseId,
+    selectedLoyaltyVoucherId,
+    setSelectedLoyaltyVoucherId,
     promoCode,
     setPromoCode,
     setReminderOptIn
@@ -914,6 +930,7 @@ function ConfirmationModal({
     isSaving: boolean;
     locale: string;
     memberships: MembershipUsageOption[];
+    vouchers: LoyaltyVoucher[];
     onClose: () => void;
     onConfirm: () => void;
     pending: PendingBooking;
@@ -921,6 +938,8 @@ function ConfirmationModal({
     returnFocusTo: HTMLElement | null;
     selectedMembershipPurchaseId: number | "";
     setSelectedMembershipPurchaseId: (value: number | "") => void;
+    selectedLoyaltyVoucherId: number | "";
+    setSelectedLoyaltyVoucherId: (value: number | "") => void;
     promoCode: string;
     setPromoCode: (value: string) => void;
     setReminderOptIn: (value: boolean) => void;
@@ -941,7 +960,8 @@ function ConfirmationModal({
     const price = pending.type === "individual" ? pending.service.basePrice : pending.event.price;
     const capacity = pending.type === "event" ? copy.remaining(pending.event.remainingPlaces) : null;
     const selectedMembership = memberships.find((membership) => membership.id === selectedMembershipPurchaseId);
-    async function applyPromo() { try { const result=await validatePromo({code:promoCode,targetType:pending.type==="individual"?"SERVICE":"EVENT",targetId:pending.type==="individual"?pending.service.id:pending.event.id}).unwrap();setPromoResult(result);setPromoError(false);setSelectedMembershipPurchaseId(""); } catch {setPromoResult(null);setPromoError(true);} }
+    const selectedVoucher = vouchers.find((voucher) => voucher.id === selectedLoyaltyVoucherId);
+    async function applyPromo() { try { const result=await validatePromo({code:promoCode,targetType:pending.type==="individual"?"SERVICE":"EVENT",targetId:pending.type==="individual"?pending.service.id:pending.event.id}).unwrap();setPromoResult(result);setPromoError(false);setSelectedMembershipPurchaseId("");setSelectedLoyaltyVoucherId(""); } catch {setPromoResult(null);setPromoError(true);} }
 
     return (
         <div aria-labelledby="booking-confirmation-title" aria-modal="true" className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6" ref={dialogRef} role="dialog" tabIndex={-1}>
@@ -957,7 +977,7 @@ function ConfirmationModal({
                 </dl>
                 <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
                     <p className="text-sm font-semibold text-amber-950">{copy.reviewStepTitle}</p>
-                    <p className="mt-1 text-xs leading-5 text-amber-900">{selectedMembership ? copy.membershipManualNote : copy.paymentManualNote}</p>
+                    <p className="mt-1 text-xs leading-5 text-amber-900">{selectedMembership || selectedVoucher ? copy.membershipManualNote : copy.paymentManualNote}</p>
                 </div>
                 <div className="mt-5 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
                     <label className="block text-sm font-semibold text-stone-900" htmlFor="membership-use">{copy.membershipUseTitle}</label>
@@ -966,7 +986,7 @@ function ConfirmationModal({
                         <select
                             className="mt-3 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none transition-colors focus:border-stone-900"
                             id="membership-use"
-                            onChange={(event) => {setSelectedMembershipPurchaseId(event.target.value ? Number(event.target.value) : "");setPromoCode("");setPromoResult(null);setPromoError(false)}}
+                            onChange={(event) => {setSelectedMembershipPurchaseId(event.target.value ? Number(event.target.value) : "");setSelectedLoyaltyVoucherId("");setPromoCode("");setPromoResult(null);setPromoError(false)}}
                             value={selectedMembershipPurchaseId}
                         >
                             <option value="">{copy.membershipDoNotUse}</option>
@@ -979,12 +999,18 @@ function ConfirmationModal({
                     ) : null}
                     {selectedMembership ? <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-900">{copy.membershipWillUse(selectedMembership.title)}</p> : null}
                 </div>
+                <div className="mt-4 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                    <label className="block text-sm font-semibold text-stone-900" htmlFor="loyalty-voucher-use">{copy.loyaltyVoucherTitle}</label>
+                    <p className="mt-1 text-xs leading-5 text-stone-500">{vouchers.length > 0 ? copy.loyaltyVoucherHint : copy.loyaltyVoucherEmpty}</p>
+                    {vouchers.length > 0 ? <select className="mt-3 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-900" id="loyalty-voucher-use" onChange={(event) => {setSelectedLoyaltyVoucherId(event.target.value ? Number(event.target.value) : "");setSelectedMembershipPurchaseId("");setPromoCode("");setPromoResult(null);setPromoError(false)}} value={selectedLoyaltyVoucherId}><option value="">{copy.loyaltyVoucherDoNotUse}</option>{vouchers.map((voucher) => <option key={voucher.id} value={voucher.id}>{locale === "en" && voucher.titleEn ? voucher.titleEn : voucher.titleUa}</option>)}</select> : null}
+                    {selectedVoucher ? <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-900">{copy.loyaltyVoucherWillUse}</p> : null}
+                </div>
                 <div className="mt-4 rounded-xl border border-stone-200 bg-white px-4 py-3">
                     <label className="block text-sm font-semibold text-stone-900" htmlFor="promo-code">{copy.promoTitle}</label>
-                    <div className="mt-2 flex gap-2"><input className="min-h-11 min-w-0 flex-1 rounded-lg border border-stone-300 px-3 text-sm uppercase outline-none focus:border-stone-950" disabled={selectedMembershipPurchaseId!==""} id="promo-code" onChange={e=>{setPromoCode(e.target.value.toUpperCase());setPromoResult(null);setPromoError(false)}} placeholder={copy.promoPlaceholder} value={promoCode}/><button className="min-h-11 rounded-lg bg-stone-950 px-4 text-sm font-semibold text-white hover:bg-stone-800 disabled:bg-stone-300" disabled={!promoCode.trim()||validatingPromo||selectedMembershipPurchaseId!==""} onClick={()=>void applyPromo()} type="button">{validatingPromo?copy.promoChecking:copy.promoApply}</button></div>
+                    <div className="mt-2 flex gap-2"><input className="min-h-11 min-w-0 flex-1 rounded-lg border border-stone-300 px-3 text-sm uppercase outline-none focus:border-stone-950" disabled={selectedMembershipPurchaseId!==""||selectedLoyaltyVoucherId!==""} id="promo-code" onChange={e=>{setPromoCode(e.target.value.toUpperCase());setPromoResult(null);setPromoError(false)}} placeholder={copy.promoPlaceholder} value={promoCode}/><button className="min-h-11 rounded-lg bg-stone-950 px-4 text-sm font-semibold text-white hover:bg-stone-800 disabled:bg-stone-300" disabled={!promoCode.trim()||validatingPromo||selectedMembershipPurchaseId!==""||selectedLoyaltyVoucherId!==""} onClick={()=>void applyPromo()} type="button">{validatingPromo?copy.promoChecking:copy.promoApply}</button></div>
                     {promoResult?<div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"><strong>{promoResult.discountPercent}%</strong> · <s>{formatAmount(promoResult.originalPrice,locale)}</s> → {formatAmount(promoResult.finalPrice,locale)}{promoResult.remainingUserUses!==null?<span className="block text-xs">{copy.promoRemaining(promoResult.remainingUserUses)}</span>:null}</div>:null}
                     {promoError?<p className="mt-2 text-xs font-medium text-red-700">{copy.promoInvalid}</p>:null}
-                    {selectedMembershipPurchaseId!==""?<p className="mt-2 text-xs text-stone-500">{copy.promoMembershipExclusive}</p>:null}
+                    {selectedMembershipPurchaseId!==""||selectedLoyaltyVoucherId!==""?<p className="mt-2 text-xs text-stone-500">{copy.promoMembershipExclusive}</p>:null}
                 </div>
                 <OfficeDetailsBlock copy={copy} details={officeDetails} />
                 <label className="mt-5 flex min-w-0 gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
@@ -993,7 +1019,7 @@ function ConfirmationModal({
                 </label>
                 <label className="mt-3 flex min-w-0 gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700">
                     <input checked={acknowledged} className="mt-0.5 h-4 w-4 accent-stone-900" onChange={(event) => setAcknowledged(event.target.checked)} type="checkbox" />
-                    <span className="min-w-0"><strong className="block break-words font-medium text-stone-900">{copy.confirmUnderstand}</strong><span className="mt-0.5 block break-words text-xs leading-5 text-stone-500">{selectedMembership ? copy.confirmUnderstandMembershipHint : copy.confirmUnderstandPaymentHint}</span></span>
+                    <span className="min-w-0"><strong className="block break-words font-medium text-stone-900">{copy.confirmUnderstand}</strong><span className="mt-0.5 block break-words text-xs leading-5 text-stone-500">{selectedMembership || selectedVoucher ? copy.confirmUnderstandMembershipHint : copy.confirmUnderstandPaymentHint}</span></span>
                 </label>
                 <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <button className={secondaryButtonClass} disabled={isSaving} onClick={onClose} type="button">{copy.cancel}</button>
@@ -1028,6 +1054,18 @@ function eligibleMembershipsForPending(pending: PendingBooking, purchases: Membe
             title: localeTitle(purchase.titleUa, purchase.titleEn, locale),
             visitsRemaining: purchase.visitsRemaining ?? 0
         }));
+}
+
+function eligibleVouchersForPending(pending: PendingBooking, vouchers: LoyaltyVoucher[]) {
+    const serviceId = pending.type === "individual" ? pending.service.id : pending.event.serviceId;
+    const eventId = pending.type === "event" ? pending.event.id : null;
+    const now = Date.now();
+    return vouchers.filter((voucher) => {
+        if (voucher.status !== "ACTIVE" || !voucher.ownedByCurrentUser || new Date(voucher.expiresAt).getTime() <= now) return false;
+        if (voucher.eligibleServiceIds.length > 0 && !voucher.eligibleServiceIds.includes(serviceId)) return false;
+        if (voucher.eligibleEventIds.length > 0 && (eventId === null || !voucher.eligibleEventIds.includes(eventId))) return false;
+        return true;
+    });
 }
 
 function localeTitle(titleUa: string, titleEn: string, locale: string) {
@@ -1443,15 +1481,19 @@ function labels(t: T) {
         bookingCreated: t("booking.created"),
         bookingCreatedWithPayment: t("booking.createdWithPayment"),
         bookingCreatedWithMembership: t("booking.createdWithMembership"),
+        bookingCreatedWithVoucher: t("booking.createdWithVoucher"),
         paymentTitle: t("public.paymentTitle"),
         paymentBody: (service: string, startsAt: string) => t("public.paymentBody", {service, startsAt}),
         membershipPaymentTitle: t("public.membershipPaymentTitle"),
         membershipPaymentBody: (service: string, startsAt: string) => t("public.membershipPaymentBody", {service, startsAt}),
+        voucherPaymentTitle: t("public.voucherPaymentTitle"),
+        voucherPaymentBody: (service: string, startsAt: string) => t("public.voucherPaymentBody", {service, startsAt}),
         paymentAction: t("public.paymentAction"),
         accountAction: t("public.accountAction"),
         dismissPayment: t("public.dismissPayment"),
         eventEnrolled: t("public.eventEnrolled"),
         eventEnrolledWithMembership: t("public.eventEnrolledWithMembership"),
+        eventEnrolledWithVoucher: t("public.eventEnrolledWithVoucher"),
         eventCancelled: t("public.eventCancelled"),
         cancelEventError: t("public.cancelEventError"),
         bookingError: t("public.bookingError"),
@@ -1461,6 +1503,11 @@ function labels(t: T) {
         membershipDoNotUse: t("public.membershipDoNotUse"),
         membershipVisits: (count: number) => t("public.membershipVisits", {count}),
         membershipWillUse: (title: string) => t("public.membershipWillUse", {title}),
+        loyaltyVoucherTitle: t("public.loyaltyVoucherTitle"),
+        loyaltyVoucherHint: t("public.loyaltyVoucherHint"),
+        loyaltyVoucherEmpty: t("public.loyaltyVoucherEmpty"),
+        loyaltyVoucherDoNotUse: t("public.loyaltyVoucherDoNotUse"),
+        loyaltyVoucherWillUse: t("public.loyaltyVoucherWillUse"),
         promoTitle: t("public.promoTitle"),
         promoPlaceholder: t("public.promoPlaceholder"),
         promoApply: t("public.promoApply"),

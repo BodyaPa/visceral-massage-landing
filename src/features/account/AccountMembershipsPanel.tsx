@@ -1,5 +1,6 @@
 "use client";
 
+import {useState} from "react";
 import {useTranslations} from "next-intl";
 import BoundedList from "@/components/ui/list/BoundedList";
 import {useListMyMembershipPurchasesQuery} from "@/features/memberships/memberships.api";
@@ -8,7 +9,8 @@ import {formatWholeCurrencyAmount as formatAmount} from "@/shared/lib/i18n/forma
 
 export default function AccountMembershipsPanel({locale}: {locale: Locale}) {
     const t = useTranslations("accountPage.memberships");
-    const {data, isError, isFetching} = useListMyMembershipPurchasesQuery({size: 20});
+    const [page, setPage] = useState(0);
+    const {data, isError, isFetching} = useListMyMembershipPurchasesQuery({page, size: 12});
     const purchases = data?.content ?? [];
 
     return (
@@ -53,6 +55,7 @@ export default function AccountMembershipsPanel({locale}: {locale: Locale}) {
                     step={6}
                 />
             ) : null}
+            {data && data.totalPages > 1 ? <div className="mt-4 flex justify-end gap-2"><button className="rounded-lg border border-stone-300 px-3 py-2 text-sm disabled:opacity-40" disabled={page === 0} onClick={() => setPage((current) => current - 1)} type="button">{t("previous")}</button><button className="rounded-lg border border-stone-300 px-3 py-2 text-sm disabled:opacity-40" disabled={page + 1 >= data.totalPages} onClick={() => setPage((current) => current + 1)} type="button">{t("next")}</button></div> : null}
         </section>
     );
 }

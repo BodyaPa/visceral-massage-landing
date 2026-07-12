@@ -11,6 +11,7 @@ import AccountBookingsPanel from "@/features/account/AccountBookingsPanel";
 import AccountMembershipsPanel from "@/features/account/AccountMembershipsPanel";
 import AccountProfilePanel from "@/features/account/AccountProfilePanel";
 import AccountSecuritySettings from "@/features/account/AccountSecuritySettings";
+import AccountLoyaltyPanel from "@/features/account/AccountLoyaltyPanel";
 
 type Props = {
     params: Promise<{lang: string}>;
@@ -66,7 +67,14 @@ export default async function AccountPage({params}: Props) {
                                 </div>
                             </div>
 
-                            <section className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
+                            <nav aria-label={t("sectionNavigation")} className="flex max-w-full gap-2 overflow-x-auto rounded-xl border border-stone-200 bg-stone-50 p-2">
+                                <AccountAnchor href="#profile" label={t("sections.profile")} />
+                                <AccountAnchor href="#bookings" label={t("sections.bookings")} />
+                                <AccountAnchor href="#memberships" label={t("sections.certificates")} />
+                                <AccountAnchor href="#points-activity" label={t("sections.points")} />
+                            </nav>
+
+                            <section className="scroll-mt-24 grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]" id="profile">
                                 <div className="space-y-4">
                                     <AccountProfilePanel contactValue={contactValue} dateOfBirth={dateOfBirth} displayName={displayName} user={user} />
 
@@ -82,13 +90,15 @@ export default async function AccountPage({params}: Props) {
                                 </aside>
                             </section>
 
+                            <div className="scroll-mt-24" id="bookings">
+                                <AccountBookingsPanel locale={locale} />
+                            </div>
+
                             <div className="scroll-mt-24" id="memberships">
                                 <AccountMembershipsPanel locale={locale} />
                             </div>
 
-                            <div className="scroll-mt-24" id="bookings">
-                                <AccountBookingsPanel locale={locale} />
-                            </div>
+                            <AccountLoyaltyPanel />
 
                             <section className="rounded-xl border border-red-200 bg-red-50/70 p-4">
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -111,6 +121,10 @@ export default async function AccountPage({params}: Props) {
             </section>
         </main>
     );
+}
+
+function AccountAnchor({href, label}: {href: string; label: string}) {
+    return <a className="shrink-0 rounded-lg border border-transparent px-3 py-2 text-sm font-semibold text-stone-600 transition-colors hover:border-stone-300 hover:bg-white hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500" href={href}>{label}</a>;
 }
 
 function InfoCard({label, value}: {label: string; value: string}) {

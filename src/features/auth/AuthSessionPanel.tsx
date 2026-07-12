@@ -37,6 +37,7 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
     const accountHref = withLocale("/account", locale);
     const bookingsHref = `${accountHref}#bookings`;
     const membershipsHref = `${accountHref}#memberships`;
+    const pointsHref = `${accountHref}#points-activity`;
     const adminHref = withLocale("/admin", locale);
     const accountActive = isActivePath(pathname, accountHref);
     const adminActive = isActivePath(pathname, adminHref);
@@ -147,6 +148,15 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
                         role="menuitem"
                     >
                         {t("myMemberships")}
+                    </AuthenticatedLink>
+                    <AuthenticatedLink
+                        className={styles.accountMenuLink}
+                        fallbackHref={withLocale("/auth?mode=login", locale)}
+                        href={pointsHref}
+                        onSessionExpired={onLogout}
+                        role="menuitem"
+                    >
+                        {t("myPoints")}
                     </AuthenticatedLink>
                     {hasAdministrationSection(user) ? (
                         <AuthenticatedLink

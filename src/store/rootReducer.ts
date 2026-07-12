@@ -8,6 +8,7 @@ import { bookingsApi } from "@/features/bookings/bookings.api";
 import { siteSettingsApi } from "@/features/siteSettings/siteSettings.api";
 import { membershipsApi } from "@/features/memberships/memberships.api";
 import { promosApi } from "@/features/promos/promos.api";
+import {loyaltyApi} from "@/features/loyalty/loyalty.api";
 
 export const rootReducer = combineReducers({
     [newsApi.reducerPath]: newsApi.reducer,
@@ -18,6 +19,7 @@ export const rootReducer = combineReducers({
     [bookingsApi.reducerPath]: bookingsApi.reducer,
     [membershipsApi.reducerPath]: membershipsApi.reducer,
     [promosApi.reducerPath]: promosApi.reducer,
+    [loyaltyApi.reducerPath]: loyaltyApi.reducer,
     [siteSettingsApi.reducerPath]: siteSettingsApi.reducer,
 });
 

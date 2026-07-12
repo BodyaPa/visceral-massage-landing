@@ -50,7 +50,7 @@ type SpecialistFinanceOverviewArgs = {
     to?: string;
 };
 
-function listFinanceBookingsPath({status, officeId, from, to, page = 0, size = 100}: ListFinanceBookingsArgs) {
+function listFinanceBookingsPath({status, officeId, from, to, page = 0, size = 25}: ListFinanceBookingsArgs) {
     const params = new URLSearchParams({
         page: String(page),
         size: String(size),
@@ -65,7 +65,7 @@ function listFinanceBookingsPath({status, officeId, from, to, page = 0, size = 1
     return `/admin/finance/bookings?${params.toString()}`;
 }
 
-function listFinanceEventEnrollmentsPath({status, officeId, from, to, page = 0, size = 100}: ListFinanceEventEnrollmentsArgs) {
+function listFinanceEventEnrollmentsPath({status, officeId, from, to, page = 0, size = 25}: ListFinanceEventEnrollmentsArgs) {
     const params = new URLSearchParams({
         page: String(page),
         size: String(size),
@@ -184,9 +184,9 @@ export const bookingsApi = createApi({
                 {type: "FinanceSummary", id: "SPECIALIST_OVERVIEW"}
             ]
         }),
-        listFinanceExpenses: build.query<PageResponse<FinanceExpense>, {officeId?: number; from?: string; to?: string}>({
-            query: ({officeId, from, to}) => {
-                const params = new URLSearchParams({page: "0", size: "100", sort: "expenseDate,desc"});
+        listFinanceExpenses: build.query<PageResponse<FinanceExpense>, {officeId?: number; from?: string; to?: string; page?: number; size?: number}>({
+            query: ({officeId, from, to, page = 0, size = 20}) => {
+                const params = new URLSearchParams({page: String(page), size: String(size), sort: "expenseDate,desc"});
                 if (officeId) params.set("officeId", String(officeId));
                 if (from) params.set("from", from);
                 if (to) params.set("to", to);

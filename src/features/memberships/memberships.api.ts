@@ -48,7 +48,7 @@ export const membershipsApi = createApi({
             invalidatesTags: [{type: "MembershipPurchases", id: "MY"}]
         }),
         listFinanceMembershipPurchases: build.query<PageResponse<MembershipPurchase>, {status?: MembershipPurchaseStatus | ""; page?: number; size?: number}>({
-            query: ({status = "AWAITING_PAYMENT_CONFIRMATION", page = 0, size = 100}) => {
+            query: ({status = "AWAITING_PAYMENT_CONFIRMATION", page = 0, size = 25}) => {
                 const params = new URLSearchParams({page: String(page), size: String(size), sort: "createdAt,desc"});
                 if (status) params.set("status", status);
                 return `/admin/finance/memberships?${params.toString()}`;

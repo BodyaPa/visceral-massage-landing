@@ -97,8 +97,8 @@ describe("accountBookings", () => {
 
     it("builds the account booking query range around the current day", () => {
         expect(buildAccountRange(new Date("2035-06-15T12:34:56Z"))).toEqual({
-            from: new Date("2034-06-15T00:00:00").toISOString(),
-            to: new Date("2036-06-14T23:59:59.999").toISOString()
+            from: new Date("2035-05-01T00:00:00").toISOString(),
+            to: new Date("2035-07-30T23:59:59.999").toISOString()
         });
     });
 });

@@ -22,11 +22,9 @@ import {
     useUpdateSpecialistEventMutation
 } from "@/features/schedule/schedule.api";
 import {
-    buildCalendarBuffers,
     buildManualBookingSlots,
     filterCalendarBlocks,
     filterCalendarBookings,
-    filterCalendarBuffers,
     filterCalendarEvents,
     hasRestPeriodConflict,
     isPastRange,
@@ -154,7 +152,8 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const filteredCalendarBlocks = useMemo(() => filterCalendarBlocks(calendarBlocksSource, calendarFilters), [calendarBlocksSource, calendarFilters]);
     const filteredCalendarEvents = useMemo(() => filterCalendarEvents(calendarEventsSource, calendarFilters), [calendarEventsSource, calendarFilters]);
     const filteredCalendarBookings = useMemo(() => filterCalendarBookings(calendarBookingsSource, calendarFilters), [calendarBookingsSource, calendarFilters]);
-    const filteredCalendarBuffers = useMemo(() => filterCalendarBuffers(buildCalendarBuffers(calendarBookingsSource, calendarEventsSource, appointmentBufferMinutes), calendarFilters), [calendarBookingsSource, calendarEventsSource, appointmentBufferMinutes, calendarFilters]);
+    // The buffer remains part of conflict validation, but is intentionally not a calendar item.
+    const filteredCalendarBuffers: CalendarBuffer[] = [];
     const closeTools = useCallback(() => {
         setToolsVisible(false);
         window.setTimeout(() => setToolsOpen(false), 180);
@@ -423,7 +422,6 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                             <LegendItem className="border-amber-200 bg-amber-50" label={t("legend.blocked")} />
                             <LegendItem className="border-stone-400 bg-stone-700" label={t("legend.booking")} />
                             <LegendItem className="border-sky-200 bg-sky-50" label={copy.eventsTitle} />
-                            <LegendItem className="border-stone-300 bg-stone-100" label={copy.buffer} />
                             <LegendItem className="border-stone-300 bg-stone-50" label={copy.statusPast} />
                             <LegendItem className="border-red-200 bg-red-50" label={copy.statusCancelled} />
                         </div>
@@ -1198,7 +1196,6 @@ function CalendarFilters({
                         <option value="BLOCK">{copy.blocksTitle}</option>
                         <option value="FIXED_EVENT">{copy.eventsTitle}</option>
                         <option value="BOOKING">{copy.bookingsTitle}</option>
-                        <option value="BUFFER">{copy.buffer}</option>
                     </select>
                 </CompactSelect>
                 <CompactSelect label={copy.statusFilter}>

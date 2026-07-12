@@ -946,7 +946,7 @@ function ConfirmationModal({
 }) {
     const [acknowledged, setAcknowledged] = useState(false);
     const [promoResult, setPromoResult] = useState<PromoValidation | null>(null);
-    const [promoError, setPromoError] = useState(false);
+    const [promoError, setPromoError] = useState<string | null>(null);
     const [validatePromo, {isLoading: validatingPromo}] = useValidatePromoMutation();
     const dialogRef = useModalFocus(onClose, returnFocusTo);
     const title = pending.type === "individual" ? pending.service.title : pending.event.title;
@@ -961,7 +961,7 @@ function ConfirmationModal({
     const capacity = pending.type === "event" ? copy.remaining(pending.event.remainingPlaces) : null;
     const selectedMembership = memberships.find((membership) => membership.id === selectedMembershipPurchaseId);
     const selectedVoucher = vouchers.find((voucher) => voucher.id === selectedLoyaltyVoucherId);
-    async function applyPromo() { try { const result=await validatePromo({code:promoCode,targetType:pending.type==="individual"?"SERVICE":"EVENT",targetId:pending.type==="individual"?pending.service.id:pending.event.id}).unwrap();setPromoResult(result);setPromoError(false);setSelectedMembershipPurchaseId("");setSelectedLoyaltyVoucherId(""); } catch {setPromoResult(null);setPromoError(true);} }
+    async function applyPromo() { try { const result=await validatePromo({code:promoCode,targetType:pending.type==="individual"?"SERVICE":"EVENT",targetId:pending.type==="individual"?pending.service.id:pending.event.id}).unwrap();setPromoResult(result);setPromoError(null);setSelectedMembershipPurchaseId("");setSelectedLoyaltyVoucherId(""); } catch (error) {setPromoResult(null);setPromoError(promoValidationMessage(error, copy));} }
 
     return (
         <div aria-labelledby="booking-confirmation-title" aria-modal="true" className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6" ref={dialogRef} role="dialog" tabIndex={-1}>
@@ -986,7 +986,7 @@ function ConfirmationModal({
                         <select
                             className="mt-3 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 outline-none transition-colors focus:border-stone-900"
                             id="membership-use"
-                            onChange={(event) => {setSelectedMembershipPurchaseId(event.target.value ? Number(event.target.value) : "");setSelectedLoyaltyVoucherId("");setPromoCode("");setPromoResult(null);setPromoError(false)}}
+                            onChange={(event) => {setSelectedMembershipPurchaseId(event.target.value ? Number(event.target.value) : "");setSelectedLoyaltyVoucherId("");setPromoCode("");setPromoResult(null);setPromoError(null)}}
                             value={selectedMembershipPurchaseId}
                         >
                             <option value="">{copy.membershipDoNotUse}</option>
@@ -1002,14 +1002,14 @@ function ConfirmationModal({
                 <div className="mt-4 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
                     <label className="block text-sm font-semibold text-stone-900" htmlFor="loyalty-voucher-use">{copy.loyaltyVoucherTitle}</label>
                     <p className="mt-1 text-xs leading-5 text-stone-500">{vouchers.length > 0 ? copy.loyaltyVoucherHint : copy.loyaltyVoucherEmpty}</p>
-                    {vouchers.length > 0 ? <select className="mt-3 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-900" id="loyalty-voucher-use" onChange={(event) => {setSelectedLoyaltyVoucherId(event.target.value ? Number(event.target.value) : "");setSelectedMembershipPurchaseId("");setPromoCode("");setPromoResult(null);setPromoError(false)}} value={selectedLoyaltyVoucherId}><option value="">{copy.loyaltyVoucherDoNotUse}</option>{vouchers.map((voucher) => <option key={voucher.id} value={voucher.id}>{locale === "en" && voucher.titleEn ? voucher.titleEn : voucher.titleUa}</option>)}</select> : null}
+                    {vouchers.length > 0 ? <select className="mt-3 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-900" id="loyalty-voucher-use" onChange={(event) => {setSelectedLoyaltyVoucherId(event.target.value ? Number(event.target.value) : "");setSelectedMembershipPurchaseId("");setPromoCode("");setPromoResult(null);setPromoError(null)}} value={selectedLoyaltyVoucherId}><option value="">{copy.loyaltyVoucherDoNotUse}</option>{vouchers.map((voucher) => <option key={voucher.id} value={voucher.id}>{locale === "en" && voucher.titleEn ? voucher.titleEn : voucher.titleUa}</option>)}</select> : null}
                     {selectedVoucher ? <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-900">{copy.loyaltyVoucherWillUse}</p> : null}
                 </div>
                 <div className="mt-4 rounded-xl border border-stone-200 bg-white px-4 py-3">
                     <label className="block text-sm font-semibold text-stone-900" htmlFor="promo-code">{copy.promoTitle}</label>
-                    <div className="mt-2 flex gap-2"><input className="min-h-11 min-w-0 flex-1 rounded-lg border border-stone-300 px-3 text-sm uppercase outline-none focus:border-stone-950" disabled={selectedMembershipPurchaseId!==""||selectedLoyaltyVoucherId!==""} id="promo-code" onChange={e=>{setPromoCode(e.target.value.toUpperCase());setPromoResult(null);setPromoError(false)}} placeholder={copy.promoPlaceholder} value={promoCode}/><button className="min-h-11 rounded-lg bg-stone-950 px-4 text-sm font-semibold text-white hover:bg-stone-800 disabled:bg-stone-300" disabled={!promoCode.trim()||validatingPromo||selectedMembershipPurchaseId!==""||selectedLoyaltyVoucherId!==""} onClick={()=>void applyPromo()} type="button">{validatingPromo?copy.promoChecking:copy.promoApply}</button></div>
+                    <div className="mt-2 flex gap-2"><input className="min-h-11 min-w-0 flex-1 rounded-lg border border-stone-300 px-3 text-sm uppercase outline-none focus:border-stone-950" disabled={selectedMembershipPurchaseId!==""||selectedLoyaltyVoucherId!==""} id="promo-code" onChange={e=>{setPromoCode(e.target.value.toUpperCase());setPromoResult(null);setPromoError(null)}} placeholder={copy.promoPlaceholder} value={promoCode}/><button className="min-h-11 rounded-lg bg-stone-950 px-4 text-sm font-semibold text-white hover:bg-stone-800 disabled:bg-stone-300" disabled={!promoCode.trim()||validatingPromo||selectedMembershipPurchaseId!==""||selectedLoyaltyVoucherId!==""} onClick={()=>void applyPromo()} type="button">{validatingPromo?copy.promoChecking:copy.promoApply}</button></div>
                     {promoResult?<div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"><strong>{promoResult.discountPercent}%</strong> · <s>{formatAmount(promoResult.originalPrice,locale)}</s> → {formatAmount(promoResult.finalPrice,locale)}{promoResult.remainingUserUses!==null?<span className="block text-xs">{copy.promoRemaining(promoResult.remainingUserUses)}</span>:null}</div>:null}
-                    {promoError?<p className="mt-2 text-xs font-medium text-red-700">{copy.promoInvalid}</p>:null}
+                    {promoError?<p className="mt-2 text-xs font-medium text-red-700">{promoError}</p>:null}
                     {selectedMembershipPurchaseId!==""||selectedLoyaltyVoucherId!==""?<p className="mt-2 text-xs text-stone-500">{copy.promoMembershipExclusive}</p>:null}
                 </div>
                 <OfficeDetailsBlock copy={copy} details={officeDetails} />
@@ -1343,6 +1343,18 @@ function paymentPromptTitle(prompt: PaymentPrompt, locale: string) {
     return locale === "en" && prompt.serviceTitleEn ? prompt.serviceTitleEn : prompt.serviceTitleUa ?? "";
 }
 
+function promoValidationMessage(error: unknown, copy: Copy) {
+    const data = typeof error === "object" && error !== null && "data" in error
+        ? (error as {data?: {message?: unknown}}).data
+        : null;
+    const message = typeof data?.message === "string" ? data.message : "";
+    const separator = message.indexOf(":");
+    if ((message.startsWith("PROMO_SCOPE_SERVICE:") || message.startsWith("PROMO_SCOPE_EVENT:")) && separator >= 0) {
+        return copy.promoScope(message.slice(separator + 1));
+    }
+    return copy.promoInvalid;
+}
+
 type T = ReturnType<typeof useTranslations<"calendar.page">>;
 type Copy = ReturnType<typeof labels>;
 
@@ -1513,6 +1525,7 @@ function labels(t: T) {
         promoApply: t("public.promoApply"),
         promoChecking: t("public.promoChecking"),
         promoInvalid: t("public.promoInvalid"),
+        promoScope: (targets: string) => t("public.promoScope", {targets}),
         promoMembershipExclusive: t("public.promoMembershipExclusive"),
         promoRemaining: (count: number) => t("public.promoRemaining", {count})
     };

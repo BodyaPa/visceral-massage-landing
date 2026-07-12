@@ -293,6 +293,7 @@
         "promoApply": "Apply",
         "promoChecking": "Checking...",
         "promoInvalid": "The code is invalid, expired, exhausted, or not eligible for this booking.",
+        "promoScope": "This promo code is valid only for: {targets}.",
         "promoMembershipExclusive": "A promo code cannot be combined with a membership visit.",
         "promoRemaining": "Your remaining uses after this one: {count}",
         "paymentTitle": "Booking created, payment awaits confirmation",

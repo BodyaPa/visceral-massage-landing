@@ -197,7 +197,7 @@ export default function ServicesManagement() {
 
     return (
         <section className="w-full min-w-0 max-w-full space-y-5">
-            <div className="grid w-full min-w-0 max-w-full items-start gap-5 xl:grid-cols-[minmax(380px,520px)_minmax(0,680px)]">
+            <div className="grid w-full min-w-0 max-w-full items-start gap-5 xl:grid-cols-[minmax(360px,480px)_minmax(0,1fr)]">
             <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
                 <div className="mb-4 flex flex-col gap-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -419,14 +419,14 @@ export default function ServicesManagement() {
                             type="checkbox"
                         />
                     </label>
-                    <button
+                    <div className="flex justify-end"><button
                         className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-400 sm:w-fit"
                         disabled={saving || !form.titleUa.trim() || form.durationMinutes < 1 || form.basePrice < 0 || form.loyaltyPointsAward < 0}
                         onClick={saveService}
                         type="button"
                     >
                         {saving ? t("saving") : t("save")}
-                    </button>
+                    </button></div>
                 </div>
             </div>
             </div>
@@ -595,9 +595,9 @@ function MembershipOffersPanel({allServices, form, isError, isFetching, isSaving
                                     ))}
                                 </div>
                             </div>
-                            <button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-400 sm:w-fit" disabled={saveDisabled} onClick={onSave} type="button">
+                            <div className="flex justify-end"><button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-400 sm:w-fit" disabled={saveDisabled} onClick={onSave} type="button">
                                 {isSaving ? t("saving") : t("memberships.save")}
-                            </button>
+                            </button></div>
                         </div>
                     ) : null}
                 </div>

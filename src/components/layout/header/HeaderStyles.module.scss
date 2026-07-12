@@ -367,6 +367,8 @@
   background: rgba(25, 25, 25, 0.92);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
   backdrop-filter: blur(12px);
+  transform-origin: top right;
+  animation: fadeSlideIn 0.18s ease-out;
 }
 
 .accountMenuLink,

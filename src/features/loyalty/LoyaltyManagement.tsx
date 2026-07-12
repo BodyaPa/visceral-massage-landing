@@ -110,7 +110,7 @@ export default function LoyaltyManagement({locale}: {locale: Locale}) {
                     </div>
                     {!eventsFetching && events.length === 0 ? <p className="text-sm text-stone-500">{t("noEvents")}</p> : null}
                 </fieldset>
-                <button className={primaryButton} disabled={creating || updating}>{creating || updating ? t("saving") : t("save")}</button>
+                <div className="flex justify-end"><button className={primaryButton} disabled={creating || updating}>{creating || updating ? t("saving") : t("save")}</button></div>
             </form>
 
             <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">

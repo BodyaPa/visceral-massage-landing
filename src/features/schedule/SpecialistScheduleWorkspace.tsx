@@ -139,7 +139,6 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const toolsPanelRef = useRef<HTMLElement | null>(null);
     const toolsTriggerRef = useRef<HTMLElement | null>(null);
     const availableCount = blocks.filter((block) => block.status === "AVAILABLE" && !block.booked).length;
-    const blockedCount = blocks.filter((block) => block.status === "BLOCKED").length;
     const eventServices = services.filter((service) => service.bookingMode === "FIXED_EVENT");
     const individualServices = services.filter((service) => service.bookingMode === "INDIVIDUAL_APPOINTMENT");
     const appointmentBufferMinutes = scheduleConfig?.appointmentBufferMinutes ?? defaultAppointmentBufferMinutes;
@@ -285,13 +284,6 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
         window.setTimeout(() => document.getElementById("availability-form")?.scrollIntoView({behavior: "smooth"}), 0);
     }
 
-    function openBlockPanel() {
-        setPlannerMode("plan");
-        setToolsOpen(true);
-        setForm((current) => ({...current, status: "BLOCKED", itemType: "BLOCK"}));
-        window.setTimeout(() => document.getElementById("availability-form")?.scrollIntoView({behavior: "smooth"}), 0);
-    }
-
     return (
         <section className="w-full min-w-0">
             <div className="min-w-0 space-y-5">
@@ -341,19 +333,15 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 	                                </label> : null}
 	                                </>
 	                            ) : null}
-	                            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+	                            <div>
 	                                <button className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-stone-700" onClick={openCreatePanel} type="button">
 	                                    {t("actions.availability")}
-	                                </button>
-	                                <button className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100" onClick={openBlockPanel} type="button">
-	                                    {t("actions.blocking")}
 	                                </button>
 	                            </div>
 	                        </div>
 	                    </div>
-                    <div className="mt-6 grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
+                    <div className="mt-6 grid grid-cols-2 gap-2 lg:grid-cols-3 lg:gap-3">
                         <StatCard label={t("stats.available")} value={availableCount} tone="success" />
-                        <StatCard label={t("stats.blocked")} value={blockedCount} tone="warning" />
                         <StatCard label={copy.eventsTitle} value={events.length} />
                         <StatCard label={t("stats.bookings")} value={bookings.length} />
                     </div>
@@ -419,7 +407,6 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     />
                         <div className="flex flex-wrap gap-2 border-b border-stone-200 px-4 py-3">
                             <LegendItem className="border-emerald-200 bg-emerald-50" label={t("legend.available")} />
-                            <LegendItem className="border-amber-200 bg-amber-50" label={t("legend.blocked")} />
                             <LegendItem className="border-stone-400 bg-stone-700" label={t("legend.booking")} />
                             <LegendItem className="border-sky-200 bg-sky-50" label={copy.eventsTitle} />
                             <LegendItem className="border-stone-300 bg-stone-50" label={copy.statusPast} />
@@ -451,8 +438,8 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
             </div>
 
             {toolsOpen ? <OverlayPortal>
-            <div aria-hidden="true" className={`fixed inset-0 z-40 bg-stone-950/30 transition-opacity duration-180 motion-reduce:transition-none ${toolsVisible ? "opacity-100" : "opacity-0"}`} />
-            <aside aria-label={copy.toolsTitle} aria-modal="true" className={`fixed inset-x-0 bottom-0 z-50 max-h-[88dvh] min-w-0 space-y-5 overflow-y-auto rounded-t-2xl border border-stone-200 bg-stone-50 p-4 shadow-2xl outline-none transition-transform duration-180 ease-out focus-visible:ring-2 focus-visible:ring-stone-500 motion-reduce:transition-none sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[min(440px,92vw)] sm:rounded-none sm:p-5 ${toolsVisible ? "translate-y-0 sm:translate-x-0" : "translate-y-full sm:translate-x-full sm:translate-y-0"}`} ref={toolsPanelRef} role="dialog" tabIndex={-1}>
+            <div aria-hidden="true" className={`fixed inset-0 z-40 bg-stone-950/10 transition-opacity duration-180 motion-reduce:transition-none ${toolsVisible ? "opacity-100" : "opacity-0"}`} />
+            <aside aria-label={copy.toolsTitle} aria-modal="true" className={`fixed inset-x-2 bottom-2 z-50 max-h-[90dvh] min-w-0 space-y-5 overflow-y-auto rounded-2xl border border-stone-200 bg-stone-50 p-4 shadow-2xl outline-none transition-[opacity,transform] duration-180 ease-out focus-visible:ring-2 focus-visible:ring-stone-500 motion-reduce:transition-none sm:inset-x-5 sm:bottom-auto sm:top-1/2 sm:mx-auto sm:w-[min(1100px,calc(100vw-2.5rem))] sm:-translate-y-1/2 sm:p-5 ${toolsVisible ? "translate-y-0 opacity-100 sm:-translate-y-1/2" : "translate-y-4 opacity-0 sm:-translate-y-[48%]"}`} ref={toolsPanelRef} role="dialog" tabIndex={-1}>
                 <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-stone-200 bg-stone-50 pb-3">
                     <h2 className="text-base font-semibold text-stone-950">{copy.toolsTitle}</h2>
                     <button aria-label={copy.closeDetails} className={controlButtonClass} onClick={closeTools} type="button">×</button>
@@ -476,7 +463,6 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                                 value={form.status}
                             >
                                 <option value="AVAILABLE">{t("statuses.available")}</option>
-                                <option value="BLOCKED">{t("statuses.blocked")}</option>
                             </select>
                         </Field>
                         {form.status === "AVAILABLE" ? (
@@ -1193,7 +1179,6 @@ function CalendarFilters({
                         <option value="all">{copy.allItems}</option>
                         <option value="APPOINTMENT_SLOT">{copy.appointmentSlot}</option>
                         <option value="OPEN_RANGE">{copy.openRange}</option>
-                        <option value="BLOCK">{copy.blocksTitle}</option>
                         <option value="FIXED_EVENT">{copy.eventsTitle}</option>
                         <option value="BOOKING">{copy.bookingsTitle}</option>
                     </select>
@@ -1202,7 +1187,6 @@ function CalendarFilters({
                     <select className={compactSelectClass} onChange={(event) => onChange("status", event.target.value as CalendarFilterState["status"])} value={filters.status}>
                         <option value="all">{copy.allStatuses}</option>
                         <option value="AVAILABLE">{copy.statusAvailable}</option>
-                        <option value="BLOCKED">{copy.statusBlocked}</option>
                         <option value="AWAITING_PAYMENT_CONFIRMATION">{copy.statusAwaitingPayment}</option>
                         <option value="CONFIRMED">{copy.statusConfirmed}</option>
                         <option value="CANCELLED">{copy.statusCancelled}</option>

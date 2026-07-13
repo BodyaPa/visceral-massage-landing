@@ -45,18 +45,18 @@ export default function AccountBookingsPanel({locale}: {locale: Locale}) {
         all: bookings.length + events.length
     }), [bookings, events]);
 
-    async function cancelAppointment(id: number) {
+    async function cancelAppointment(id: number, reason: string, details: string) {
         try {
-            await cancelBooking(id).unwrap();
+            await cancelBooking({id, reason, details: details.trim() || null}).unwrap();
             toast.success(copy.cancelled);
         } catch {
             toast.error(copy.cancelError);
         }
     }
 
-    async function cancelEvent(id: number) {
+    async function cancelEvent(id: number, reason: string, details: string) {
         try {
-            await cancelEnrollment({id, lang: locale}).unwrap();
+            await cancelEnrollment({id, lang: locale, reason, details: details.trim() || null}).unwrap();
             toast.success(copy.cancelled);
         } catch {
             toast.error(copy.cancelError);
@@ -92,11 +92,11 @@ export default function AccountBookingsPanel({locale}: {locale: Locale}) {
                     copy={copy}
                     disabled={cancellingBooking || cancellingEnrollment}
                     onClose={() => setPendingCancel(null)}
-                    onConfirm={async () => {
+                    onConfirm={async (reason, details) => {
                         if (pendingCancel.type === "booking") {
-                            await cancelAppointment(pendingCancel.id);
+                            await cancelAppointment(pendingCancel.id, reason, details);
                         } else {
-                            await cancelEvent(pendingCancel.id);
+                            await cancelEvent(pendingCancel.id, reason, details);
                         }
                         setPendingCancel(null);
                     }}
@@ -171,7 +171,7 @@ function AccountEmptyAction({body, href, label}: {body: string; href: string; la
 }
 
 function BookingCard({booking, cancelling, copy, locale, onCancel}: {booking: Booking; cancelling: boolean; copy: Copy; locale: Locale; onCancel: (booking: Booking) => void}) {
-    const cancellable = booking.status !== "CANCELLED" && new Date(booking.startsAt).getTime() > Date.now();
+    const cancellable = booking.status !== "CANCELLED" && new Date(booking.startsAt).getTime() >= Date.now() + 2 * 60 * 60 * 1000;
     const canPay = booking.status === "AWAITING_PAYMENT_CONFIRMATION" && Boolean(booking.externalPaymentUrl);
 
     return (
@@ -205,7 +205,7 @@ function BookingCard({booking, cancelling, copy, locale, onCancel}: {booking: Bo
 
 function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boolean; copy: Copy; event: PublicFixedEvent; locale: Locale; onCancel: (event: PublicFixedEvent) => void}) {
     const status = eventStatus(event);
-    const cancellable = status === "ACTIVE" && new Date(event.startsAt).getTime() > Date.now();
+    const cancellable = status === "ACTIVE" && new Date(event.startsAt).getTime() >= Date.now() + 2 * 60 * 60 * 1000;
     const canPay = status === "ACTIVE"
         && !event.paymentConfirmed
         && !event.paidWithMembership
@@ -329,7 +329,10 @@ function BookingStatusBadge({booking, copy}: {booking: Booking; copy: Copy}) {
     return <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${className}`}>{label}</span>;
 }
 
-function CancelConfirmationModal({copy, disabled, onClose, onConfirm, title}: {copy: Copy; disabled: boolean; onClose: () => void; onConfirm: () => void; title: string}) {
+function CancelConfirmationModal({copy, disabled, onClose, onConfirm, title}: {copy: Copy; disabled: boolean; onClose: () => void; onConfirm: (reason: string, details: string) => void; title: string}) {
+    const [reason, setReason] = useState("");
+    const [details, setDetails] = useState("");
+    const valid = Boolean(reason) && (reason !== "OTHER" || Boolean(details.trim()));
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 p-4" onClick={onClose} role="presentation">
             <section aria-modal="true" className="w-full max-w-md rounded-xl bg-white p-4 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()} role="dialog">
@@ -338,9 +341,24 @@ function CancelConfirmationModal({copy, disabled, onClose, onConfirm, title}: {c
                     <h3 className="mt-1 break-words text-lg font-semibold text-stone-950">{copy.cancelConfirmTitle}</h3>
                     <p className="mt-2 break-words text-sm leading-6 text-stone-600">{copy.cancelConfirmBody(title)}</p>
                 </div>
+                <div className="mt-4 space-y-3">
+                    <label className="block text-sm font-semibold text-stone-900">{copy.cancelReasonLabel}
+                        <select className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 font-normal outline-none focus:border-stone-800" onChange={(event) => setReason(event.target.value)} value={reason}>
+                            <option value="">{copy.cancelReasonPlaceholder}</option>
+                            <option value="PLANS_CHANGED">{copy.cancelReasons.plans}</option>
+                            <option value="HEALTH">{copy.cancelReasons.health}</option>
+                            <option value="EMERGENCY">{copy.cancelReasons.emergency}</option>
+                            <option value="OTHER">{copy.cancelReasons.other}</option>
+                        </select>
+                    </label>
+                    <label className="block text-sm font-semibold text-stone-900">{copy.cancelDetailsLabel}
+                        <textarea className="mt-1 min-h-20 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 font-normal outline-none focus:border-stone-800" maxLength={500} onChange={(event) => setDetails(event.target.value)} value={details} />
+                    </label>
+                    <p className="text-xs leading-5 text-stone-500">{copy.cancelDeadlineHint}</p>
+                </div>
                 <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <button className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-100" onClick={onClose} type="button">{copy.keepBooking}</button>
-                    <button className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-200" disabled={disabled} onClick={onConfirm} type="button">{copy.confirmCancel}</button>
+                    <button className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-200" disabled={disabled || !valid} onClick={() => onConfirm(reason, details)} type="button">{copy.confirmCancel}</button>
                 </div>
             </section>
         </div>
@@ -399,6 +417,16 @@ function labels(t: T) {
         cancelConfirmBody: (title: string) => t("cancelConfirmBody", {title}),
         keepBooking: t("keepBooking"),
         confirmCancel: t("confirmCancel"),
+        cancelReasonLabel: t("cancelReasonLabel"),
+        cancelReasonPlaceholder: t("cancelReasonPlaceholder"),
+        cancelDetailsLabel: t("cancelDetailsLabel"),
+        cancelDeadlineHint: t("cancelDeadlineHint"),
+        cancelReasons: {
+            plans: t("cancelReasons.plans"),
+            health: t("cancelReasons.health"),
+            emergency: t("cancelReasons.emergency"),
+            other: t("cancelReasons.other")
+        },
         statuses: {
             AWAITING_PAYMENT_CONFIRMATION: t("statuses.AWAITING_PAYMENT_CONFIRMATION"),
             CONFIRMED: t("statuses.CONFIRMED"),

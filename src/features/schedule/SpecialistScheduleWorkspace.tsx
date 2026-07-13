@@ -229,6 +229,20 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
         });
     }
 
+    function updateSlotStart(startsAt: string) {
+        setForm((current) => {
+            if (current.itemType !== "APPOINTMENT_SLOT" || !current.serviceId) {
+                return {...current, startsAt};
+            }
+            const service = individualServices.find((item) => item.id === Number(current.serviceId));
+            const start = new Date(startsAt);
+            if (!service || Number.isNaN(start.getTime())) return {...current, startsAt};
+            const end = new Date(start);
+            end.setMinutes(end.getMinutes() + service.durationMinutes);
+            return {...current, startsAt, endsAt: toDateTimeLocalValue(end)};
+        });
+    }
+
     async function saveAvailability() {
         try {
             const startsAt = toIsoDateTime(form.startsAt);
@@ -255,7 +269,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                 status: form.status,
                 itemType: form.status === "BLOCKED" ? "BLOCK" : form.itemType,
                 serviceId: form.status === "AVAILABLE" && form.itemType === "APPOINTMENT_SLOT" && form.serviceId ? Number(form.serviceId) : null,
-                capacity: form.status === "AVAILABLE" && form.itemType === "APPOINTMENT_SLOT" ? form.capacity : null,
+                capacity: form.status === "AVAILABLE" && form.itemType === "APPOINTMENT_SLOT" ? 1 : null,
                 startsAt,
                 endsAt,
                 notes: form.notes.trim() || null
@@ -271,8 +285,8 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
             }
 
             setForm((current) => ({...current, notes: ""}));
-        } catch {
-            toast.error(t("form.saveError"));
+        } catch (error) {
+            toast.error(apiErrorMessage(error) ?? t("form.saveError"));
         }
     }
 
@@ -522,15 +536,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                                         {individualServices.map((service) => <option key={service.id} value={service.id}>{service.title}</option>)}
                                     </select>
                                 </Field>
-                                <Field label={copy.capacity}>
-                                    <input
-                                        className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                                        min={1}
-                                        onChange={(event) => updateForm("capacity", Number(event.target.value))}
-                                        type="number"
-                                        value={form.capacity}
-                                    />
-                                </Field>
+                                <p className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-xs leading-5 text-stone-600">{copy.appointmentSlotHint}</p>
                             </>
                         ) : null}
                         <Field label={t("form.office")}>
@@ -552,7 +558,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         <Field label={t("form.startsAt")}>
                             <input
                                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                                onChange={(event) => updateForm("startsAt", event.target.value)}
+                                onChange={(event) => updateSlotStart(event.target.value)}
                                 type="datetime-local"
                                 value={form.startsAt}
                             />
@@ -560,6 +566,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         <Field label={t("form.endsAt")}>
                             <input
                                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                                disabled={form.status === "AVAILABLE" && form.itemType === "APPOINTMENT_SLOT"}
                                 onChange={(event) => updateForm("endsAt", event.target.value)}
                                 type="datetime-local"
                                 value={form.endsAt}
@@ -710,6 +717,12 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
             </OverlayPortal> : null}
         </section>
     );
+}
+
+function apiErrorMessage(error: unknown) {
+    if (typeof error !== "object" || error === null || !("data" in error)) return null;
+    const data = (error as {data?: {message?: unknown}}).data;
+    return typeof data?.message === "string" && data.message.trim() ? data.message : null;
 }
 
 type T = ReturnType<typeof useTranslations<"admin.specialist.page">>;
@@ -1885,16 +1898,27 @@ function DayPlanTemplateForm({
     const [serviceId, setServiceId] = useState("");
     const selectedService = individualServices.find((service) => String(service.id) === serviceId);
     const disabled = isLoading || !date || !selectedService;
+    const templatePreview = selectedService
+        ? ["09:00", addMinutesToClock(addMinutesToClock("09:00", selectedService.durationMinutes), 30), "13:00", addMinutesToClock(addMinutesToClock("13:00", selectedService.durationMinutes), 30)]
+            .map((start) => `${start}–${addMinutesToClock(start, selectedService.durationMinutes)}`)
+            .join(" · ")
+        : "—";
 
     async function submit() {
         if (!selectedService) return;
+        const morningFirstEnd = addMinutesToClock("09:00", selectedService.durationMinutes);
+        const morningBreakEnd = addMinutesToClock(morningFirstEnd, 30);
+        const morningSecondEnd = addMinutesToClock(morningBreakEnd, selectedService.durationMinutes);
+        const afternoonFirstEnd = addMinutesToClock("13:00", selectedService.durationMinutes);
+        const afternoonBreakEnd = addMinutesToClock(afternoonFirstEnd, 30);
+        const afternoonSecondEnd = addMinutesToClock(afternoonBreakEnd, selectedService.durationMinutes);
         const plan = [
-            {start: "09:00", end: "10:00", type: "slot"},
-            {start: "10:00", end: "10:30", type: "break"},
-            {start: "10:30", end: "11:30", type: "slot"},
-            {start: "13:00", end: "14:00", type: "slot"},
-            {start: "14:00", end: "14:30", type: "break"},
-            {start: "14:30", end: "15:30", type: "slot"}
+            {start: "09:00", end: morningFirstEnd, type: "slot"},
+            {start: morningFirstEnd, end: morningBreakEnd, type: "break"},
+            {start: morningBreakEnd, end: morningSecondEnd, type: "slot"},
+            {start: "13:00", end: afternoonFirstEnd, type: "slot"},
+            {start: afternoonFirstEnd, end: afternoonBreakEnd, type: "break"},
+            {start: afternoonBreakEnd, end: afternoonSecondEnd, type: "slot"}
         ] as const;
 
         try {
@@ -1939,7 +1963,7 @@ function DayPlanTemplateForm({
                     </select>
                 </Field>
                 <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-xs leading-5 text-stone-600">
-                    09:00–10:00 · 10:00–10:30 · 10:30–11:30 · 13:00–14:00 · 14:00–14:30 · 14:30–15:30
+                    {templatePreview}
                 </div>
                 <button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={disabled} onClick={submit} type="button">
                     {isLoading ? copy.saving : copy.templateAction}
@@ -1947,6 +1971,12 @@ function DayPlanTemplateForm({
             </div>
         </section>
     );
+}
+
+function addMinutesToClock(value: string, minutes: number) {
+    const [hours, minute] = value.split(":").map(Number);
+    const total = hours * 60 + minute + minutes;
+    return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
 function BookingsPanel({bookings, copy, isError, isFetching, locale, t}: {bookings: SpecialistBooking[]; copy: ReturnType<typeof scheduleCopy>; isError: boolean; isFetching: boolean; locale: string; t: T}) {

@@ -218,10 +218,10 @@ export const bookingsApi = createApi({
                 {type: "FinanceSummary", id: "SPECIALIST_OVERVIEW"}
             ]
         }),
-        cancelBooking: build.mutation<Booking, number>({
-            query: (id) => ({url: `/bookings/${id}/cancel`, method: "POST"}),
-            invalidatesTags: (result, error, id) => [
-                {type: "Bookings", id},
+        cancelBooking: build.mutation<Booking, {id: number; reason: string; details?: string | null}>({
+            query: ({id, reason, details}) => ({url: `/bookings/${id}/cancel`, method: "POST", body: {reason, details}}),
+            invalidatesTags: (result, error, request) => [
+                {type: "Bookings", id: request.id},
                 {type: "Bookings", id: "LIST"}
             ]
         }),

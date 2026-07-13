@@ -218,18 +218,19 @@ export default function PublicSchedulePage() {
             setSelectedLoyaltyVoucherId("");
             setPromoCode("");
             setReminderOptIn(false);
-        } catch {
-            toast.error(copy.bookingError);
+        } catch (error) {
+            toast.error(apiMessage(error) ?? copy.bookingError);
             void refetchSlots();
             void refetchEvents();
         }
     }
 
-    async function cancelSelectedEventEnrollment(event: PublicFixedEvent) {
+    async function cancelSelectedEventEnrollment(event: PublicFixedEvent, reason: string) {
         try {
-            await cancelEventEnrollment({id: event.id, lang: locale}).unwrap();
+            await cancelEventEnrollment({id: event.id, lang: locale, reason}).unwrap();
             toast.success(copy.eventCancelled);
             setSelectedEventDetails(null);
+            setFilters((current) => ({...current, mode: "events", status: "events"}));
             void refetchEvents();
         } catch {
             toast.error(copy.cancelEventError);
@@ -845,10 +846,11 @@ function OfficeDetailsModal({copy, details, onClose, returnFocusTo}: {copy: Copy
     );
 }
 
-function EventDetailsModal({copy, event, isSaving, locale, onCancelEnrollment, onClose, onEnroll, returnFocusTo}: {copy: Copy; event: PublicFixedEvent; isSaving: boolean; locale: string; onCancelEnrollment: (event: PublicFixedEvent) => void; onClose: () => void; onEnroll: (event: PublicFixedEvent) => void; returnFocusTo: HTMLElement | null}) {
+function EventDetailsModal({copy, event, isSaving, locale, onCancelEnrollment, onClose, onEnroll, returnFocusTo}: {copy: Copy; event: PublicFixedEvent; isSaving: boolean; locale: string; onCancelEnrollment: (event: PublicFixedEvent, reason: string) => void; onClose: () => void; onEnroll: (event: PublicFixedEvent) => void; returnFocusTo: HTMLElement | null}) {
     const [confirmingCancel, setConfirmingCancel] = useState(false);
+    const [cancelReason, setCancelReason] = useState("");
     const dialogRef = useModalFocus(onClose, returnFocusTo);
-    const canCancel = event.enrolled && new Date(event.startsAt).getTime() > Date.now();
+    const canCancel = event.enrolled && new Date(event.startsAt).getTime() >= Date.now() + 2 * 60 * 60 * 1000;
     const canEnroll = !event.enrolled && !event.full && new Date(event.startsAt).getTime() > Date.now();
 
     return (
@@ -875,13 +877,19 @@ function EventDetailsModal({copy, event, isSaving, locale, onCancelEnrollment, o
                     <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-3">
                         <p className="text-sm font-semibold text-red-900">{copy.cancelEnrollmentConfirmTitle}</p>
                         <p className="mt-1 break-words text-xs leading-5 text-red-800">{copy.cancelEnrollmentConfirmBody(event.title)}</p>
+                        <select className="mt-3 w-full rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-stone-900 outline-none focus:border-red-500" onChange={(changeEvent) => setCancelReason(changeEvent.target.value)} value={cancelReason}>
+                            <option value="">{copy.cancelReasonPlaceholder}</option>
+                            <option value="PLANS_CHANGED">{copy.cancelReasonPlans}</option>
+                            <option value="HEALTH">{copy.cancelReasonHealth}</option>
+                            <option value="EMERGENCY">{copy.cancelReasonEmergency}</option>
+                        </select>
                     </div>
                 ) : null}
                 <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <button className={secondaryButtonClass} disabled={isSaving} onClick={onClose} type="button">{copy.close}</button>
                     {canCancel ? (
                         confirmingCancel ? (
-                            <button className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-200" disabled={isSaving} onClick={() => onCancelEnrollment(event)} type="button">{copy.cancelEnrollmentConfirmAction}</button>
+                            <button className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-200" disabled={isSaving || !cancelReason} onClick={() => onCancelEnrollment(event, cancelReason)} type="button">{copy.cancelEnrollmentConfirmAction}</button>
                         ) : (
                             <button className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:text-red-300" disabled={isSaving} onClick={() => setConfirmingCancel(true)} type="button">{copy.cancelEnrollment}</button>
                         )
@@ -1380,6 +1388,13 @@ function promoValidationMessage(error: unknown, copy: Copy) {
     return copy.promoInvalid;
 }
 
+function apiMessage(error: unknown) {
+    const data = typeof error === "object" && error !== null && "data" in error
+        ? (error as {data?: {message?: unknown}}).data
+        : null;
+    return typeof data?.message === "string" && data.message.trim() ? data.message : null;
+}
+
 type T = ReturnType<typeof useTranslations<"calendar.page">>;
 type Copy = ReturnType<typeof labels>;
 
@@ -1514,6 +1529,10 @@ function labels(t: T) {
         cancelEnrollmentConfirmTitle: t("public.cancelEnrollmentConfirmTitle"),
         cancelEnrollmentConfirmBody: (title: string) => t("public.cancelEnrollmentConfirmBody", {title}),
         cancelEnrollmentConfirmAction: t("public.cancelEnrollmentConfirmAction"),
+        cancelReasonPlaceholder: t("public.cancelReasonPlaceholder"),
+        cancelReasonPlans: t("public.cancelReasonPlans"),
+        cancelReasonHealth: t("public.cancelReasonHealth"),
+        cancelReasonEmergency: t("public.cancelReasonEmergency"),
         saving: t("public.saving"),
         bookingCreated: t("booking.created"),
         bookingCreatedWithPayment: t("booking.createdWithPayment"),

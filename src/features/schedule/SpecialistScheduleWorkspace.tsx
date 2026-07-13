@@ -450,7 +450,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 
             {toolsOpen ? <OverlayPortal>
             <button aria-label={copy.closeDetails} className={`fixed inset-0 z-40 bg-stone-950/20 transition-opacity duration-180 motion-reduce:transition-none ${toolsVisible ? "opacity-100" : "opacity-0"}`} onClick={closeTools} type="button" />
-            <aside aria-label={copy.toolsTitle} aria-modal="true" className={`fixed inset-0 z-50 flex max-h-[100dvh] min-w-0 flex-col overflow-hidden border border-stone-200 bg-stone-50 shadow-2xl outline-none transition-[opacity,transform] duration-180 ease-out focus-visible:ring-2 focus-visible:ring-stone-500 motion-reduce:transition-none sm:inset-x-5 sm:bottom-auto sm:top-1/2 sm:mx-auto sm:max-h-[92dvh] sm:w-[min(1180px,calc(100vw-2.5rem))] sm:-translate-y-1/2 sm:rounded-2xl ${toolsVisible ? "translate-y-0 opacity-100 sm:-translate-y-1/2" : "translate-y-4 opacity-0 sm:-translate-y-[48%]"}`} ref={toolsPanelRef} role="dialog" tabIndex={-1}>
+            <aside aria-label={copy.toolsTitle} aria-modal="true" className={`fixed inset-0 z-50 flex max-h-[100dvh] min-w-0 flex-col overflow-hidden border border-stone-200 bg-stone-50 shadow-2xl outline-none transition-[opacity,transform] duration-180 ease-out focus-visible:ring-2 focus-visible:ring-stone-500 motion-reduce:transition-none sm:inset-x-5 sm:bottom-auto sm:top-1/2 sm:mx-auto sm:h-[min(760px,92dvh)] sm:w-[min(1180px,calc(100vw-2.5rem))] sm:-translate-y-1/2 sm:rounded-2xl ${toolsVisible ? "translate-y-0 opacity-100 sm:-translate-y-1/2" : "translate-y-4 opacity-0 sm:-translate-y-[48%]"}`} ref={toolsPanelRef} role="dialog" tabIndex={-1}>
                 <div className="flex shrink-0 items-center justify-between gap-3 border-b border-stone-200 bg-white px-4 py-3 sm:px-5">
                     <h2 className="text-base font-semibold text-stone-950">{copy.toolsTitle}</h2>
                     <button aria-label={copy.closeDetails} className={controlButtonClass} onClick={closeTools} type="button">×</button>
@@ -468,6 +468,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     </div>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5">
+                <div className="motion-safe:animate-[content-enter_200ms_ease-out_both] motion-reduce:animate-none" key={activeTool}>
                 {activeTool === "availability" ? (
                     <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(300px,0.78fr)_minmax(0,1.22fr)]">
                 <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5" id="availability-form">
@@ -656,6 +657,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         </div>
                 </div> : null}
                 </div>
+                </div>
             </aside>
             </OverlayPortal> : null}
         </section>
@@ -744,7 +746,7 @@ function CalendarSurface({
     const calendarEvents: AtaraksiaCalendarEvent[] = [
         ...visibleBlocks.map((block) => {
             const id = `block-${block.id}`;
-            detailByEventId.set(id, blockCalendarDetail(block, copy, locale, t));
+            detailByEventId.set(id, blockCalendarDetail(block, copy, locale, t, teamScope ? undefined : bookingForBlock(block, visibleBookings)));
             return {
                 id,
                 badge: formatTimeRange(block.startsAt, block.endsAt, locale),
@@ -1949,7 +1951,8 @@ function compactBlockCalendarLabel(block: SpecialistAvailabilityBlock, copy: Ret
     return [scheduleBlockLabel(block, copy, t), block.officeName, publicNote(block.notes)].filter(Boolean).join(" · ");
 }
 
-function blockCalendarDetail(block: SpecialistAvailabilityBlock, copy: ReturnType<typeof scheduleCopy>, locale: string, t: T): CalendarDetail {
+function blockCalendarDetail(block: SpecialistAvailabilityBlock, copy: ReturnType<typeof scheduleCopy>, locale: string, t: T, booking?: SpecialistBooking): CalendarDetail {
+    const bookingRows = booking ? bookingDetailRows(booking, copy, locale, t) : [];
     return {
         title: compactBlockCalendarLabel(block, copy, locale, t) || scheduleBlockLabel(block, copy, t),
         tone: calendarToneForBlock(block),
@@ -1966,7 +1969,7 @@ function blockCalendarDetail(block: SpecialistAvailabilityBlock, copy: ReturnTyp
             {label: copy.detailBooked, value: block.booked ? copy.yes : copy.no},
             {label: copy.detailCreated, value: formatDateTime(block.createdAt, locale)},
             {label: copy.detailUpdated, value: formatDateTime(block.updatedAt, locale)}
-        ].concat(publicNote(block.notes) ? [{label: copy.note, value: publicNote(block.notes) as string}] : [])
+        ].concat(publicNote(block.notes) ? [{label: copy.note, value: publicNote(block.notes) as string}] : [], bookingRows)
     };
 }
 
@@ -1976,15 +1979,46 @@ function bookingCalendarDetail(booking: SpecialistBooking, copy: ReturnType<type
         tone: calendarToneForBooking(booking),
         rows: [
             {label: copy.detailType, value: copy.bookingsTitle},
-            {label: copy.detailStatus, value: bookingStatusLabel(booking, copy, t)},
             {label: copy.startsAt, value: formatDateTime(booking.startsAt, locale)},
             {label: copy.endsAt, value: formatDateTime(booking.endsAt, locale)},
-            {label: copy.client, value: booking.clientName},
-            {label: copy.clientContact, value: booking.clientContact || copy.noClientContact},
             {label: copy.slotService, value: bookingServiceTitle(booking, locale)},
             {label: copy.office, value: booking.officeName ?? copy.noOffice}
-        ]
+        ].concat(bookingDetailRows(booking, copy, locale, t))
     };
+}
+
+function bookingForBlock(block: SpecialistAvailabilityBlock, bookings: SpecialistBooking[]) {
+    return bookings
+        .filter((booking) => booking.availabilityBlockId === block.id)
+        .sort((first, second) => {
+            if (first.status === "CANCELLED" && second.status !== "CANCELLED") return 1;
+            if (first.status !== "CANCELLED" && second.status === "CANCELLED") return -1;
+            return new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime();
+        })[0];
+}
+
+function bookingDetailRows(booking: SpecialistBooking, copy: ReturnType<typeof scheduleCopy>, locale: string, t: T): CalendarDetail["rows"] {
+    const paymentMethod = booking.paidWithMembership
+        ? `${copy.paymentMembership} #${booking.membershipPurchaseId}`
+        : booking.paidWithLoyaltyVoucher
+            ? `${copy.paymentVoucher} #${booking.loyaltyVoucherId}`
+            : booking.promoCode
+                ? `${copy.paymentPromo}: ${booking.promoCode}`
+                : copy.paymentManual;
+    return [
+        {label: copy.detailStatus, value: bookingStatusLabel(booking, copy, t)},
+        {label: copy.client, value: booking.clientName},
+        {label: copy.clientContact, value: booking.clientContact || copy.noClientContact},
+        {label: copy.paymentMethod, value: paymentMethod},
+        {label: copy.price, value: formatAmount(booking.bookedPrice, locale)},
+        ...(booking.discountPercent != null ? [{label: copy.discount, value: `${booking.discountPercent}%${booking.discountAmount != null ? ` · ${formatAmount(booking.discountAmount, locale)}` : ""}`}] : []),
+        {label: copy.reminder, value: booking.reminderOptIn ? copy.yes : copy.no},
+        ...(booking.cancellationReason ? [{label: copy.cancellationReason, value: booking.cancellationReason}] : []),
+        ...(booking.cancellationDetails ? [{label: copy.cancellationDetails, value: booking.cancellationDetails}] : []),
+        ...(booking.cancelledAt ? [{label: copy.cancelledAt, value: formatDateTime(booking.cancelledAt, locale)}] : []),
+        {label: copy.detailCreated, value: formatDateTime(booking.createdAt, locale)},
+        {label: copy.detailUpdated, value: formatDateTime(booking.updatedAt, locale)}
+    ];
 }
 
 function teamBookingCalendarDetail(booking: SpecialistBooking, copy: ReturnType<typeof scheduleCopy>, locale: string, t: T): CalendarDetail {
@@ -2166,6 +2200,16 @@ function scheduleCopy(t: T) {
         notAssigned: t("schedule.notAssigned"),
         client: t("schedule.client"),
         clientContact: t("schedule.clientContact"),
+        paymentMethod: t("schedule.paymentMethod"),
+        paymentMembership: t("schedule.paymentMembership"),
+        paymentVoucher: t("schedule.paymentVoucher"),
+        paymentPromo: t("schedule.paymentPromo"),
+        paymentManual: t("schedule.paymentManual"),
+        discount: t("schedule.discount"),
+        reminder: t("schedule.reminder"),
+        cancellationReason: t("schedule.cancellationReason"),
+        cancellationDetails: t("schedule.cancellationDetails"),
+        cancelledAt: t("schedule.cancelledAt"),
         price: t("schedule.price"),
         itemType: t("schedule.itemType"),
         appointmentSlot: t("schedule.appointmentSlot"),

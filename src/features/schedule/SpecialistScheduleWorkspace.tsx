@@ -1282,6 +1282,8 @@ function CalendarDetailPanel({closeLabel, detail, onClose, returnFocusTo}: {clos
         const panel = panelRef.current;
         if (!panel) return;
 
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
         panel.focus();
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
@@ -1294,14 +1296,16 @@ function CalendarDetailPanel({closeLabel, detail, onClose, returnFocusTo}: {clos
         panel.addEventListener("keydown", handleKeyDown);
         return () => {
             panel.removeEventListener("keydown", handleKeyDown);
+            document.body.style.overflow = previousOverflow;
             if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus();
         };
     }, []);
 
     return (
         <OverlayPortal>
-        <div aria-hidden="true" className="fixed inset-0 z-40 bg-stone-950/30" />
-        <section aria-labelledby="planner-detail-title" aria-modal="true" className="fixed inset-x-0 bottom-0 z-50 max-h-[82dvh] overflow-y-auto rounded-t-2xl border border-stone-200 bg-white p-4 shadow-2xl outline-none motion-safe:transition-transform focus-visible:ring-2 focus-visible:ring-stone-400 sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[min(400px,92vw)] sm:rounded-none" ref={panelRef} role="dialog" tabIndex={-1}>
+        <div className="fixed inset-0 z-[70] flex items-end justify-center p-0 sm:items-center sm:p-5" role="presentation">
+        <button aria-label={closeLabel} className="absolute inset-0 bg-stone-950/40" onClick={onClose} type="button" />
+        <section aria-labelledby="planner-detail-title" aria-modal="true" className="relative z-10 max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl border border-stone-200 bg-white p-4 shadow-2xl outline-none motion-safe:animate-[content-enter_200ms_ease-out_both] motion-reduce:animate-none focus-visible:ring-2 focus-visible:ring-stone-400 sm:max-w-2xl sm:rounded-2xl sm:p-5" ref={panelRef} role="dialog" tabIndex={-1}>
             <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                     <h2 className={`inline-flex max-w-full rounded-full border px-2.5 py-1 text-xs font-semibold ${toneClass}`} id="planner-detail-title">{detail.title}</h2>
@@ -1319,6 +1323,7 @@ function CalendarDetailPanel({closeLabel, detail, onClose, returnFocusTo}: {clos
                 ))}
             </dl>
         </section>
+        </div>
         </OverlayPortal>
     );
 }
@@ -1949,6 +1954,7 @@ function blockCalendarDetail(block: SpecialistAvailabilityBlock, copy: ReturnTyp
         title: compactBlockCalendarLabel(block, copy, locale, t) || scheduleBlockLabel(block, copy, t),
         tone: calendarToneForBlock(block),
         rows: [
+            {label: copy.detailRecordId, value: `#${block.id}`},
             {label: copy.detailType, value: scheduleBlockTypeLabel(block, copy)},
             {label: copy.detailStatus, value: blockStatusLabel(block, copy, t)},
             {label: copy.startsAt, value: formatDateTime(block.startsAt, locale)},
@@ -1956,7 +1962,10 @@ function blockCalendarDetail(block: SpecialistAvailabilityBlock, copy: ReturnTyp
             {label: copy.specialistFilter, value: block.specialistName},
             {label: copy.office, value: block.officeName ?? copy.noOffice},
             {label: copy.slotService, value: block.serviceTitle ?? copy.notAssigned},
-            {label: copy.capacity, value: block.capacity === null ? copy.notAssigned : String(block.capacity)}
+            {label: copy.capacity, value: block.capacity === null ? copy.notAssigned : String(block.capacity)},
+            {label: copy.detailBooked, value: block.booked ? copy.yes : copy.no},
+            {label: copy.detailCreated, value: formatDateTime(block.createdAt, locale)},
+            {label: copy.detailUpdated, value: formatDateTime(block.updatedAt, locale)}
         ].concat(publicNote(block.notes) ? [{label: copy.note, value: publicNote(block.notes) as string}] : [])
     };
 }
@@ -2147,6 +2156,12 @@ function scheduleCopy(t: T) {
         statusInactiveEvent: t("schedule.statusInactiveEvent"),
         detailType: t("schedule.detailType"),
         detailStatus: t("schedule.detailStatus"),
+        detailRecordId: t("schedule.detailRecordId"),
+        detailBooked: t("schedule.detailBooked"),
+        detailCreated: t("schedule.detailCreated"),
+        detailUpdated: t("schedule.detailUpdated"),
+        yes: t("schedule.yes"),
+        no: t("schedule.no"),
         closeDetails: t("schedule.closeDetails"),
         notAssigned: t("schedule.notAssigned"),
         client: t("schedule.client"),

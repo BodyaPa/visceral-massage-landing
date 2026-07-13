@@ -883,7 +883,7 @@
           "reminder": "Нагадування",
           "cancellationReason": "Причина скасування",
           "cancellationDetails": "Коментар до скасування",
-          "cancelledAt": "Скасовано о",
+          "cancelledAt": "Час скасування",
           "price": "Ціна",
           "itemType": "Тип графіка",
           "appointmentSlot": "Конкретний слот",

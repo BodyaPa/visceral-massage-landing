@@ -295,8 +295,8 @@ export default function ServicesManagement() {
                 </div>
             </div>
 
-            <div className="min-w-0 space-y-5">
-            <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="min-w-0 self-stretch">
+            <div className="h-full min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex flex-col gap-2 border-b border-stone-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                         <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
@@ -366,7 +366,7 @@ export default function ServicesManagement() {
                         </div>
                     )}
 
-                    <div className="max-w-full sm:max-w-xl">
+                    <div className="w-full">
                         <Field label={t("externalPaymentUrl")} tooltip={t("externalPaymentUrlHint")}>
                             <input
                                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"

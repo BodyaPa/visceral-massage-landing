@@ -190,7 +190,7 @@ export default function FinanceBookingsManagement() {
     }
 
     return (
-        <section className="w-full min-w-0 max-w-[1180px] space-y-5 overflow-x-clip">
+        <section className="w-full min-w-0 space-y-5 overflow-x-clip">
             <header className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-6">
                 <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                     <div className="min-w-0">

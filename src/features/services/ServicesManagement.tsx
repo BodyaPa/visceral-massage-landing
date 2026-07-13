@@ -240,7 +240,7 @@ export default function ServicesManagement() {
                 {isError ? <p className="text-sm text-red-700">{t("loadError")}</p> : null}
                 {isFetching ? <p className="text-sm text-stone-500">{t("loading")}</p> : null}
 
-                <div className="max-h-[36rem] overflow-y-auto rounded-lg border border-stone-200 bg-stone-50/70 p-2">
+                <div className="rounded-lg border border-stone-200 bg-stone-50/70 p-2">
                     <div className="space-y-2" role="list">
                         {services.map((service) => {
                             const selected = service.id === selectedService?.id;

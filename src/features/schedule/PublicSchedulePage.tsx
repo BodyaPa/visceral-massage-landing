@@ -760,7 +760,7 @@ function CompactOpenSlotRow({copy, locale, onChoose, slot}: {copy: Copy; locale:
             <div className="flex min-w-0 items-start gap-3">
                 <SpecialistAvatar name={slot.specialistName} selected={false} url={slot.specialistAvatarMediaUrl} />
                 <div className="min-w-0">
-                    <p className="break-words text-sm font-semibold text-stone-950">{formatDate(slot.startsAt, locale)} · {formatTime(slot.startsAt, locale)}</p>
+                    <p className="break-words text-sm font-semibold text-stone-950">{formatDateTimeRange(slot.startsAt, slot.endsAt, locale)}</p>
                     <p className="mt-1 break-words text-xs text-stone-600">{slot.specialistName} · {slot.officeName ?? copy.withoutOffice}</p>
                 </div>
             </div>

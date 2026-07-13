@@ -3,10 +3,10 @@
 import {useEffect, useState, type ChangeEvent, type ReactNode} from "react";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
-import {useListAdminMembershipOffersQuery, useUpdateAdminMembershipOfferMutation, useUploadAdminMembershipOfferMediaMutation} from "@/features/memberships/memberships.api";
+import {useCreateAdminMembershipOfferMutation, useListAdminMembershipOffersQuery, useUpdateAdminMembershipOfferMutation, useUploadAdminMembershipOfferMediaMutation} from "@/features/memberships/memberships.api";
 import {useCreateServiceMutation, useListAdminServicesQuery, useUpdateServiceMutation} from "@/features/services/services.api";
 import {resolveApiMediaUrl} from "@/shared/lib/media/resolveApiMediaUrl";
-import type {MembershipOffer, MembershipOfferUpdateInput} from "@/types/memberships";
+import type {MembershipOffer, MembershipOfferKind, MembershipOfferUpdateInput} from "@/types/memberships";
 import type {AdminService, ServiceInput} from "@/types/services";
 
 type ServiceEditorLanguage = "ua" | "en";
@@ -57,12 +57,14 @@ export default function ServicesManagement() {
     const [createService, {isLoading: isCreating}] = useCreateServiceMutation();
     const [updateService, {isLoading: isUpdating}] = useUpdateServiceMutation();
     const [updateMembershipOffer, {isLoading: isUpdatingOffer}] = useUpdateAdminMembershipOfferMutation();
+    const [createMembershipOffer, {isLoading: isCreatingOffer}] = useCreateAdminMembershipOfferMutation();
     const [uploadMembershipOfferMedia, {isLoading: isUploadingOfferMedia}] = useUploadAdminMembershipOfferMediaMutation();
     const [selectedOfferId, setSelectedOfferId] = useState<number | null>(null);
     const selectedOffer = selectedOfferId === null
         ? membershipOffers[0] ?? null
         : membershipOffers.find((offer) => offer.id === selectedOfferId) ?? null;
     const [offerForm, setOfferForm] = useState<MembershipOfferUpdateInput>(emptyOfferForm);
+    const [creatingOfferKind, setCreatingOfferKind] = useState<MembershipOfferKind | null>(null);
     const saving = isCreating || isUpdating;
 
     useEffect(() => {
@@ -126,7 +128,7 @@ export default function ServicesManagement() {
             eligibleServiceIds: selectedOffer.eligibleServiceIds,
             backgroundMediaId: selectedOffer.backgroundMediaId
         });
-    }, [selectedOffer]);
+    }, [creatingOfferKind, selectedOffer]);
 
     function selectService(service: AdminService) {
         setSelectedServiceId(service.id);
@@ -170,7 +172,7 @@ export default function ServicesManagement() {
     }
 
     async function saveMembershipOffer() {
-        if (!selectedOffer) return;
+        if (!selectedOffer && !creatingOfferKind) return;
         try {
             const body: MembershipOfferUpdateInput = {
                 ...offerForm,
@@ -185,8 +187,12 @@ export default function ServicesManagement() {
                 eligibleServiceIds: offerForm.eligibleServiceIds,
                 backgroundMediaId: offerForm.backgroundMediaId
             };
-            await updateMembershipOffer({id: selectedOffer.id, body}).unwrap();
-            toast.success(t("memberships.updated"));
+            const saved = creatingOfferKind
+                ? await createMembershipOffer({kind: creatingOfferKind, offer: body}).unwrap()
+                : await updateMembershipOffer({id: selectedOffer!.id, body}).unwrap();
+            setCreatingOfferKind(null);
+            setSelectedOfferId(saved.id);
+            toast.success(creatingOfferKind ? t("memberships.created") : t("memberships.updated"));
         } catch {
             toast.error(t("memberships.saveError"));
         }
@@ -197,7 +203,7 @@ export default function ServicesManagement() {
 
     return (
         <section className="w-full min-w-0 max-w-full space-y-5">
-            <div className="grid w-full min-w-0 max-w-full items-start gap-5 xl:grid-cols-[minmax(520px,0.95fr)_minmax(0,1.05fr)]">
+            <div className="grid w-full min-w-0 max-w-full items-start gap-5">
             <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
                 <div className="mb-4 flex flex-col gap-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -436,7 +442,8 @@ export default function ServicesManagement() {
                 form={offerForm}
                 isError={offersError}
                 isFetching={offersFetching}
-                isSaving={isUpdatingOffer}
+                creatingKind={creatingOfferKind}
+                isSaving={isUpdatingOffer || isCreatingOffer}
                 isUploadingMedia={isUploadingOfferMedia}
                 offers={membershipOffers}
                 onChange={setOfferForm}
@@ -447,6 +454,7 @@ export default function ServicesManagement() {
                 }}
                 onSave={saveMembershipOffer}
                 onSelect={setSelectedOfferId}
+                onStartCreate={(kind) => {setCreatingOfferKind(kind);setOfferForm({...emptyOfferForm, visitsTotal: kind === "MEMBERSHIP" ? 1 : null})}}
                 selectedOffer={selectedOffer}
                 t={t}
             />
@@ -454,8 +462,9 @@ export default function ServicesManagement() {
     );
 }
 
-function MembershipOffersPanel({allServices, form, isError, isFetching, isSaving, isUploadingMedia, offers, onChange, onSave, onSelect, onUploadMedia, selectedOffer, t}: {
+function MembershipOffersPanel({allServices, creatingKind, form, isError, isFetching, isSaving, isUploadingMedia, offers, onChange, onSave, onSelect, onStartCreate, onUploadMedia, selectedOffer, t}: {
     allServices: AdminService[];
+    creatingKind: MembershipOfferKind | null;
     form: MembershipOfferUpdateInput;
     isError: boolean;
     isFetching: boolean;
@@ -465,6 +474,7 @@ function MembershipOffersPanel({allServices, form, isError, isFetching, isSaving
     onChange: (form: MembershipOfferUpdateInput) => void;
     onSave: () => void;
     onSelect: (id: number) => void;
+    onStartCreate: (kind: MembershipOfferKind) => void;
     onUploadMedia: (file: File) => Promise<string>;
     selectedOffer: MembershipOffer | null;
     t: ReturnType<typeof useTranslations<"admin.services">>;
@@ -480,7 +490,8 @@ function MembershipOffersPanel({allServices, form, isError, isFetching, isSaving
         updateField("eligibleServiceIds", nextIds);
     }
 
-    const saveDisabled = isSaving || isUploadingMedia || !selectedOffer || !form.titleUa.trim() || form.price < 0 || form.validityDays < 1 || (selectedOffer.kind === "MEMBERSHIP" && (!form.visitsTotal || form.visitsTotal < 1));
+    const currentKind = creatingKind ?? selectedOffer?.kind ?? null;
+    const saveDisabled = isSaving || isUploadingMedia || !currentKind || !form.titleUa.trim() || form.price < 0 || form.validityDays < 1 || (currentKind === "MEMBERSHIP" && (!form.visitsTotal || form.visitsTotal < 1));
     const previewUrl = form.backgroundMediaId === selectedOffer?.backgroundMediaId ? selectedOffer?.backgroundMediaUrl : null;
 
     async function uploadBackground(event: ChangeEvent<HTMLInputElement>) {
@@ -502,7 +513,11 @@ function MembershipOffersPanel({allServices, form, isError, isFetching, isSaving
                     <h2 className="mt-1 break-words text-xl font-semibold text-stone-950">{t("memberships.title")}</h2>
                     <p className="mt-1 break-words text-sm text-stone-500">{t("memberships.subtitle")}</p>
                 </div>
-                {selectedOffer ? <StatusBadge enabled={form.active} label={form.active ? t("active") : t("inactive")} /> : null}
+                <div className="flex flex-wrap gap-2">
+                    <button className="rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white hover:bg-stone-700" onClick={() => onStartCreate("MEMBERSHIP")} type="button">{t("memberships.newMembership")}</button>
+                    <button className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 hover:bg-stone-100" onClick={() => onStartCreate("CERTIFICATE")} type="button">{t("memberships.newCertificate")}</button>
+                    {selectedOffer && !creatingKind ? <StatusBadge enabled={form.active} label={form.active ? t("active") : t("inactive")} /> : null}
+                </div>
             </div>
             {isError ? <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("memberships.loadError")}</p> : null}
             {isFetching ? <p className="mt-4 text-sm text-stone-500">{t("loading")}</p> : null}
@@ -522,7 +537,7 @@ function MembershipOffersPanel({allServices, form, isError, isFetching, isSaving
                             </button>
                         ))}
                     </div>
-                    {selectedOffer ? (
+                    {selectedOffer || creatingKind ? (
                         <div className="min-w-0 space-y-3">
                             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
                                 <div className="grid gap-3 sm:grid-cols-2">
@@ -596,7 +611,7 @@ function MembershipOffersPanel({allServices, form, isError, isFetching, isSaving
                                 </div>
                             </div>
                             <div className="flex justify-end"><button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-400 sm:w-fit" disabled={saveDisabled} onClick={onSave} type="button">
-                                {isSaving ? t("saving") : t("memberships.save")}
+                                {isSaving ? t("saving") : creatingKind ? t("memberships.create") : t("memberships.save")}
                             </button></div>
                         </div>
                     ) : null}

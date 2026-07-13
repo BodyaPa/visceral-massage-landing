@@ -1,6 +1,6 @@
 import {createApi} from "@reduxjs/toolkit/query/react";
 import {baseQuery} from "@/shared/api/baseQuery";
-import type {MembershipOffer, MembershipOfferUpdateInput, MembershipPaymentSession, MembershipPurchase, MembershipPurchaseInput, MembershipPurchaseStatus} from "@/types/memberships";
+import type {MembershipOffer, MembershipOfferCreateInput, MembershipOfferUpdateInput, MembershipPaymentSession, MembershipPurchase, MembershipPurchaseInput, MembershipPurchaseStatus} from "@/types/memberships";
 import type {MediaAsset} from "@/types/news";
 import type {PageResponse} from "@/types/news";
 
@@ -23,6 +23,10 @@ export const membershipsApi = createApi({
                 {type: "MembershipOffers", id: "ADMIN"},
                 {type: "MembershipOffers", id: "LIST"}
             ]
+        }),
+        createAdminMembershipOffer: build.mutation<MembershipOffer, MembershipOfferCreateInput>({
+            query: (body) => ({url: "/admin/memberships/offers", method: "POST", body}),
+            invalidatesTags: [{type: "MembershipOffers", id: "ADMIN"}, {type: "MembershipOffers", id: "LIST"}]
         }),
         uploadAdminMembershipOfferMedia: build.mutation<MediaAsset, File>({
             query: (file) => {
@@ -68,6 +72,7 @@ export const membershipsApi = createApi({
 
 export const {
     useCancelFinanceMembershipPurchaseMutation,
+    useCreateAdminMembershipOfferMutation,
     useConfirmMembershipPaymentMutation,
     useCreateMembershipPaymentSessionMutation,
     useCreateMembershipPurchaseMutation,

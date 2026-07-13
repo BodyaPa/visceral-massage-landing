@@ -33,6 +33,11 @@ export type MembershipOfferUpdateInput = {
     backgroundMediaId: string | null;
 };
 
+export type MembershipOfferCreateInput = {
+    kind: MembershipOfferKind;
+    offer: MembershipOfferUpdateInput;
+};
+
 export interface MembershipPurchase {
     id: number;
     status: MembershipPurchaseStatus;

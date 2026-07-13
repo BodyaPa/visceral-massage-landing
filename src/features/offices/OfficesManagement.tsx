@@ -1,6 +1,7 @@
 "use client";
 
 import {useEffect, useState, type ChangeEvent} from "react";
+import type {FetchBaseQueryError} from "@reduxjs/toolkit/query";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {useCreateOfficeMutation, useListOfficesQuery, useUpdateOfficeMutation, useUploadOfficeMediaMutation} from "@/features/offices/offices.api";
@@ -92,10 +93,20 @@ export default function OfficesManagement() {
         if (!file) return;
         try {
             const asset = await uploadOfficeMedia(file).unwrap();
-            updateField(field, asset.id);
-            toast.success(t("mediaUploaded"));
-        } catch {
-            toast.error(t("mediaUploadError"));
+            const nextForm = {...form, [field]: asset.id};
+            setForm(nextForm);
+            if (selectedOffice) {
+                await updateOffice({id: selectedOffice.id, body: {
+                    ...nextForm,
+                    directions: nextForm.directions?.trim() || null,
+                    googleMapsUrl: nextForm.googleMapsUrl?.trim() || null
+                }}).unwrap();
+                toast.success(t("mediaAttached"));
+            } else {
+                toast.success(t("mediaUploaded"));
+            }
+        } catch (error) {
+            toast.error(apiErrorMessage(error) ?? t("mediaUploadError"));
         }
     }
 
@@ -346,4 +357,12 @@ function Field({children, label}: {children: React.ReactNode; label: string}) {
             {children}
         </label>
     );
+}
+
+function apiErrorMessage(error: unknown) {
+    if (!error || typeof error !== "object" || !("data" in error)) return null;
+    const data = (error as FetchBaseQueryError & {data?: unknown}).data;
+    if (!data || typeof data !== "object" || !("message" in data)) return null;
+    const message = (data as {message?: unknown}).message;
+    return typeof message === "string" && message.trim() ? message : null;
 }

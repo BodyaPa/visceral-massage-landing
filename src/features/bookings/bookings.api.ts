@@ -201,6 +201,13 @@ export const bookingsApi = createApi({
                 {type: "FinanceSummary", id: "CURRENT"}
             ]
         }),
+        deleteFinanceExpense: build.mutation<void, number>({
+            query: (id) => ({url: `/admin/finance/expenses/${id}`, method: "DELETE"}),
+            invalidatesTags: [
+                {type: "Expenses", id: "LIST"},
+                {type: "FinanceSummary", id: "CURRENT"}
+            ]
+        }),
         confirmPayment: build.mutation<FinanceBooking, number>({
             query: (id) => ({url: `/admin/finance/bookings/${id}/confirm-payment`, method: "POST"}),
             invalidatesTags: (result, error, id) => [
@@ -237,6 +244,7 @@ export const {
     useConfirmEventEnrollmentPaymentMutation,
     useConfirmPaymentMutation,
     useCreateFinanceExpenseMutation,
+    useDeleteFinanceExpenseMutation,
     useCreateManualBookingMutation,
     useGetFinanceSummaryQuery,
     useGetFinanceSettingsQuery,

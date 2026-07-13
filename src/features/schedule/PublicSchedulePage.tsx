@@ -44,7 +44,7 @@ import type {Office} from "@/types/offices";
 import type {PublicFixedEvent, PublicScheduleAvailabilityBlock} from "@/types/schedule";
 import type {PublicService} from "@/types/services";
 import type {MembershipOffer, MembershipPurchase} from "@/types/memberships";
-import {useGetLoyaltyVouchersQuery} from "@/features/loyalty/loyalty.api";
+import {useActivateLoyaltyVoucherMutation, useGetLoyaltyVouchersQuery} from "@/features/loyalty/loyalty.api";
 import type {LoyaltyVoucher} from "@/types/loyalty";
 
 const savedFiltersKey = "ataraksia.publicScheduleFilters";
@@ -976,7 +976,10 @@ function ConfirmationModal({
     const [acknowledged, setAcknowledged] = useState(false);
     const [promoResult, setPromoResult] = useState<PromoValidation | null>(null);
     const [promoError, setPromoError] = useState<string | null>(null);
+    const [activatedVoucher, setActivatedVoucher] = useState<LoyaltyVoucher | null>(null);
+    const [codeSuccess, setCodeSuccess] = useState<string | null>(null);
     const [validatePromo, {isLoading: validatingPromo}] = useValidatePromoMutation();
+    const [activateVoucher, {isLoading: activatingVoucher}] = useActivateLoyaltyVoucherMutation();
     const dialogRef = useModalFocus(onClose, returnFocusTo);
     const title = pending.type === "individual" ? pending.service.title : pending.event.title;
     const specialist = pending.type === "individual" ? pending.slot.specialistName : pending.event.specialistName;
@@ -988,9 +991,53 @@ function ConfirmationModal({
     const endsAt = pending.type === "individual" ? pending.slot.endsAt : pending.event.endsAt;
     const price = pending.type === "individual" ? pending.service.basePrice : pending.event.price;
     const capacity = pending.type === "event" ? copy.remaining(pending.event.remainingPlaces) : null;
+    const usableVouchers = activatedVoucher && !vouchers.some((voucher) => voucher.id === activatedVoucher.id)
+        ? [activatedVoucher, ...vouchers]
+        : vouchers;
     const selectedMembership = memberships.find((membership) => membership.id === selectedMembershipPurchaseId);
-    const selectedVoucher = vouchers.find((voucher) => voucher.id === selectedLoyaltyVoucherId);
-    async function applyPromo() { try { const result=await validatePromo({code:promoCode,targetType:pending.type==="individual"?"SERVICE":"EVENT",targetId:pending.type==="individual"?pending.service.id:pending.event.id}).unwrap();setPromoResult(result);setPromoError(null);setSelectedMembershipPurchaseId("");setSelectedLoyaltyVoucherId(""); } catch (error) {setPromoResult(null);setPromoError(promoValidationMessage(error, copy));} }
+    const selectedVoucher = usableVouchers.find((voucher) => voucher.id === selectedLoyaltyVoucherId);
+    const applyingCode = validatingPromo || activatingVoucher;
+
+    async function applyCode() {
+        setPromoResult(null);
+        setPromoError(null);
+        setCodeSuccess(null);
+        try {
+            const result = await validatePromo({
+                code: promoCode,
+                targetType: pending.type === "individual" ? "SERVICE" : "EVENT",
+                targetId: pending.type === "individual" ? pending.service.id : pending.event.id
+            }).unwrap();
+            setPromoResult(result);
+            setSelectedMembershipPurchaseId("");
+            setSelectedLoyaltyVoucherId("");
+            setActivatedVoucher(null);
+            return;
+        } catch (error) {
+            if (isPromoScopeError(error)) {
+                setPromoError(promoValidationMessage(error, copy));
+                return;
+            }
+        }
+
+        try {
+            const voucher = await activateVoucher(promoCode).unwrap();
+            const eligible = eligibleVouchersForPending(pending, [voucher]).length > 0;
+            setPromoCode("");
+            setSelectedMembershipPurchaseId("");
+            if (eligible) {
+                setActivatedVoucher(voucher);
+                setSelectedLoyaltyVoucherId(voucher.id);
+                setCodeSuccess(copy.giftCodeActivated);
+            } else {
+                setActivatedVoucher(null);
+                setSelectedLoyaltyVoucherId("");
+                setCodeSuccess(copy.giftCodeActivatedNotEligible);
+            }
+        } catch {
+            setPromoError(copy.codeInvalid);
+        }
+    }
 
     return (
         <div aria-labelledby="booking-confirmation-title" aria-modal="true" className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6" onMouseDown={(event) => {if (event.target === event.currentTarget) onClose()}} ref={dialogRef} role="dialog" tabIndex={-1}>
@@ -1006,7 +1053,7 @@ function ConfirmationModal({
                 </dl>
                 <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
                     <p className="text-sm font-semibold text-amber-950">{copy.reviewStepTitle}</p>
-                    <p className="mt-1 text-xs leading-5 text-amber-900">{selectedMembership || selectedVoucher ? copy.membershipManualNote : copy.paymentManualNote}</p>
+                    <p className="mt-1 text-xs leading-5 text-amber-900">{selectedMembership ? copy.membershipManualNote : selectedVoucher ? copy.voucherManualNote : copy.paymentManualNote}</p>
                 </div>
                 <div className="mt-5 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
                     <label className="block text-sm font-semibold text-stone-900" htmlFor="membership-use">{copy.membershipUseTitle}</label>
@@ -1031,15 +1078,17 @@ function ConfirmationModal({
                 <div className="mt-4 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
                     <label className="block text-sm font-semibold text-stone-900" htmlFor="loyalty-voucher-use">{copy.loyaltyVoucherTitle}</label>
                     <p className="mt-1 text-xs leading-5 text-stone-500">{vouchers.length > 0 ? copy.loyaltyVoucherHint : copy.loyaltyVoucherEmpty}</p>
-                    {vouchers.length > 0 ? <select className="mt-3 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-900" id="loyalty-voucher-use" onChange={(event) => {setSelectedLoyaltyVoucherId(event.target.value ? Number(event.target.value) : "");setSelectedMembershipPurchaseId("");setPromoCode("");setPromoResult(null);setPromoError(null)}} value={selectedLoyaltyVoucherId}><option value="">{copy.loyaltyVoucherDoNotUse}</option>{vouchers.map((voucher) => <option key={voucher.id} value={voucher.id}>{locale === "en" && voucher.titleEn ? voucher.titleEn : voucher.titleUa}</option>)}</select> : null}
+                    {usableVouchers.length > 0 ? <select className="mt-3 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-900" id="loyalty-voucher-use" onChange={(event) => {setSelectedLoyaltyVoucherId(event.target.value ? Number(event.target.value) : "");setSelectedMembershipPurchaseId("");setPromoCode("");setPromoResult(null);setPromoError(null);setCodeSuccess(null)}} value={selectedLoyaltyVoucherId}><option value="">{copy.loyaltyVoucherDoNotUse}</option>{usableVouchers.map((voucher) => <option key={voucher.id} value={voucher.id}>{locale === "en" && voucher.titleEn ? voucher.titleEn : voucher.titleUa}</option>)}</select> : null}
                     {selectedVoucher ? <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-900">{copy.loyaltyVoucherWillUse}</p> : null}
                 </div>
                 <div className="mt-4 rounded-xl border border-stone-200 bg-white px-4 py-3">
-                    <label className="block text-sm font-semibold text-stone-900" htmlFor="promo-code">{copy.promoTitle}</label>
-                    <div className="mt-2 flex gap-2"><input className="min-h-11 min-w-0 flex-1 rounded-lg border border-stone-300 px-3 text-sm uppercase outline-none focus:border-stone-950" disabled={selectedMembershipPurchaseId!==""||selectedLoyaltyVoucherId!==""} id="promo-code" onChange={e=>{setPromoCode(e.target.value.toUpperCase());setPromoResult(null);setPromoError(null)}} placeholder={copy.promoPlaceholder} value={promoCode}/><button className="min-h-11 rounded-lg bg-stone-950 px-4 text-sm font-semibold text-white hover:bg-stone-800 disabled:bg-stone-300" disabled={!promoCode.trim()||validatingPromo||selectedMembershipPurchaseId!==""||selectedLoyaltyVoucherId!==""} onClick={()=>void applyPromo()} type="button">{validatingPromo?copy.promoChecking:copy.promoApply}</button></div>
+                    <label className="block text-sm font-semibold text-stone-900" htmlFor="promo-code">{copy.codeTitle}</label>
+                    <p className="mt-1 text-xs leading-5 text-stone-500">{copy.codeHint}</p>
+                    <div className="mt-2 flex gap-2"><input className="min-h-11 min-w-0 flex-1 rounded-lg border border-stone-300 px-3 text-sm uppercase outline-none focus:border-stone-950" disabled={selectedMembershipPurchaseId!==""||selectedLoyaltyVoucherId!==""} id="promo-code" onChange={e=>{setPromoCode(e.target.value.toUpperCase());setPromoResult(null);setPromoError(null);setCodeSuccess(null)}} placeholder={copy.codePlaceholder} value={promoCode}/><button className="min-h-11 rounded-lg bg-stone-950 px-4 text-sm font-semibold text-white hover:bg-stone-800 disabled:bg-stone-300" disabled={!promoCode.trim()||applyingCode||selectedMembershipPurchaseId!==""||selectedLoyaltyVoucherId!==""} onClick={()=>void applyCode()} type="button">{applyingCode?copy.codeChecking:copy.codeApply}</button></div>
                     {promoResult?<div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"><strong>{promoResult.discountPercent}%</strong> · <s>{formatAmount(promoResult.originalPrice,locale)}</s> → {formatAmount(promoResult.finalPrice,locale)}{promoResult.remainingUserUses!==null?<span className="block text-xs">{copy.promoRemaining(promoResult.remainingUserUses)}</span>:null}</div>:null}
+                    {codeSuccess?<p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium leading-5 text-emerald-900">{codeSuccess}</p>:null}
                     {promoError?<p className="mt-2 text-xs font-medium text-red-700">{promoError}</p>:null}
-                    {selectedMembershipPurchaseId!==""||selectedLoyaltyVoucherId!==""?<p className="mt-2 text-xs text-stone-500">{copy.promoMembershipExclusive}</p>:null}
+                    {selectedMembershipPurchaseId!==""||selectedLoyaltyVoucherId!==""?<p className="mt-2 text-xs text-stone-500">{copy.codeBenefitExclusive}</p>:null}
                 </div>
                 <OfficeDetailsBlock copy={copy} details={officeDetails} />
                 <label className="mt-5 flex min-w-0 gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700">
@@ -1048,7 +1097,7 @@ function ConfirmationModal({
                 </label>
                 <label className="mt-3 flex min-w-0 gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700">
                     <input checked={acknowledged} className="mt-0.5 h-4 w-4 accent-stone-900" onChange={(event) => setAcknowledged(event.target.checked)} type="checkbox" />
-                    <span className="min-w-0"><strong className="block break-words font-medium text-stone-900">{copy.confirmUnderstand}</strong><span className="mt-0.5 block break-words text-xs leading-5 text-stone-500">{selectedMembership || selectedVoucher ? copy.confirmUnderstandMembershipHint : copy.confirmUnderstandPaymentHint}</span></span>
+                    <span className="min-w-0"><strong className="block break-words font-medium text-stone-900">{copy.confirmUnderstand}</strong><span className="mt-0.5 block break-words text-xs leading-5 text-stone-500">{selectedMembership ? copy.confirmUnderstandMembershipHint : selectedVoucher ? copy.confirmUnderstandVoucherHint : copy.confirmUnderstandPaymentHint}</span></span>
                 </label>
                 <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <button className={secondaryButtonClass} disabled={isSaving} onClick={onClose} type="button">{copy.cancel}</button>
@@ -1388,6 +1437,14 @@ function promoValidationMessage(error: unknown, copy: Copy) {
     return copy.promoInvalid;
 }
 
+function isPromoScopeError(error: unknown) {
+    const data = typeof error === "object" && error !== null && "data" in error
+        ? (error as {data?: {message?: unknown}}).data
+        : null;
+    const message = typeof data?.message === "string" ? data.message : "";
+    return message.startsWith("PROMO_SCOPE_SERVICE:") || message.startsWith("PROMO_SCOPE_EVENT:");
+}
+
 function apiMessage(error: unknown) {
     const data = typeof error === "object" && error !== null && "data" in error
         ? (error as {data?: {message?: unknown}}).data
@@ -1508,9 +1565,11 @@ function labels(t: T) {
         reviewStepTitle: t("public.reviewStepTitle"),
         paymentManualNote: t("public.paymentManualNote"),
         membershipManualNote: t("public.membershipManualNote"),
+        voucherManualNote: t("public.voucherManualNote"),
         confirmUnderstand: t("public.confirmUnderstand"),
         confirmUnderstandPaymentHint: t("public.confirmUnderstandPaymentHint"),
         confirmUnderstandMembershipHint: t("public.confirmUnderstandMembershipHint"),
+        confirmUnderstandVoucherHint: t("public.confirmUnderstandVoucherHint"),
         time: t("public.time"),
         price: t("summary.price"),
         places: t("public.places"),
@@ -1565,6 +1624,15 @@ function labels(t: T) {
         loyaltyVoucherEmpty: t("public.loyaltyVoucherEmpty"),
         loyaltyVoucherDoNotUse: t("public.loyaltyVoucherDoNotUse"),
         loyaltyVoucherWillUse: t("public.loyaltyVoucherWillUse"),
+        codeTitle: t("public.codeTitle"),
+        codeHint: t("public.codeHint"),
+        codePlaceholder: t("public.codePlaceholder"),
+        codeApply: t("public.codeApply"),
+        codeChecking: t("public.codeChecking"),
+        codeInvalid: t("public.codeInvalid"),
+        giftCodeActivated: t("public.giftCodeActivated"),
+        giftCodeActivatedNotEligible: t("public.giftCodeActivatedNotEligible"),
+        codeBenefitExclusive: t("public.codeBenefitExclusive"),
         promoTitle: t("public.promoTitle"),
         promoPlaceholder: t("public.promoPlaceholder"),
         promoApply: t("public.promoApply"),

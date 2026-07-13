@@ -64,7 +64,7 @@ export default function ManagementNavigation({locale, showNews, showUsers, showO
                             key={item.href}
                         >
                             <span className={active ? "h-1.5 w-1.5 shrink-0 rounded-full bg-white" : "h-1.5 w-1.5 shrink-0 rounded-full bg-stone-300 transition-colors group-hover:bg-stone-700"} />
-                            <span className="whitespace-nowrap">{item.label}</span>
+                            <span className="min-w-0 whitespace-nowrap lg:whitespace-normal lg:break-words">{item.label}</span>
                         </Link>
                     );
                 })}

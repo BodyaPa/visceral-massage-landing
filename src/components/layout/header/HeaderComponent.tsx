@@ -19,7 +19,7 @@ export default function HeaderComponent() {
     const locale = useLocale();
     const pathname = usePathname();
     const isAuthPage = pathname.endsWith("/auth") || pathname.endsWith("/login") || pathname.endsWith("/register");
-    const isAccountPage = pathname.endsWith("/account");
+    const isAccountPage = /\/account(?:\/|$)/.test(pathname);
     const isManagementPage = pathname.includes("/admin");
     const usesBackgroundSlider = isAuthPage || isAccountPage || isManagementPage;
 

@@ -5,7 +5,7 @@ import type {ReactNode} from "react";
 import {createPortal} from "react-dom";
 import {useLocale, useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
-import {useCreateManualBookingMutation, useGetSpecialistFinanceOverviewQuery, useListSpecialistBookingsQuery} from "@/features/bookings/bookings.api";
+import {useCreateManualBookingMutation, useListSpecialistBookingsQuery} from "@/features/bookings/bookings.api";
 import {bookingServiceTitle} from "@/features/bookings/bookingTitles";
 import {useListPublicOfficesQuery} from "@/features/offices/offices.api";
 import {useListServicesQuery} from "@/features/services/services.api";
@@ -37,11 +37,11 @@ import AtaraksiaCalendar, {
     type AtaraksiaCalendarMessages
 } from "@/features/schedule/AtaraksiaCalendar";
 import type {DayPlanCopyConflict, DayPlanCopyInput, DayPlanCopyResponse, ScheduleBlockStatus, ScheduleBlockType, SpecialistAvailabilityBlock, SpecialistFixedEvent, SpecialistFixedEventEnrollment, SpecialistFixedEventInput} from "@/types/schedule";
-import type {SpecialistBooking, SpecialistFinanceOverview} from "@/types/bookings";
+import type {SpecialistBooking} from "@/types/bookings";
 import type {PublicService} from "@/types/services";
 import type {AdminUser} from "@/types/users";
 import type {Locale} from "@/i18n";
-import {formatCurrencyAmount as formatAmount, formatPercentAmount as formatPercent} from "@/shared/lib/i18n/formatNumbers";
+import {formatCurrencyAmount as formatAmount} from "@/shared/lib/i18n/formatNumbers";
 import {toLanguageTag} from "@/shared/lib/i18n/toLanguageTag";
 
 const personalViews = ["day", "week", "list"] as const;
@@ -51,6 +51,7 @@ const defaultAppointmentBufferMinutes = 30;
 type CalendarView = typeof personalViews[number];
 type PlannerMode = "plan" | "bookings" | "all";
 type PlannerScope = "mine" | "team";
+type PlannerTool = "availability" | "blocking" | "event" | "template" | "copy" | "bookings";
 
 type Props = {
     canManageAllSpecialists: boolean;
@@ -110,7 +111,6 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     });
     const {data: calendarEventsData = [], isFetching: calendarEventsFetching} = useListSpecialistEventsQuery(calendarScheduleQuery, {skip: !hasBackendCalendarFilters});
     const {data: calendarBookingsData = [], isFetching: calendarBookingsFetching} = useListSpecialistBookingsQuery(calendarScheduleQuery, {skip: !hasBackendCalendarFilters});
-    const {data: financeOverview, isFetching: financeOverviewFetching, isError: financeOverviewError} = useGetSpecialistFinanceOverviewQuery(range);
     const {data: specialistsData, isFetching: specialistsFetching, isError: specialistsError} = useListUsersQuery(
         {role: "SPECIALIST", enabled: true, size: 100},
         {skip: !canManageAllSpecialists}
@@ -131,6 +131,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const [plannerMode, setPlannerMode] = useState<PlannerMode>("all");
     const [toolsOpen, setToolsOpen] = useState(false);
     const [toolsVisible, setToolsVisible] = useState(false);
+    const [activeTool, setActiveTool] = useState<PlannerTool>("availability");
     const [form, setForm] = useState<AvailabilityForm>(() => buildDefaultForm());
     const [editingBlock, setEditingBlock] = useState<SpecialistAvailabilityBlock | null>(null);
     const [editingEvent, setEditingEvent] = useState<SpecialistFixedEvent | null>(null);
@@ -153,6 +154,10 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const filteredCalendarBookings = useMemo(() => filterCalendarBookings(calendarBookingsSource, calendarFilters), [calendarBookingsSource, calendarFilters]);
     // The buffer remains part of conflict validation, but is intentionally not a calendar item.
     const filteredCalendarBuffers: CalendarBuffer[] = [];
+    const draftConflict = useMemo(
+        () => findDraftScheduleConflict(form, blocks, bookings, events, appointmentBufferMinutes, locale, editingBlock?.id),
+        [appointmentBufferMinutes, blocks, bookings, editingBlock?.id, events, form, locale]
+    );
     const closeTools = useCallback(() => {
         setToolsVisible(false);
         window.setTimeout(() => setToolsOpen(false), 180);
@@ -234,6 +239,11 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                 return;
             }
 
+            if (draftConflict) {
+                toast.error(copy.previewConflict(draftConflict));
+                return;
+            }
+
             if (hasRestPeriodConflict(startsAt, endsAt, bookings, events, appointmentBufferMinutes)) {
                 toast.error(copy.restConflictError);
                 return;
@@ -269,7 +279,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     function editEvent(event: SpecialistFixedEvent) {
         setPlannerMode("plan");
         setEditingEvent(event);
-        window.setTimeout(() => document.getElementById("fixed-event-form")?.scrollIntoView({behavior: "smooth"}), 0);
+        openTool("event");
     }
 
     function cancelAvailabilityEdit() {
@@ -277,11 +287,17 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
         setForm(buildDefaultForm());
     }
 
-    function openCreatePanel() {
-        setPlannerMode("plan");
+    function openTool(tool: PlannerTool) {
+        setPlannerMode(tool === "bookings" ? "bookings" : "plan");
+        setActiveTool(tool);
         setToolsOpen(true);
-        setForm((current) => ({...current, status: "AVAILABLE"}));
-        window.setTimeout(() => document.getElementById("availability-form")?.scrollIntoView({behavior: "smooth"}), 0);
+        if (tool === "availability" || tool === "blocking") {
+            setForm((current) => ({
+                ...current,
+                status: tool === "availability" ? "AVAILABLE" : "BLOCKED",
+                itemType: tool === "availability" ? current.itemType === "BLOCK" ? "APPOINTMENT_SLOT" : current.itemType : "BLOCK"
+            }));
+        }
     }
 
     return (
@@ -333,9 +349,12 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 	                                </label> : null}
 	                                </>
 	                            ) : null}
-	                            <div>
-	                                <button className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-stone-700" onClick={openCreatePanel} type="button">
+	                            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+	                                <button className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-stone-700" onClick={() => openTool("availability")} type="button">
 	                                    {t("actions.availability")}
+	                                </button>
+	                                <button className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100" onClick={() => openTool("blocking")} type="button">
+	                                    {t("actions.blocking")}
 	                                </button>
 	                            </div>
 	                        </div>
@@ -360,11 +379,11 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     }}
                     onOpenBookings={() => {
                         setPlannerMode("bookings");
+                        setActiveTool("bookings");
                         setToolsOpen(true);
                     }}
                     onOpenPlan={() => {
-                        setPlannerMode("plan");
-                        setToolsOpen(true);
+                        openTool("availability");
                     }}
                     onSelectDetail={openCalendarDetail}
                     t={t}
@@ -439,14 +458,29 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 
             {toolsOpen ? <OverlayPortal>
             <div aria-hidden="true" className={`fixed inset-0 z-40 bg-stone-950/10 transition-opacity duration-180 motion-reduce:transition-none ${toolsVisible ? "opacity-100" : "opacity-0"}`} />
-            <aside aria-label={copy.toolsTitle} aria-modal="true" className={`fixed inset-x-2 bottom-2 z-50 max-h-[90dvh] min-w-0 space-y-5 overflow-y-auto rounded-2xl border border-stone-200 bg-stone-50 p-4 shadow-2xl outline-none transition-[opacity,transform] duration-180 ease-out focus-visible:ring-2 focus-visible:ring-stone-500 motion-reduce:transition-none sm:inset-x-5 sm:bottom-auto sm:top-1/2 sm:mx-auto sm:w-[min(1100px,calc(100vw-2.5rem))] sm:-translate-y-1/2 sm:p-5 ${toolsVisible ? "translate-y-0 opacity-100 sm:-translate-y-1/2" : "translate-y-4 opacity-0 sm:-translate-y-[48%]"}`} ref={toolsPanelRef} role="dialog" tabIndex={-1}>
-                <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-stone-200 bg-stone-50 pb-3">
+            <aside aria-label={copy.toolsTitle} aria-modal="true" className={`fixed inset-x-2 bottom-2 z-50 flex max-h-[92dvh] min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 shadow-2xl outline-none transition-[opacity,transform] duration-180 ease-out focus-visible:ring-2 focus-visible:ring-stone-500 motion-reduce:transition-none sm:inset-x-5 sm:bottom-auto sm:top-1/2 sm:mx-auto sm:w-[min(1180px,calc(100vw-2.5rem))] sm:-translate-y-1/2 ${toolsVisible ? "translate-y-0 opacity-100 sm:-translate-y-1/2" : "translate-y-4 opacity-0 sm:-translate-y-[48%]"}`} ref={toolsPanelRef} role="dialog" tabIndex={-1}>
+                <div className="flex shrink-0 items-center justify-between gap-3 border-b border-stone-200 bg-white px-4 py-3 sm:px-5">
                     <h2 className="text-base font-semibold text-stone-950">{copy.toolsTitle}</h2>
                     <button aria-label={copy.closeDetails} className={controlButtonClass} onClick={closeTools} type="button">×</button>
                 </div>
-                {plannerMode === "plan" ? (
-                    <>
-                <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm 2xl:sticky 2xl:top-4" id="availability-form">
+                <div className="shrink-0 overflow-x-auto border-b border-stone-200 bg-stone-50 px-3 py-2 sm:px-5">
+                    <div className="flex min-w-max gap-1" role="tablist">
+                        {([
+                            ["availability", copy.toolAvailability],
+                            ["blocking", copy.toolBlocking],
+                            ["event", copy.toolEvent],
+                            ["template", copy.toolTemplate],
+                            ["copy", copy.toolCopy],
+                            ["bookings", copy.toolBookings]
+                        ] as Array<[PlannerTool, string]>).map(([tool, label]) => (
+                            <button aria-selected={activeTool === tool} className={activeTool === tool ? activeViewClass : viewClass} key={tool} onClick={() => openTool(tool)} role="tab" type="button">{label}</button>
+                        ))}
+                    </div>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5">
+                {activeTool === "availability" || activeTool === "blocking" ? (
+                    <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(300px,0.78fr)_minmax(0,1.22fr)]">
+                <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5" id="availability-form">
                     <div className="border-b border-stone-100 pb-3">
                         <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
                             <h2 className="min-w-0 break-words text-base font-semibold text-stone-950">{editingBlock ? copy.editAvailability : form.status === "AVAILABLE" ? t("form.availableTitle") : t("form.blockedTitle")}</h2>
@@ -456,15 +490,6 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         {editingBlock?.booked ? <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">{copy.bookedBlockEditHint}</p> : null}
                     </div>
                     <div className="mt-5 space-y-4">
-                        <Field help={t("help.type")} label={t("form.status")}>
-                            <select
-                                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                                onChange={(event) => updateForm("status", event.target.value as ScheduleBlockStatus)}
-                                value={form.status}
-                            >
-                                <option value="AVAILABLE">{t("statuses.available")}</option>
-                            </select>
-                        </Field>
                         {form.status === "AVAILABLE" ? (
                             <Field label={copy.itemType}>
                                 <select
@@ -543,7 +568,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         </Field>
                         <button
                             className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300"
-                            disabled={isCreating || isUpdatingAvailability || (form.status === "AVAILABLE" && form.itemType === "APPOINTMENT_SLOT" && !form.serviceId)}
+                            disabled={Boolean(draftConflict) || isCreating || isUpdatingAvailability || (form.status === "AVAILABLE" && form.itemType === "APPOINTMENT_SLOT" && !form.serviceId)}
                             onClick={saveAvailability}
                             type="button"
                         >
@@ -551,6 +576,31 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         </button>
                     </div>
                 </section>
+                <AvailabilityDraftPreview
+                    blocks={blocks}
+                    bookings={bookings}
+                    conflict={draftConflict}
+                    copy={copy}
+                    currentDate={currentDate}
+                    events={events}
+                    form={form}
+                    locale={locale}
+                    onNavigate={(date) => {
+                        setCurrentDate(date);
+                        const currentStart = new Date(form.startsAt);
+                        const currentEnd = new Date(form.endsAt);
+                        if (Number.isNaN(currentStart.getTime()) || Number.isNaN(currentEnd.getTime())) return;
+                        const duration = currentEnd.getTime() - currentStart.getTime();
+                        const nextStart = new Date(date);
+                        nextStart.setHours(currentStart.getHours(), currentStart.getMinutes(), 0, 0);
+                        updateForm("startsAt", toDateTimeLocalValue(nextStart));
+                        updateForm("endsAt", toDateTimeLocalValue(new Date(nextStart.getTime() + duration)));
+                    }}
+                    t={t}
+                />
+                    </div>
+                ) : null}
+                {activeTool === "event" ? <div className="grid gap-4 lg:grid-cols-2">
                 <FixedEventForm
                     copy={copy}
                     editingEvent={editingEvent}
@@ -582,14 +632,32 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     services={eventServices}
                     servicesFetching={servicesFetching}
                 />
-                <DayPlanTemplateForm
+                <EventsPanel
+                    copy={copy}
+                    events={events}
+                    isError={eventsError}
+                    isFetching={eventsFetching}
+                    locale={locale}
+                    onDeactivate={async (event) => {
+                        try {
+                            await updateSpecialistEvent({id: event.id, body: eventToInput(event, false)}).unwrap();
+                            void refetchEvents();
+                            toast.success(copy.eventUpdated);
+                        } catch {
+                            toast.error(copy.eventError);
+                        }
+                    }}
+                    onEdit={editEvent}
+                />
+                </div> : null}
+                {activeTool === "template" ? <DayPlanTemplateForm
                     copy={copy}
                     individualServices={individualServices}
                     offices={offices}
                     onCreated={refetchAvailability}
                     selectedSpecialistId={selectedSpecialistId}
-                />
-                <DayPlanCopyForm
+                /> : null}
+                {activeTool === "copy" ? <DayPlanCopyForm
                     conflictsLabel={copy.copyConflicts}
                     copy={copy}
                     isLoading={isCopyingDayPlan}
@@ -603,13 +671,8 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         void refetchEvents();
                         return response;
                     }}
-                />
-                    </>
-                ) : null}
-
-                {plannerMode === "bookings" ? (
-                    <>
-                        <SpecialistFinanceOverviewPanel copy={copy} isError={financeOverviewError} isFetching={financeOverviewFetching} locale={locale} overview={financeOverview} />
+                /> : null}
+                {activeTool === "bookings" ? <div className="grid gap-4 lg:grid-cols-2">
                         <ManualBookingForm
                             blocks={blocks}
                             bookings={bookings}
@@ -624,6 +687,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                             onCreated={refetchAvailability}
                             t={t}
                         />
+                        <div className="space-y-4">
                         <EventEnrollmentsPanel
                             copy={copy}
                             enrollments={eventEnrollments}
@@ -632,43 +696,9 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                             locale={locale}
                         />
                         <BookingsPanel bookings={bookings} copy={copy} isError={bookingsError} isFetching={bookingsFetching} locale={locale} t={t} />
-                    </>
-                ) : null}
-
-                {plannerMode !== "bookings" ? (
-                    <EventsPanel
-                        copy={copy}
-                        events={events}
-                        isError={eventsError}
-                        isFetching={eventsFetching}
-                        locale={locale}
-                        onDeactivate={async (event) => {
-                            try {
-                                await updateSpecialistEvent({id: event.id, body: eventToInput(event, false)}).unwrap();
-                                void refetchEvents();
-                                toast.success(copy.eventUpdated);
-                            } catch {
-                                toast.error(copy.eventError);
-                            }
-                        }}
-                        onEdit={editEvent}
-                    />
-                ) : null}
-
-                {plannerMode === "all" ? (
-                    <>
-                        <SpecialistFinanceOverviewPanel copy={copy} isError={financeOverviewError} isFetching={financeOverviewFetching} locale={locale} overview={financeOverview} />
-                        <EventEnrollmentsPanel
-                            copy={copy}
-                            enrollments={eventEnrollments}
-                            isError={eventEnrollmentsError}
-                            isFetching={eventEnrollmentsFetching}
-                            locale={locale}
-                        />
-                        <BookingsPanel bookings={bookings} copy={copy} isError={bookingsError} isFetching={bookingsFetching} locale={locale} t={t} />
-                        <PreparedPanel title={t("exceptions.title")} body={t("exceptions.body")} empty={t("exceptions.empty")} />
-                    </>
-                ) : null}
+                        </div>
+                </div> : null}
+                </div>
             </aside>
             </OverlayPortal> : null}
         </section>
@@ -1375,12 +1405,79 @@ function Field({children, help, label}: {children: ReactNode; help?: string; lab
     );
 }
 
-function PreparedPanel({body, empty, title}: {body: string; empty: string; title: string}) {
+function AvailabilityDraftPreview({blocks, bookings, conflict, copy, currentDate, events, form, locale, onNavigate, t}: {
+    blocks: SpecialistAvailabilityBlock[];
+    bookings: SpecialistBooking[];
+    conflict: string | null;
+    copy: ReturnType<typeof scheduleCopy>;
+    currentDate: Date;
+    events: SpecialistFixedEvent[];
+    form: AvailabilityForm;
+    locale: string;
+    onNavigate: (date: Date) => void;
+    t: T;
+}) {
+    const start = new Date(form.startsAt);
+    const end = new Date(form.endsAt);
+    const hasDraft = !Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && start < end;
+    const calendarEvents: AtaraksiaCalendarEvent[] = [
+        ...blocks.map((block) => ({
+            id: `preview-block-${block.id}`,
+            title: scheduleBlockLabel(block, copy, t),
+            meta: block.officeName ?? copy.noOffice,
+            start: new Date(block.startsAt),
+            end: new Date(block.endsAt),
+            tone: calendarToneForBlock(block)
+        })),
+        ...bookings.filter((booking) => booking.status !== "CANCELLED").map((booking) => ({
+            id: `preview-booking-${booking.id}`,
+            title: bookingServiceTitle(booking, locale),
+            meta: booking.officeName ?? copy.noOffice,
+            start: new Date(booking.startsAt),
+            end: new Date(booking.endsAt),
+            tone: calendarToneForBooking(booking)
+        })),
+        ...events.filter((event) => event.active).map((event) => ({
+            id: `preview-event-${event.id}`,
+            title: event.serviceTitle,
+            meta: event.officeName ?? copy.noOffice,
+            start: new Date(event.startsAt),
+            end: new Date(event.endsAt),
+            tone: calendarToneForEvent(event)
+        })),
+        ...(hasDraft ? [{
+            id: "availability-draft",
+            title: form.status === "BLOCKED" ? copy.toolBlocking : copy.previewDraft,
+            meta: conflict ? copy.previewConflictShort : copy.previewReady,
+            start,
+            end,
+            tone: conflict ? "cancelled" as const : form.status === "BLOCKED" ? "blocked" as const : "available" as const
+        }] : [])
+    ];
+
     return (
-        <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3"><h2 className="min-w-0 break-words text-sm font-semibold uppercase tracking-wide text-stone-500">{title}</h2><span className="rounded-full bg-stone-100 px-2 py-1 text-xs text-stone-500">0</span></div>
-            <p className="mt-2 break-words text-xs leading-5 text-stone-500">{body}</p>
-            <p className="mt-3 rounded-lg border border-dashed border-stone-200 bg-stone-50 px-3 py-4 text-center text-sm text-stone-500">{empty}</p>
+        <section className="min-w-0 rounded-xl border border-stone-200 bg-white p-3 shadow-sm sm:p-4">
+            <div className="flex min-w-0 flex-col gap-3 border-b border-stone-100 pb-3 sm:flex-row sm:items-end sm:justify-between">
+                <div className="min-w-0">
+                    <h2 className="text-base font-semibold text-stone-950">{copy.previewTitle}</h2>
+                    <p className="mt-1 text-xs leading-5 text-stone-500">{copy.previewBody}</p>
+                </div>
+                <label className="shrink-0">
+                    <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-stone-500">{copy.previewDate}</span>
+                    <input className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => {
+                        if (!event.target.value) return;
+                        const date = new Date(`${event.target.value}T12:00:00`);
+                        if (!Number.isNaN(date.getTime())) onNavigate(date);
+                    }} type="date" value={toDateInputValue(currentDate)} />
+                </label>
+            </div>
+            <div className="my-3 flex flex-wrap gap-2">
+                <button className={controlButtonClass} onClick={() => onNavigate(navigateDate(currentDate, "week", -1))} type="button">←</button>
+                <button className={controlButtonClass} onClick={() => onNavigate(new Date())} type="button">{copy.calendarMessages.today}</button>
+                <button className={controlButtonClass} onClick={() => onNavigate(navigateDate(currentDate, "week", 1))} type="button">→</button>
+            </div>
+            {conflict ? <p className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800" role="alert">{copy.previewConflict(conflict)}</p> : <p className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{copy.previewReady}</p>}
+            <AtaraksiaCalendar culture={toLanguageTag(locale)} date={currentDate} events={calendarEvents} max={workingHourDate(20)} messages={copy.calendarMessages} min={workingHourDate(8)} onNavigate={onNavigate} variant="preview" view={toCalendarView("week")} />
         </section>
     );
 }
@@ -1889,40 +1986,6 @@ function BookingStatusBadge({booking, copy, t}: {booking: SpecialistBooking; cop
     return <span className={`max-w-full break-words rounded-full border px-2 py-1 text-[10px] font-semibold sm:shrink-0 ${className}`}>{bookingStatusLabel(booking, copy, t)}</span>;
 }
 
-function SpecialistFinanceOverviewPanel({copy, isError, isFetching, locale, overview}: {copy: ReturnType<typeof scheduleCopy>; isError: boolean; isFetching: boolean; locale: string; overview?: SpecialistFinanceOverview}) {
-    return (
-        <section className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
-            <div className="border-b border-stone-100 pb-3">
-                <h2 className="break-words text-base font-semibold text-stone-950">{copy.financeTitle}</h2>
-                <p className="mt-1 break-words text-xs leading-5 text-stone-500">{copy.financeBody}</p>
-            </div>
-            {isError ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{copy.financeError}</p> : null}
-            {!isError && isFetching ? <p className="mt-3 text-xs text-stone-500">{copy.loading}</p> : null}
-            {overview ? (
-                <div className="mt-4 grid gap-3">
-                    <FinanceMetric label={copy.financeEarnings} value={formatAmount(overview.specialistEarnings, locale)} />
-                    <FinanceMetric label={copy.financePendingEarnings} value={formatAmount(overview.pendingSpecialistEarnings, locale)} />
-                    <FinanceMetric label={copy.financePayoutPending} value={formatAmount(overview.payoutPendingEarnings, locale)} />
-                    <FinanceMetric label={copy.financePayoutPaid} value={formatAmount(overview.payoutPaidEarnings, locale)} />
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                        <FinanceMetric label={copy.financeCompleted} value={String(overview.completedCount)} />
-                        <FinanceMetric label={copy.financePending} value={String(overview.pendingCount)} />
-                        <FinanceMetric label={copy.financePayoutPendingCount} value={String(overview.payoutPendingCount)} />
-                        <FinanceMetric label={copy.financePayoutPaidCount} value={String(overview.payoutPaidCount)} />
-                        <FinanceMetric label={copy.financeWorked} value={formatMinutes(overview.workedMinutes, copy)} />
-                        <FinanceMetric label={copy.financeSharePercent} value={formatPercent(overview.specialistSharePercent, locale)} />
-                    </div>
-                    <p className="break-words text-xs leading-5 text-stone-500">{copy.financeHint}</p>
-                </div>
-            ) : null}
-        </section>
-    );
-}
-
-function FinanceMetric({label, value}: {label: string; value: string}) {
-    return <div className="min-w-0 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3"><p className="break-words text-base font-semibold text-stone-950">{value}</p><p className="mt-1 break-words text-xs font-medium text-stone-500">{label}</p></div>;
-}
-
 function StatCard({label, tone = "neutral", value}: {label: string; tone?: "neutral" | "success" | "warning"; value: number}) {
     const valueClass = tone === "success" ? "text-emerald-800" : tone === "warning" ? "text-amber-800" : "text-stone-950";
     return <div className="flex min-h-20 min-w-0 flex-col justify-center rounded-xl border border-stone-200 bg-stone-50 px-3 py-3 sm:px-4"><p className={`break-words text-xl font-semibold sm:text-2xl ${valueClass}`}>{value}</p><p className="mt-1.5 break-words text-xs font-medium text-stone-500">{label}</p></div>;
@@ -2117,6 +2180,36 @@ function parseDateList(value: string) {
     ));
 }
 
+function findDraftScheduleConflict(
+    form: AvailabilityForm,
+    blocks: SpecialistAvailabilityBlock[],
+    bookings: SpecialistBooking[],
+    events: SpecialistFixedEvent[],
+    appointmentBufferMinutes: number,
+    locale: string,
+    editingBlockId?: number
+) {
+    const start = new Date(form.startsAt);
+    const end = new Date(form.endsAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start >= end) return null;
+
+    const overlappingBlock = blocks.find((block) => block.id !== editingBlockId && rangesOverlap(start, end, new Date(block.startsAt), new Date(block.endsAt)));
+    if (overlappingBlock) return `${overlappingBlock.specialistName}: ${formatTimeRange(overlappingBlock.startsAt, overlappingBlock.endsAt, locale)}`;
+
+    const bufferMilliseconds = appointmentBufferMinutes * 60_000;
+    const overlappingBooking = bookings.find((booking) => booking.status !== "CANCELLED" && rangesOverlap(start, end, new Date(booking.startsAt), new Date(new Date(booking.endsAt).getTime() + bufferMilliseconds)));
+    if (overlappingBooking) return `${bookingServiceTitle(overlappingBooking, locale)}: ${formatTimeRange(overlappingBooking.startsAt, overlappingBooking.endsAt, locale)}`;
+
+    const overlappingEvent = events.find((event) => event.active && rangesOverlap(start, end, new Date(event.startsAt), new Date(new Date(event.endsAt).getTime() + bufferMilliseconds)));
+    if (overlappingEvent) return `${overlappingEvent.serviceTitle}: ${formatTimeRange(overlappingEvent.startsAt, overlappingEvent.endsAt, locale)}`;
+
+    return null;
+}
+
+function rangesOverlap(firstStart: Date, firstEnd: Date, secondStart: Date, secondEnd: Date) {
+    return firstStart < secondEnd && firstEnd > secondStart;
+}
+
 function scheduleCopy(t: T) {
     return {
         availabilityTitle: t("schedule.availabilityTitle"),
@@ -2138,6 +2231,19 @@ function scheduleCopy(t: T) {
         mySchedule: t("schedule.mySchedule"),
         team: t("schedule.team"),
         toolsTitle: t("schedule.toolsTitle"),
+        toolAvailability: t("schedule.toolAvailability"),
+        toolBlocking: t("schedule.toolBlocking"),
+        toolEvent: t("schedule.toolEvent"),
+        toolTemplate: t("schedule.toolTemplate"),
+        toolCopy: t("schedule.toolCopy"),
+        toolBookings: t("schedule.toolBookings"),
+        previewTitle: t("schedule.previewTitle"),
+        previewBody: t("schedule.previewBody"),
+        previewDate: t("schedule.previewDate"),
+        previewDraft: t("schedule.previewDraft"),
+        previewReady: t("schedule.previewReady"),
+        previewConflictShort: t("schedule.previewConflictShort"),
+        previewConflict: (item: string) => t("schedule.previewConflict", {item}),
         teamDayEmpty: t("schedule.teamDayEmpty"),
         teamDayItems: (count: number) => t("schedule.teamDayItems", {count}),
         specialistFilter: t("schedule.specialistFilter"),
@@ -2369,14 +2475,6 @@ function formatTime(value: string, locale: string) {
 
 function formatTimeRange(start: string, end: string, locale: string) {
     return `${formatTime(start, locale)}–${formatTime(end, locale)}`;
-}
-
-function formatMinutes(value: number, copy: ReturnType<typeof scheduleCopy>) {
-    const hours = Math.floor(value / 60);
-    const minutes = value % 60;
-    if (hours === 0) return `${minutes} ${copy.minutesShort}`;
-    if (minutes === 0) return `${hours} ${copy.hoursShort}`;
-    return `${hours} ${copy.hoursShort} ${minutes} ${copy.minutesShort}`;
 }
 
 function formatCalendarTitle(view: CalendarView, currentDate: Date, locale: string) {

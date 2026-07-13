@@ -1,6 +1,7 @@
 "use client";
 
 import {useEffect, useMemo, useRef, useState, type ReactNode} from "react";
+import {createPortal} from "react-dom";
 import {useLocale, useTranslations} from "next-intl";
 import type {Locale} from "@/i18n";
 import {useToast} from "@/components/ui/toast/ToastProvider";
@@ -843,7 +844,7 @@ function OfficeDetailsInline({copy, details}: {copy: Copy; details: OfficeDetail
 function OfficeDetailsModal({copy, details, onClose, returnFocusTo}: {copy: Copy; details: OfficeDetailsSource; onClose: () => void; returnFocusTo: HTMLElement | null}) {
     const dialogRef = useModalFocus(onClose, returnFocusTo);
 
-    return (
+    return createPortal(
         <div aria-labelledby="office-details-title" aria-modal="true" className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 px-3 py-3 backdrop-blur-[2px] sm:items-center sm:px-4 sm:py-6" ref={dialogRef} role="dialog" tabIndex={-1}>
             <div className="ataraksia-booking-enter max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-4 shadow-2xl sm:rounded-2xl sm:p-5">
                 <div className="flex items-start justify-between gap-4 border-b border-stone-100 pb-3">
@@ -855,7 +856,8 @@ function OfficeDetailsModal({copy, details, onClose, returnFocusTo}: {copy: Copy
                 </div>
                 <OfficeDetailsBlock compact copy={copy} details={details} />
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 

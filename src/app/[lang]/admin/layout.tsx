@@ -43,7 +43,7 @@ export default async function AdminLayout({children, params}: Props) {
                         <AuthSessionPanel loading={false} tone="light" user={user} variant="management" />
                     </div>
                 </div>
-                <div className="management-layout grid w-full flex-1 grid-cols-1 content-start items-start gap-4 p-3 sm:p-6 lg:grid-cols-[180px_minmax(0,1fr)] lg:gap-6 xl:grid-cols-[190px_minmax(0,1fr)] xl:px-8 xl:py-7">
+                <div className="management-layout grid w-full flex-1 grid-cols-1 content-start items-start gap-4 p-3 sm:p-6 lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-6 xl:grid-cols-[220px_minmax(0,1fr)] xl:px-8 xl:py-7">
                     <ManagementNavigation
                         locale={locale}
                         showNews={hasRole(user, "SMM")}

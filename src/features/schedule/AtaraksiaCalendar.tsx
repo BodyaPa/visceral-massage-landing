@@ -27,7 +27,7 @@ type Props = {
     min?: Date;
     onNavigate?: (date: Date) => void;
     onSelectEvent?: (event: AtaraksiaCalendarEvent) => void;
-    variant?: "booking" | "planner";
+    variant?: "booking" | "planner" | "preview";
     view: View;
 };
 
@@ -38,6 +38,8 @@ export default function AtaraksiaCalendar({culture, date, events, max, messages,
     const [expandedDate, setExpandedDate] = useState<Date | null>(null);
     const heightClass = view === Views.AGENDA
         ? "h-[440px] sm:h-[520px]"
+        : variant === "preview"
+        ? "h-[360px] sm:h-[430px]"
         : variant === "booking"
         ? "h-[500px] sm:h-[600px]"
         : "h-[620px] sm:h-[760px]";

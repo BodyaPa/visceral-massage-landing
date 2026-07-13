@@ -89,7 +89,7 @@ export const bookingsApi = createApi({
             query: (args) => {
                 const page = args?.page ?? 0;
                 const size = args?.size ?? 20;
-                return `/bookings/my?page=${page}&size=${size}&sort=startsAt,desc`;
+                return `/bookings/my?page=${page}&size=${size}&sort=createdAt,desc`;
             },
             providesTags: [{type: "Bookings", id: "LIST"}]
         }),

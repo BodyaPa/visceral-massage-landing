@@ -698,7 +698,6 @@ function Inspector({archived, assets, changingMedia, isLoading, item, onDetach, 
         <aside className="min-w-0 space-y-4 rounded-xl border border-stone-200 bg-white p-4 shadow-sm xl:col-start-2 2xl:col-start-auto 2xl:sticky 2xl:top-[84px]">
             <section className="space-y-2 border-b border-stone-100 pb-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{t("settings")}</p>
-                <StatusBadge status={item.status} t={t} />
                 <InfoRow label={t("dates.created")} value={formatDate(item.createdAt)} />
                 <InfoRow label={t("dates.updated")} value={formatDate(item.updatedAt)} />
                 {item.publishedAt ? <InfoRow label={t("dates.published")} value={formatDate(item.publishedAt)} /> : null}

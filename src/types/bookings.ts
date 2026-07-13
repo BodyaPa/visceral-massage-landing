@@ -148,9 +148,24 @@ export interface SpecialistBooking {
     serviceTitleEn: string | null;
     officeId: number | null;
     officeName: string | null;
+    availabilityBlockId: number;
     startsAt: string;
     endsAt: string;
     reminderOptIn: boolean;
+    originalPrice: number | null;
+    bookedPrice: number;
+    promoCode: string | null;
+    discountPercent: number | null;
+    discountAmount: number | null;
+    membershipPurchaseId: number | null;
+    paidWithMembership: boolean;
+    loyaltyVoucherId: number | null;
+    paidWithLoyaltyVoucher: boolean;
+    cancellationReason: string | null;
+    cancellationDetails: string | null;
+    cancelledAt: string | null;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface FinanceExpense {

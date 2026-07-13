@@ -796,11 +796,11 @@ function StatusBadge({status, t}: {status: NewsStatus; t: T}) {
         : status === "ARCHIVED"
             ? "bg-stone-200 text-stone-600"
             : "bg-amber-50 text-amber-700";
-    return <span className={`max-w-full break-words rounded-full px-2 py-0.5 text-xs font-medium sm:shrink-0 ${style}`}>{t(`statuses.${status.toLowerCase()}`)}</span>;
+    return <span className={`inline-flex min-h-6 max-w-full items-center justify-center break-words rounded-full px-2.5 py-1 text-center text-xs font-medium leading-none align-middle sm:shrink-0 ${style}`}>{t(`statuses.${status.toLowerCase()}`)}</span>;
 }
 
 function LanguageBadge({complete, locale, t}: {complete: boolean; locale: string; t: T}) {
-    return <span className={`max-w-full break-words rounded px-1.5 py-0.5 text-[11px] sm:shrink-0 ${complete ? "bg-stone-100 text-stone-600" : "bg-amber-50 text-amber-700"}`}>{complete ? locale : t("missingLanguage", {locale})}</span>;
+    return <span className={`inline-flex min-h-6 max-w-full items-center justify-center break-words rounded px-2 py-1 text-center text-[11px] leading-none align-middle sm:shrink-0 ${complete ? "bg-stone-100 text-stone-600" : "bg-amber-50 text-amber-700"}`}>{complete ? locale : t("missingLanguage", {locale})}</span>;
 }
 
 function LanguageStatus({complete, label, t}: {complete: boolean; label: string; t: T}) {

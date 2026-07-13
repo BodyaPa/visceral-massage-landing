@@ -59,7 +59,7 @@ export default function FooterComponent() {
     }
 
     return (
-        <footer className="border-t border-stone-200 bg-stone-950 text-stone-100">
+        <footer className="shrink-0 border-t border-stone-200 bg-stone-950 text-stone-100">
             <div className="mx-auto grid w-full max-w-[1440px] gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:px-8">
                 <div className="min-w-0">
                     <p className="text-lg font-semibold tracking-tight">Ataraksia</p>

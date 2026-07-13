@@ -63,9 +63,11 @@ export default async function LocaleLayout({
         <NextIntlClientProvider locale={locale} messages={messages}>
             <ToastProvider>
                 <RouteScrollReset />
-                <HeaderComponent />
-                <Providers>{children}</Providers>
-                <FooterComponent />
+                <div className="flex min-h-dvh w-full flex-col">
+                    <HeaderComponent />
+                    <Providers>{children}</Providers>
+                    <FooterComponent />
+                </div>
             </ToastProvider>
         </NextIntlClientProvider>
         </body>

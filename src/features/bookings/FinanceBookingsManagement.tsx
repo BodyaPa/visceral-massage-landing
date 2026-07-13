@@ -93,7 +93,7 @@ export default function FinanceBookingsManagement() {
         page: bookingPage,
         size: 25
     });
-    const {data: summary, isError: summaryError} = useGetFinanceSummaryQuery({
+    const {data: summary, isError: summaryError, refetch: refetchSummary} = useGetFinanceSummaryQuery({
         officeId: officeId ? Number(officeId) : undefined,
         from: toStartOfDayIso(from),
         to: toNextDayIso(to),
@@ -183,6 +183,7 @@ export default function FinanceBookingsManagement() {
     async function confirmMembership(purchaseId: number) {
         try {
             await confirmMembershipPayment(purchaseId).unwrap();
+            await refetchSummary();
             setMembershipToConfirm(null);
             toast.success(t("memberships.confirmed"));
         } catch {
@@ -193,6 +194,7 @@ export default function FinanceBookingsManagement() {
     async function cancelMembership(purchaseId: number) {
         try {
             await cancelMembershipPurchase(purchaseId).unwrap();
+            await refetchSummary();
             setMembershipToCancel(null);
             toast.success(t("memberships.cancelled"));
         } catch {
@@ -282,6 +284,7 @@ export default function FinanceBookingsManagement() {
                 {tab === "pending" || tab === "transactions" ? (
                     <><BookingSection bookings={bookings} confirming={isConfirming} isFetching={isFetching} locale={locale} markingPayout={isMarkingPayout} onConfirm={requestConfirm} onMarkPayout={markPayout} onSelect={setSelectedBooking} tab={tab} t={t} /><ServerPager page={bookingPage} totalPages={data?.totalPages ?? 0} onPage={setBookingPage} t={t} /></>
                 ) : null}
+                {tab === "transactions" ? <MembershipFinanceSection cancelling={isCancellingMembership} confirming={isConfirmingMembership} isError={membershipPurchasesError} isFetching={membershipPurchasesFetching} locale={locale} onCancel={setMembershipToCancel} onConfirm={setMembershipToConfirm} purchases={membershipPurchases.filter((purchase) => purchase.status !== "AWAITING_PAYMENT_CONFIRMATION")} t={t} /> : null}
                 {tab === "memberships" ? <><MembershipFinanceSection cancelling={isCancellingMembership} confirming={isConfirmingMembership} isError={membershipPurchasesError} isFetching={membershipPurchasesFetching} locale={locale} onCancel={setMembershipToCancel} onConfirm={setMembershipToConfirm} purchases={membershipPurchases} t={t} /><ServerPager page={membershipPage} totalPages={membershipPurchasesData?.totalPages ?? 0} onPage={setMembershipPage} t={t} /></> : null}
                 {tab === "events" ? <><EventEnrollmentsFinanceSection confirming={isConfirmingEventEnrollment} enrollments={eventEnrollments} isError={eventEnrollmentsError} isFetching={eventEnrollmentsFetching} locale={locale} onConfirm={setEventEnrollmentToConfirm} t={t} /><ServerPager page={eventPage} totalPages={eventEnrollmentsData?.totalPages ?? 0} onPage={setEventPage} t={t} /></> : null}
                 {tab === "expenses" ? <><ExpensesSection expenses={expenses} isError={expensesError} isFetching={expensesFetching} locale={locale} offices={activeOffices} t={t} /><ServerPager page={expensePage} totalPages={expensesData?.totalPages ?? 0} onPage={setExpensePage} t={t} /></> : null}

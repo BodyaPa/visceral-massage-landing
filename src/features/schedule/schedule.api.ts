@@ -89,10 +89,11 @@ export const scheduleApi = createApi({
                 {type: "ScheduleAvailability", id: "SPECIALIST_EVENT_ENROLLMENTS"}
             ]
         }),
-        cancelFixedEventEnrollment: build.mutation<PublicFixedEvent, {id: number; lang: Locale}>({
-            query: ({id, lang}) => ({
+        cancelFixedEventEnrollment: build.mutation<PublicFixedEvent, {id: number; lang: Locale; reason: string; details?: string | null}>({
+            query: ({id, lang, reason, details}) => ({
                 url: `/schedule/events/${id}/cancel?lang=${lang}`,
-                method: "POST"
+                method: "POST",
+                body: {reason, details}
             }),
             invalidatesTags: [
                 {type: "ScheduleAvailability", id: "EVENTS"},

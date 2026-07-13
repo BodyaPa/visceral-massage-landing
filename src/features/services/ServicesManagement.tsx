@@ -197,7 +197,7 @@ export default function ServicesManagement() {
 
     return (
         <section className="w-full min-w-0 max-w-full space-y-5">
-            <div className="grid w-full min-w-0 max-w-full items-start gap-5 xl:grid-cols-[minmax(360px,480px)_minmax(0,1fr)]">
+            <div className="grid w-full min-w-0 max-w-full items-start gap-5 xl:grid-cols-[minmax(520px,0.95fr)_minmax(0,1.05fr)]">
             <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
                 <div className="mb-4 flex flex-col gap-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

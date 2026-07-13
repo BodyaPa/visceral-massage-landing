@@ -453,8 +453,12 @@ export default function ServicesManagement() {
                     return media.id;
                 }}
                 onSave={saveMembershipOffer}
-                onSelect={setSelectedOfferId}
-                onStartCreate={(kind) => {setCreatingOfferKind(kind);setOfferForm({...emptyOfferForm, visitsTotal: kind === "MEMBERSHIP" ? 1 : null})}}
+                onSelect={(id) => {setCreatingOfferKind(null);setSelectedOfferId(id)}}
+                onStartCreate={(kind) => {
+                    if (creatingOfferKind === kind) return;
+                    setCreatingOfferKind(kind);
+                    setOfferForm({...emptyOfferForm, visitsTotal: kind === "MEMBERSHIP" ? 1 : null});
+                }}
                 selectedOffer={selectedOffer}
                 t={t}
             />
@@ -507,26 +511,25 @@ function MembershipOffersPanel({allServices, creatingKind, form, isError, isFetc
 
     return (
         <section className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
-            <div className="flex min-w-0 flex-col gap-3 border-b border-stone-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 flex-col gap-3 border-b border-stone-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                     <p className="text-xs font-medium uppercase tracking-wide text-stone-500">{t("memberships.eyebrow")}</p>
                     <h2 className="mt-1 break-words text-xl font-semibold text-stone-950">{t("memberships.title")}</h2>
                     <p className="mt-1 break-words text-sm text-stone-500">{t("memberships.subtitle")}</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                    <button className="rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white hover:bg-stone-700" onClick={() => onStartCreate("MEMBERSHIP")} type="button">{t("memberships.newMembership")}</button>
-                    {selectedOffer && !creatingKind ? <StatusBadge enabled={form.active} label={form.active ? t("active") : t("inactive")} /> : null}
+                <div className="flex min-h-10 items-center">
+                    <button aria-pressed={creatingKind === "MEMBERSHIP"} className="rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white transition-[background-color,transform] duration-200 hover:bg-stone-700 active:scale-[0.98] motion-reduce:transition-none" onClick={() => onStartCreate("MEMBERSHIP")} type="button">{t("memberships.newMembership")}</button>
                 </div>
             </div>
             {isError ? <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("memberships.loadError")}</p> : null}
             {isFetching ? <p className="mt-4 text-sm text-stone-500">{t("loading")}</p> : null}
-            {offers.length > 0 ? (
+            {offers.length > 0 || creatingKind ? (
                 <div className="mt-4 grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
                     <div className="grid gap-2 sm:grid-cols-2 lg:block lg:space-y-2">
                         {offers.map((offer) => (
                             <button
-                                aria-pressed={offer.id === selectedOffer?.id}
-                                className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${offer.id === selectedOffer?.id ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-stone-50 text-stone-800 hover:bg-white"}`}
+                                aria-pressed={!creatingKind && offer.id === selectedOffer?.id}
+                                className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${!creatingKind && offer.id === selectedOffer?.id ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-stone-50 text-stone-800 hover:bg-white"}`}
                                 key={offer.id}
                                 onClick={() => onSelect(offer.id)}
                                 type="button"
@@ -537,7 +540,7 @@ function MembershipOffersPanel({allServices, creatingKind, form, isError, isFetc
                         ))}
                     </div>
                     {selectedOffer || creatingKind ? (
-                        <div className="min-w-0 space-y-3">
+                        <div className="min-w-0 space-y-3 motion-reduce:animate-none animate-[content-enter_200ms_ease-out_both]" key={creatingKind ? `create-${creatingKind}` : `offer-${selectedOffer?.id ?? "none"}`}>
                             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
                                 <div className="grid gap-3 sm:grid-cols-2">
                                 <Field label={t("memberships.titleUa")}>

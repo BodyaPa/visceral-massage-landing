@@ -110,6 +110,7 @@ export default function ServicesManagement() {
     }, [membershipOffers, selectedOfferId]);
 
     useEffect(() => {
+        if (creatingOfferKind) return;
         if (!selectedOffer) {
             setOfferForm(emptyOfferForm);
             return;
@@ -455,7 +456,6 @@ export default function ServicesManagement() {
                 onSave={saveMembershipOffer}
                 onSelect={(id) => {setCreatingOfferKind(null);setSelectedOfferId(id)}}
                 onStartCreate={(kind) => {
-                    if (creatingOfferKind === kind) return;
                     setCreatingOfferKind(kind);
                     setOfferForm({...emptyOfferForm, visitsTotal: kind === "MEMBERSHIP" ? 1 : null});
                 }}

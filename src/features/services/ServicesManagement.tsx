@@ -203,7 +203,7 @@ export default function ServicesManagement() {
 
     return (
         <section className="w-full min-w-0 max-w-full space-y-5">
-            <div className="grid w-full min-w-0 max-w-full items-start gap-5">
+            <div className="grid w-full min-w-0 max-w-[1180px] items-start gap-5 xl:grid-cols-[minmax(390px,0.85fr)_minmax(560px,1.15fr)]">
             <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
                 <div className="mb-4 flex flex-col gap-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -246,7 +246,7 @@ export default function ServicesManagement() {
                 {isError ? <p className="text-sm text-red-700">{t("loadError")}</p> : null}
                 {isFetching ? <p className="text-sm text-stone-500">{t("loading")}</p> : null}
 
-                <div className="rounded-lg border border-stone-200 bg-stone-50/70 p-2">
+                <div className="max-h-[38rem] overflow-y-auto rounded-lg border border-stone-200 bg-stone-50/70 p-2">
                     <div className="space-y-2" role="list">
                         {services.map((service) => {
                             const selected = service.id === selectedService?.id;

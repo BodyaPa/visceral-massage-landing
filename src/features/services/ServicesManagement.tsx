@@ -203,7 +203,7 @@ export default function ServicesManagement() {
 
     return (
         <section className="w-full min-w-0 max-w-full space-y-5">
-            <div className="grid w-full min-w-0 max-w-[1180px] items-start gap-5 xl:grid-cols-[minmax(390px,0.85fr)_minmax(560px,1.15fr)]">
+            <div className="grid w-full min-w-0 max-w-full items-start gap-5 xl:grid-cols-[488px_minmax(0,1fr)]">
             <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
                 <div className="mb-4 flex flex-col gap-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -296,7 +296,7 @@ export default function ServicesManagement() {
             </div>
 
             <div className="min-w-0 self-stretch">
-            <div className="h-full min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="flex h-full min-w-0 flex-col rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex flex-col gap-2 border-b border-stone-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                         <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
@@ -308,7 +308,7 @@ export default function ServicesManagement() {
                     </div>
                     <StatusBadge enabled={form.active} label={form.active ? t("active") : t("inactive")} />
                 </div>
-                <div className="mt-4 space-y-3">
+                <div className="mt-4 flex flex-1 flex-col gap-3">
                     <div className="rounded-lg border border-stone-200 bg-stone-50 p-1">
                         <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
                             <LanguageButton
@@ -425,8 +425,8 @@ export default function ServicesManagement() {
                             type="checkbox"
                         />
                     </label>
-                    <div className="flex justify-end"><button
-                        className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-400 sm:w-fit"
+                    <div className="mt-auto flex pt-3"><button
+                        className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-400"
                         disabled={saving || !form.titleUa.trim() || form.durationMinutes < 1 || form.basePrice < 0 || form.loyaltyPointsAward < 0}
                         onClick={saveService}
                         type="button"
@@ -515,7 +515,6 @@ function MembershipOffersPanel({allServices, creatingKind, form, isError, isFetc
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <button className="rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white hover:bg-stone-700" onClick={() => onStartCreate("MEMBERSHIP")} type="button">{t("memberships.newMembership")}</button>
-                    <button className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 hover:bg-stone-100" onClick={() => onStartCreate("CERTIFICATE")} type="button">{t("memberships.newCertificate")}</button>
                     {selectedOffer && !creatingKind ? <StatusBadge enabled={form.active} label={form.active ? t("active") : t("inactive")} /> : null}
                 </div>
             </div>

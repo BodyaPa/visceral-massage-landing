@@ -280,23 +280,7 @@ export default function PublicSchedulePage() {
 
             {slotsError ? <p className="mx-auto w-full max-w-[1040px] rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 lg:w-[72vw] xl:w-[58vw]">{copy.loadError}</p> : null}
 
-            {paymentPrompt ? (
-                <section className={paymentPrompt.paidWithMembership || paymentPrompt.paidWithLoyaltyVoucher
-                    ? "mx-auto w-full max-w-[1040px] rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm lg:w-[72vw] xl:w-[58vw]"
-                    : "mx-auto w-full max-w-[1040px] rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm lg:w-[72vw] xl:w-[58vw]"}>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0">
-                            <h2 className={paymentPrompt.paidWithMembership || paymentPrompt.paidWithLoyaltyVoucher ? "text-base font-semibold text-emerald-950" : "text-base font-semibold text-amber-950"}>{paymentPrompt.paidWithMembership ? copy.membershipPaymentTitle : paymentPrompt.paidWithLoyaltyVoucher ? copy.voucherPaymentTitle : copy.paymentTitle}</h2>
-                            <p className={paymentPrompt.paidWithMembership || paymentPrompt.paidWithLoyaltyVoucher ? "mt-1 text-sm leading-6 text-emerald-900" : "mt-1 text-sm leading-6 text-amber-900"}>{paymentPrompt.paidWithMembership ? copy.membershipPaymentBody(paymentPromptTitle(paymentPrompt, locale), formatDateTime(paymentPrompt.startsAt, locale)) : paymentPrompt.paidWithLoyaltyVoucher ? copy.voucherPaymentBody(paymentPromptTitle(paymentPrompt, locale), formatDateTime(paymentPrompt.startsAt, locale)) : copy.paymentBody(paymentPromptTitle(paymentPrompt, locale), formatDateTime(paymentPrompt.startsAt, locale))}</p>
-                        </div>
-                        <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
-                            {paymentPrompt.externalPaymentUrl ? <a className="inline-flex min-h-11 items-center justify-center rounded-lg bg-stone-950 px-4 py-2 text-center text-sm font-semibold text-white outline-none transition-[background-color,box-shadow,transform] hover:bg-stone-800 hover:shadow-sm active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2 motion-reduce:transition-none" href={paymentPrompt.externalPaymentUrl} rel="noreferrer" target="_blank">{copy.paymentAction}</a> : null}
-                            <a className="inline-flex min-h-11 items-center justify-center rounded-lg border border-stone-300 bg-white px-4 py-2 text-center text-sm font-semibold text-stone-800 outline-none transition-colors hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2" href={`${withLocale("/account", locale)}#bookings`}>{copy.accountAction}</a>
-                            <button className="min-h-11 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 outline-none transition-colors hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2" onClick={() => setPaymentPrompt(null)} type="button">{copy.dismissPayment}</button>
-                        </div>
-                    </div>
-                </section>
-            ) : null}
+            {paymentPrompt ? <PaymentResultModal copy={copy} locale={locale} onClose={() => setPaymentPrompt(null)} prompt={paymentPrompt} /> : null}
 
             {pendingBooking ? (
                 <ConfirmationModal
@@ -845,7 +829,7 @@ function OfficeDetailsModal({copy, details, onClose, returnFocusTo}: {copy: Copy
     const dialogRef = useModalFocus(onClose, returnFocusTo);
 
     return createPortal(
-        <div aria-labelledby="office-details-title" aria-modal="true" className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 px-3 py-3 backdrop-blur-[2px] sm:items-center sm:px-4 sm:py-6" ref={dialogRef} role="dialog" tabIndex={-1}>
+        <div aria-labelledby="office-details-title" aria-modal="true" className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 px-3 py-3 backdrop-blur-[2px] sm:items-center sm:px-4 sm:py-6" onMouseDown={(event) => {if (event.target === event.currentTarget) onClose()}} ref={dialogRef} role="dialog" tabIndex={-1}>
             <div className="ataraksia-booking-enter max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-4 shadow-2xl sm:rounded-2xl sm:p-5">
                 <div className="flex items-start justify-between gap-4 border-b border-stone-100 pb-3">
                     <div className="min-w-0">
@@ -868,7 +852,7 @@ function EventDetailsModal({copy, event, isSaving, locale, onCancelEnrollment, o
     const canEnroll = !event.enrolled && !event.full && new Date(event.startsAt).getTime() > Date.now();
 
     return (
-        <div aria-labelledby="event-details-title" aria-modal="true" className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6" ref={dialogRef} role="dialog" tabIndex={-1}>
+        <div aria-labelledby="event-details-title" aria-modal="true" className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6" onMouseDown={(event) => {if (event.target === event.currentTarget) onClose()}} ref={dialogRef} role="dialog" tabIndex={-1}>
             <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5">
                 <div className="flex min-w-0 flex-wrap items-start justify-between gap-3 sm:gap-4">
                     <div className="min-w-0">
@@ -906,6 +890,41 @@ function EventDetailsModal({copy, event, isSaving, locale, onCancelEnrollment, o
                 </div>
             </div>
         </div>
+    );
+}
+
+function PaymentResultModal({copy, locale, onClose, prompt}: {copy: Copy; locale: Locale; onClose: () => void; prompt: PaymentPrompt}) {
+    const dialogRef = useModalFocus(onClose, null);
+    const covered = prompt.paidWithMembership || prompt.paidWithLoyaltyVoucher;
+    const title = prompt.paidWithMembership ? copy.membershipPaymentTitle : prompt.paidWithLoyaltyVoucher ? copy.voucherPaymentTitle : copy.paymentTitle;
+    const body = prompt.paidWithMembership
+        ? copy.membershipPaymentBody(paymentPromptTitle(prompt, locale), formatDateTime(prompt.startsAt, locale))
+        : prompt.paidWithLoyaltyVoucher
+        ? copy.voucherPaymentBody(paymentPromptTitle(prompt, locale), formatDateTime(prompt.startsAt, locale))
+        : copy.paymentBody(paymentPromptTitle(prompt, locale), formatDateTime(prompt.startsAt, locale));
+
+    return createPortal(
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-stone-950/45 p-0 backdrop-blur-[2px] sm:items-center sm:p-5" onMouseDown={(event) => {
+            if (event.target === event.currentTarget) onClose();
+        }}>
+            <section aria-labelledby="booking-result-title" aria-modal="true" className="w-full rounded-t-2xl border border-stone-200 bg-white p-4 shadow-2xl sm:max-w-lg sm:rounded-2xl sm:p-6" ref={dialogRef} role="dialog" tabIndex={-1}>
+                <div className="flex items-start justify-between gap-4 border-b border-stone-100 pb-4">
+                    <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">Ataraksia</p>
+                        <h2 className="mt-1 break-words text-xl font-semibold text-stone-950" id="booking-result-title">{title}</h2>
+                    </div>
+                    <button aria-label={copy.close} className="shrink-0 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900" onClick={onClose} type="button">×</button>
+                </div>
+                <p className={`mt-5 rounded-xl border px-4 py-3 text-sm leading-6 ${covered ? "border-emerald-200 bg-emerald-50 text-emerald-950" : "border-amber-200 bg-amber-50 text-amber-950"}`}>{body}</p>
+                {!covered && !prompt.externalPaymentUrl ? <p className="mt-3 text-sm leading-6 text-stone-600">{copy.paymentNoLink}</p> : null}
+                <div className="mt-6 grid gap-2 sm:grid-cols-2">
+                    {!covered && prompt.externalPaymentUrl ? <a className="inline-flex min-h-11 items-center justify-center rounded-lg bg-stone-950 px-4 py-2 text-center text-sm font-semibold text-white outline-none transition-[background-color,box-shadow,transform] hover:bg-stone-800 hover:shadow-sm active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2 motion-reduce:transition-none" href={prompt.externalPaymentUrl} rel="noreferrer" target="_blank">{copy.paymentAction}</a> : null}
+                    <a className="inline-flex min-h-11 items-center justify-center rounded-lg border border-stone-300 bg-white px-4 py-2 text-center text-sm font-semibold text-stone-800 outline-none transition-colors hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2" href={withLocale("/account/bookings", locale)}>{copy.accountAction}</a>
+                    <button className="min-h-11 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 outline-none transition-colors hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 sm:col-span-2" onClick={onClose} type="button">{copy.dismissPayment}</button>
+                </div>
+            </section>
+        </div>,
+        document.body
     );
 }
 
@@ -966,7 +985,7 @@ function ConfirmationModal({
     async function applyPromo() { try { const result=await validatePromo({code:promoCode,targetType:pending.type==="individual"?"SERVICE":"EVENT",targetId:pending.type==="individual"?pending.service.id:pending.event.id}).unwrap();setPromoResult(result);setPromoError(null);setSelectedMembershipPurchaseId("");setSelectedLoyaltyVoucherId(""); } catch (error) {setPromoResult(null);setPromoError(promoValidationMessage(error, copy));} }
 
     return (
-        <div aria-labelledby="booking-confirmation-title" aria-modal="true" className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6" ref={dialogRef} role="dialog" tabIndex={-1}>
+        <div aria-labelledby="booking-confirmation-title" aria-modal="true" className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6" onMouseDown={(event) => {if (event.target === event.currentTarget) onClose()}} ref={dialogRef} role="dialog" tabIndex={-1}>
             <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5">
                 <h2 className="break-words text-xl font-semibold text-stone-950" id="booking-confirmation-title">{pending.type === "individual" ? copy.confirmAppointment : copy.confirmEvent}</h2>
                 <dl className="mt-5 space-y-3 text-sm">
@@ -1063,7 +1082,7 @@ function eligibleVouchersForPending(pending: PendingBooking, vouchers: LoyaltyVo
     const eventId = pending.type === "event" ? pending.event.id : null;
     const now = Date.now();
     return vouchers.filter((voucher) => {
-        if (voucher.status !== "ACTIVE" || !voucher.ownedByCurrentUser || new Date(voucher.expiresAt).getTime() <= now) return false;
+        if (voucher.status !== "ACTIVE" || !voucher.ownedByCurrentUser || (voucher.expiresAt && new Date(voucher.expiresAt).getTime() <= now)) return false;
         if (voucher.eligibleServiceIds.length > 0 && !voucher.eligibleServiceIds.includes(serviceId)) return false;
         if (voucher.eligibleEventIds.length > 0 && (eventId === null || !voucher.eligibleEventIds.includes(eventId))) return false;
         return true;
@@ -1079,7 +1098,7 @@ function ServiceChoiceModal({copy, locale, onClose, onSelect, returnFocusTo, ser
     const dialogRef = useModalFocus(onClose, returnFocusTo);
 
     return (
-        <div aria-labelledby="service-choice-title" aria-modal="true" className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6" ref={dialogRef} role="dialog" tabIndex={-1}>
+        <div aria-labelledby="service-choice-title" aria-modal="true" className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6" onMouseDown={(event) => {if (event.target === event.currentTarget) onClose()}} ref={dialogRef} role="dialog" tabIndex={-1}>
             <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5">
                 <h2 className="break-words text-xl font-semibold text-stone-950" id="service-choice-title">{copy.chooseServiceForTime}</h2>
                 <p className="mt-2 break-words text-sm leading-6 text-stone-500">{formatDateTimeRange(slot.startsAt, slot.endsAt, locale)} · {slot.specialistName} · {slot.officeName ?? copy.withoutOffice}</p>
@@ -1116,6 +1135,9 @@ function useModalFocus(onClose: () => void, returnFocusTo: HTMLElement | null) {
 
         if (!dialog) return;
 
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+
         const focusableElements = () => Array.from(dialog.querySelectorAll<HTMLElement>(
             "button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex='-1'])"
         )).filter((element) => !element.hasAttribute("hidden"));
@@ -1151,6 +1173,7 @@ function useModalFocus(onClose: () => void, returnFocusTo: HTMLElement | null) {
 
         dialog.addEventListener("keydown", handleKeyDown);
         return () => {
+            document.body.style.overflow = previousOverflow;
             dialog.removeEventListener("keydown", handleKeyDown);
             if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus();
         };
@@ -1503,6 +1526,7 @@ function labels(t: T) {
         voucherPaymentTitle: t("public.voucherPaymentTitle"),
         voucherPaymentBody: (service: string, startsAt: string) => t("public.voucherPaymentBody", {service, startsAt}),
         paymentAction: t("public.paymentAction"),
+        paymentNoLink: t("public.paymentNoLink"),
         accountAction: t("public.accountAction"),
         dismissPayment: t("public.dismissPayment"),
         eventEnrolled: t("public.eventEnrolled"),

@@ -4,6 +4,7 @@ import {useLocale, useTranslations} from "next-intl";
 import {useEffect, useMemo, useState} from "react";
 import DateRangeField from "@/components/ui/date/DateRangeField";
 import BoundedList from "@/components/ui/list/BoundedList";
+import OverlayPortal from "@/components/ui/overlay/OverlayPortal";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {bookingServiceTitle} from "@/features/bookings/bookingTitles";
 import {
@@ -61,6 +62,26 @@ export default function FinanceBookingsManagement() {
     const [membershipPage, setMembershipPage] = useState(0);
     const [eventPage, setEventPage] = useState(0);
     const [expensePage, setExpensePage] = useState(0);
+
+    useEffect(() => {
+        const modalOpen = Boolean(selectedBooking || bookingToConfirm || membershipToConfirm || membershipToCancel || eventEnrollmentToConfirm);
+        if (!modalOpen) return;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key !== "Escape") return;
+            setSelectedBooking(null);
+            setBookingToConfirm(null);
+            setMembershipToConfirm(null);
+            setMembershipToCancel(null);
+            setEventEnrollmentToConfirm(null);
+        };
+        document.addEventListener("keydown", closeOnEscape);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            document.removeEventListener("keydown", closeOnEscape);
+        };
+    }, [bookingToConfirm, eventEnrollmentToConfirm, membershipToCancel, membershipToConfirm, selectedBooking]);
     const {data: officesData} = useListPublicOfficesQuery({size: 100});
     const activeOffices = useMemo(() => officesData?.content ?? [], [officesData?.content]);
     const bookingStatusFilter = tab === "pending" ? "AWAITING_PAYMENT_CONFIRMATION" : status;
@@ -267,19 +288,19 @@ export default function FinanceBookingsManagement() {
                 {tab === "reports" ? <ReportsSection businessIncome={businessIncome} estimatedTax={estimatedTax} expenses={expenseTotal} income={income} locale={locale} officeId={officeId} quarterlyTaxPercent={quarterlyTaxPercent} result={result} specialistEarnings={specialistEarnings} status={status} taxableIncome={taxableIncome} t={t} to={to} from={from} /> : null}
             </section>
 
-            {selectedBooking ? <BookingDetails booking={selectedBooking} confirming={isConfirming} locale={locale} markingPayout={isMarkingPayout} onClose={() => setSelectedBooking(null)} onConfirm={requestConfirm} onMarkPayout={markPayout} t={t} /> : null}
-            {bookingToConfirm ? <PaymentReviewModal booking={bookingToConfirm} confirming={isConfirming} locale={locale} onClose={() => setBookingToConfirm(null)} onConfirm={confirm} t={t} /> : null}
-            {membershipToConfirm ? <ManualReviewModal amount={formatAmount(membershipToConfirm.priceSnapshot, locale)} body={t("memberships.reviewBody")} confirming={isConfirmingMembership} onClose={() => setMembershipToConfirm(null)} onConfirm={() => confirmMembership(membershipToConfirm.id)} subtitle={t(`memberships.statuses.${membershipToConfirm.status}`)} t={t} title={locale === "ua" ? membershipToConfirm.titleUa : membershipToConfirm.titleEn} /> : null}
-            {membershipToCancel ? <MembershipCancelModal cancelling={isCancellingMembership} locale={locale} onClose={() => setMembershipToCancel(null)} onConfirm={() => cancelMembership(membershipToCancel.id)} purchase={membershipToCancel} t={t} /> : null}
-            {eventEnrollmentToConfirm ? <ManualReviewModal amount={formatAmount(eventEnrollmentToConfirm.bookedPrice, locale)} body={t("events.reviewBody")} confirming={isConfirmingEventEnrollment} onClose={() => setEventEnrollmentToConfirm(null)} onConfirm={() => confirmEventEnrollment(eventEnrollmentToConfirm.id)} subtitle={`${formatDateTime(eventEnrollmentToConfirm.startsAt, locale)} · ${eventEnrollmentToConfirm.officeName ?? t("withoutOffice")}`} t={t} title={locale === "ua" ? eventEnrollmentToConfirm.serviceTitleUa : eventEnrollmentToConfirm.serviceTitleEn || eventEnrollmentToConfirm.serviceTitleUa} /> : null}
+            {selectedBooking ? <OverlayPortal><BookingDetails booking={selectedBooking} confirming={isConfirming} locale={locale} markingPayout={isMarkingPayout} onClose={() => setSelectedBooking(null)} onConfirm={requestConfirm} onMarkPayout={markPayout} t={t} /></OverlayPortal> : null}
+            {bookingToConfirm ? <OverlayPortal><PaymentReviewModal booking={bookingToConfirm} confirming={isConfirming} locale={locale} onClose={() => setBookingToConfirm(null)} onConfirm={confirm} t={t} /></OverlayPortal> : null}
+            {membershipToConfirm ? <OverlayPortal><ManualReviewModal amount={formatAmount(membershipToConfirm.priceSnapshot, locale)} body={t("memberships.reviewBody")} confirming={isConfirmingMembership} onClose={() => setMembershipToConfirm(null)} onConfirm={() => confirmMembership(membershipToConfirm.id)} subtitle={t(`memberships.statuses.${membershipToConfirm.status}`)} t={t} title={locale === "ua" ? membershipToConfirm.titleUa : membershipToConfirm.titleEn} /></OverlayPortal> : null}
+            {membershipToCancel ? <OverlayPortal><MembershipCancelModal cancelling={isCancellingMembership} locale={locale} onClose={() => setMembershipToCancel(null)} onConfirm={() => cancelMembership(membershipToCancel.id)} purchase={membershipToCancel} t={t} /></OverlayPortal> : null}
+            {eventEnrollmentToConfirm ? <OverlayPortal><ManualReviewModal amount={formatAmount(eventEnrollmentToConfirm.bookedPrice, locale)} body={t("events.reviewBody")} confirming={isConfirmingEventEnrollment} onClose={() => setEventEnrollmentToConfirm(null)} onConfirm={() => confirmEventEnrollment(eventEnrollmentToConfirm.id)} subtitle={`${formatDateTime(eventEnrollmentToConfirm.startsAt, locale)} · ${eventEnrollmentToConfirm.officeName ?? t("withoutOffice")}`} t={t} title={locale === "ua" ? eventEnrollmentToConfirm.serviceTitleUa : eventEnrollmentToConfirm.serviceTitleEn || eventEnrollmentToConfirm.serviceTitleUa} /></OverlayPortal> : null}
         </section>
     );
 }
 
 type T = ReturnType<typeof useTranslations<"admin.finance.page">>;
 const inputClass = "h-10 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 outline-none transition-colors focus:border-stone-800";
-const tabClass = "whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium text-stone-600 transition-colors hover:bg-white hover:text-stone-900";
-const activeTabClass = "whitespace-nowrap rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white shadow-sm";
+const tabClass = "whitespace-nowrap rounded-lg border border-transparent px-4 py-2 text-sm font-semibold text-stone-600 transition-[color,background-color,border-color,transform] hover:border-stone-300 hover:bg-white hover:text-stone-950 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500";
+const activeTabClass = "whitespace-nowrap rounded-lg border border-stone-900 bg-stone-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2";
 
 function ServerPager({page, totalPages, onPage, t}: {page: number; totalPages: number; onPage: (page: number) => void; t: T}) {
     if (totalPages <= 1) return null;
@@ -359,13 +380,16 @@ function PayoutBadge({booking, t}: {booking: FinanceBooking; t: T}) {
 
 function FinanceAction({booking, confirming, markingPayout, onConfirm, onMarkPayout, t}: {booking: FinanceBooking; confirming: boolean; markingPayout: boolean; onConfirm: (booking: FinanceBooking) => void; onMarkPayout: (id: number) => void; t: T}) {
     if (booking.status === "AWAITING_PAYMENT_CONFIRMATION") {
-        return <div className="flex min-w-0 flex-wrap items-center gap-2"><button className="inline-flex min-h-9 items-center justify-center rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-stone-700 disabled:bg-stone-300" disabled={confirming} onClick={() => onConfirm(booking)} type="button">{confirming ? t("confirming") : t("confirm")}</button>{booking.externalPaymentUrl ? <a className={externalActionClass} href={booking.externalPaymentUrl} rel="noreferrer" target="_blank">{t("details.paymentLink")}</a> : null}</div>;
+        return <div className="grid min-w-[150px] gap-2"><button className={financePrimaryActionClass} disabled={confirming} onClick={() => onConfirm(booking)} type="button">{confirming ? t("confirming") : t("confirm")}</button>{booking.externalPaymentUrl ? <a className={`${externalActionClass} w-full justify-center`} href={booking.externalPaymentUrl} rel="noreferrer" target="_blank">{t("details.paymentLink")}</a> : null}</div>;
     }
     if (booking.status === "CONFIRMED" && booking.specialistPayoutStatus === "PENDING") {
-        return <button className="max-w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 transition-colors hover:bg-stone-100 disabled:text-stone-400" disabled={markingPayout} onClick={() => onMarkPayout(booking.id)} type="button">{markingPayout ? t("payout.marking") : t("payout.markPaid")}</button>;
+        return <button className={financeSecondaryActionClass} disabled={markingPayout} onClick={() => onMarkPayout(booking.id)} type="button">{markingPayout ? t("payout.marking") : t("payout.markPaid")}</button>;
     }
     return <span className="text-xs text-stone-400">—</span>;
 }
+
+const financePrimaryActionClass = "inline-flex min-h-10 w-full min-w-[150px] items-center justify-center rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-[background-color,transform] hover:bg-stone-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 disabled:bg-stone-300";
+const financeSecondaryActionClass = "inline-flex min-h-10 w-full min-w-[150px] items-center justify-center rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 shadow-sm transition-[background-color,transform] hover:bg-stone-100 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 disabled:text-stone-400";
 
 function StatusBadge({status, t}: {status: BookingStatus; t: T}) {
     const tone = status === "CONFIRMED" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : status === "AWAITING_PAYMENT_CONFIRMATION" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-stone-200 bg-stone-100 text-stone-600";

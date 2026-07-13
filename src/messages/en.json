@@ -302,7 +302,8 @@
         "membershipPaymentBody": "{service}, {startsAt}. A visit was used from the active membership.",
         "voucherPaymentTitle": "Booking confirmed with reward",
         "voucherPaymentBody": "{service}, {startsAt}. The reward was marked as used.",
-        "paymentAction": "Open payment ↗",
+        "paymentAction": "Pay for booking ↗",
+        "paymentNoLink": "This booking has no external payment link. It has been created and is awaiting manual manager confirmation.",
         "accountAction": "My bookings",
         "dismissPayment": "Dismiss",
         "eventEnrolled": "You are enrolled in the event.",
@@ -372,6 +373,7 @@
       "loading": "Updating…",
       "loadError": "Unable to load loyalty data.",
       "validUntil": "Valid until {date}",
+      "noExpiry": "No expiration",
       "transferable": "The gift code can be transferred to another person. Its creator cannot activate it.",
       "personal": "Personal reward",
       "previous": "Previous",
@@ -510,9 +512,9 @@
     "loyalty": {
       "title": "Loyalty and rewards", "subtitle": "Configure service points, the reward catalog, gift behavior, and controlled manual adjustments.",
       "newReward": "New reward", "editReward": "Edit reward", "rewardHint": "Personal rewards and gift codes share one voucher mechanism.",
-      "titleUa": "Ukrainian title", "titleEn": "English title", "descriptionUa": "Ukrainian description", "descriptionEn": "English description", "pointCost": "Point cost", "validityDays": "Reward validity after redemption, days", "transferable": "Transferable", "personal": "Personal", "active": "Active", "inactive": "Inactive", "eligibleServices": "Eligible services", "noServices": "No services yet.",
+      "titleUa": "Ukrainian title", "titleEn": "English title", "descriptionUa": "Ukrainian description", "descriptionEn": "English description", "pointCost": "Point cost", "validityDays": "Validity after redemption, days (optional)", "validityUnlimited": "Leave empty for no expiration", "transferable": "Transferable", "personal": "Personal", "active": "Active", "inactive": "Inactive", "eligibleServices": "Eligible services", "noServices": "No services yet.",
       "eligibleEvents": "Eligible events", "eligibleEventsHint": "Optionally select specific events. With none selected, the reward is not restricted to an individual event.", "eventsLoading": "Loading events…", "noEvents": "No upcoming active events.",
-      "save": "Save reward", "saving": "Saving…", "created": "Reward created.", "updated": "Reward updated.", "saveError": "Unable to save the reward.", "cancelEdit": "Cancel", "catalog": "Reward catalog", "loading": "Loading…", "loadError": "Unable to load the catalog.", "empty": "No rewards yet.", "pointsShort": "points", "daysShort": "days", "edit": "Edit",
+      "save": "Save reward", "saving": "Saving…", "created": "Reward created.", "updated": "Reward updated.", "saveError": "Unable to save the reward.", "cancelEdit": "Cancel", "catalog": "Reward catalog", "loading": "Loading…", "loadError": "Unable to load the catalog.", "empty": "No rewards yet.", "pointsShort": "points", "daysShort": "days", "unlimited": "no expiration", "edit": "Edit",
       "user": "User", "userSearch": "Enter a name, email, or phone", "usersLoading": "Searching users…", "noUsers": "No users found.", "clearUser": "Change", "amount": "Point adjustment", "reason": "Reason", "adjust": "Apply", "adjusted": "Balance adjusted.", "adjustError": "Unable to adjust the balance. Check the user, amount, and current balance."
     },
     "siteSettings": {

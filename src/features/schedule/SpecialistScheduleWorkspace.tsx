@@ -335,7 +335,11 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 	                                    <select
 	                                        className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-700"
 	                                        disabled={specialistsFetching}
-	                                        onChange={(event) => setSelectedSpecialistId(event.target.value ? Number(event.target.value) : "")}
+	                                        onChange={(event) => {
+	                                            const specialistId = event.target.value ? Number(event.target.value) : "";
+	                                            setSelectedSpecialistId(specialistId);
+	                                            if (specialistId !== "") setSelectedView("day");
+	                                        }}
 	                                        value={selectedSpecialistId}
 	                                    >
 	                                        <option value="">{specialistsFetching ? copy.loading : copy.allSpecialists}</option>
@@ -402,10 +406,13 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     <div className="flex min-w-0 flex-col gap-3 border-b border-stone-200 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
                         <div className="flex flex-wrap items-center gap-1">
                             <button className={controlButtonClass} onClick={() => setCurrentDate((date) => navigateDate(date, selectedView, -1))} type="button">←</button>
-                            <button className={controlButtonClass} onClick={() => setCurrentDate(new Date())} type="button">{t("controls.today")}</button>
+                            <button aria-pressed={dateKey(currentDate) === dateKey(new Date())} className={dateKey(currentDate) === dateKey(new Date()) ? activeViewClass : controlButtonClass} onClick={() => setCurrentDate(new Date())} type="button">{t("controls.today")}</button>
                             <button className={controlButtonClass} onClick={() => setCurrentDate((date) => navigateDate(date, selectedView, 1))} type="button">→</button>
+                            <input aria-label={t("calendar.title")} className="h-9 rounded-lg border border-stone-300 bg-white px-2 text-xs font-medium text-stone-700 outline-none transition-colors hover:border-stone-400 focus:border-stone-800" onChange={(event) => {
+                                if (event.target.value) setCurrentDate(new Date(`${event.target.value}T12:00:00`));
+                            }} type="date" value={dateKey(currentDate)} />
                         </div>
-                        <div className="grid w-full min-w-0 grid-cols-2 gap-1 rounded-lg bg-stone-100 p-1 sm:flex sm:w-auto">
+                        <div className="grid w-full min-w-0 grid-cols-3 gap-1 rounded-lg bg-stone-100 p-1 sm:flex sm:w-auto">
                             {(plannerScope === "team" && selectedSpecialistId === "" ? teamViews : personalViews).map((view) => (
                                 <button aria-pressed={view === selectedView} className={view === selectedView ? activeViewClass : viewClass} key={view} onClick={() => setSelectedView(view)} type="button">
                                     {t(`views.${view}`)}
@@ -457,8 +464,8 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
             </div>
 
             {toolsOpen ? <OverlayPortal>
-            <div aria-hidden="true" className={`fixed inset-0 z-40 bg-stone-950/10 transition-opacity duration-180 motion-reduce:transition-none ${toolsVisible ? "opacity-100" : "opacity-0"}`} />
-            <aside aria-label={copy.toolsTitle} aria-modal="true" className={`fixed inset-x-2 bottom-2 z-50 flex max-h-[92dvh] min-w-0 flex-col overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 shadow-2xl outline-none transition-[opacity,transform] duration-180 ease-out focus-visible:ring-2 focus-visible:ring-stone-500 motion-reduce:transition-none sm:inset-x-5 sm:bottom-auto sm:top-1/2 sm:mx-auto sm:w-[min(1180px,calc(100vw-2.5rem))] sm:-translate-y-1/2 ${toolsVisible ? "translate-y-0 opacity-100 sm:-translate-y-1/2" : "translate-y-4 opacity-0 sm:-translate-y-[48%]"}`} ref={toolsPanelRef} role="dialog" tabIndex={-1}>
+            <button aria-label={copy.closeDetails} className={`fixed inset-0 z-40 bg-stone-950/20 transition-opacity duration-180 motion-reduce:transition-none ${toolsVisible ? "opacity-100" : "opacity-0"}`} onClick={closeTools} type="button" />
+            <aside aria-label={copy.toolsTitle} aria-modal="true" className={`fixed inset-0 z-50 flex max-h-[100dvh] min-w-0 flex-col overflow-hidden border border-stone-200 bg-stone-50 shadow-2xl outline-none transition-[opacity,transform] duration-180 ease-out focus-visible:ring-2 focus-visible:ring-stone-500 motion-reduce:transition-none sm:inset-x-5 sm:bottom-auto sm:top-1/2 sm:mx-auto sm:max-h-[92dvh] sm:w-[min(1180px,calc(100vw-2.5rem))] sm:-translate-y-1/2 sm:rounded-2xl ${toolsVisible ? "translate-y-0 opacity-100 sm:-translate-y-1/2" : "translate-y-4 opacity-0 sm:-translate-y-[48%]"}`} ref={toolsPanelRef} role="dialog" tabIndex={-1}>
                 <div className="flex shrink-0 items-center justify-between gap-3 border-b border-stone-200 bg-white px-4 py-3 sm:px-5">
                     <h2 className="text-base font-semibold text-stone-950">{copy.toolsTitle}</h2>
                     <button aria-label={copy.closeDetails} className={controlButtonClass} onClick={closeTools} type="button">×</button>

@@ -21,7 +21,8 @@ export default function PromoCodesManagement() {
 
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        const form = new FormData(event.currentTarget);
+        const formElement = event.currentTarget;
+        const form = new FormData(formElement);
         try {
             await createPromo({
                 discountPercent: Number(form.get("discount")),
@@ -34,7 +35,7 @@ export default function PromoCodesManagement() {
                 serviceIds: [],
                 eventIds: []
             }).unwrap();
-            event.currentTarget.reset();
+            formElement.reset();
             setAssignedUser(null);
             toast.success(t("created"));
         } catch {

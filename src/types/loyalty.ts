@@ -10,7 +10,7 @@ export interface LoyaltyReward {
     descriptionUa: string | null;
     descriptionEn: string | null;
     pointCost: number;
-    validityDays: number;
+    validityDays: number | null;
     transferable: boolean;
     active: boolean;
     eligibleServiceIds: number[];
@@ -42,7 +42,7 @@ export interface LoyaltyVoucher {
     ownedByCurrentUser: boolean;
     eligibleServiceIds: number[];
     eligibleEventIds: number[];
-    expiresAt: string;
+    expiresAt: string | null;
     activatedAt: string | null;
     usedAt: string | null;
     createdAt: string;

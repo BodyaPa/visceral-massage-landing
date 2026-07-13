@@ -72,7 +72,7 @@ export default function AccountLoyaltyPanel({view}: {view: "certificates" | "poi
                                     <h3 className="font-semibold text-stone-950">{locale === "en" && voucher.titleEn ? voucher.titleEn : voucher.titleUa}</h3>
                                     <span className={voucherStatusClass(voucher.status)}>{t(`statuses.${voucher.status}`)}</span>
                                 </div>
-                                <p className="mt-2 text-xs text-stone-500">{t("validUntil", {date: formatDate(voucher.expiresAt, locale)})}</p>
+                                <p className="mt-2 text-xs text-stone-500">{voucher.expiresAt ? t("validUntil", {date: formatDate(voucher.expiresAt, locale)}) : t("noExpiry")}</p>
                                 {voucher.code ? <p className="mt-3 select-all rounded-lg border border-dashed border-stone-300 bg-stone-50 px-3 py-2 font-mono text-sm font-semibold tracking-wide text-stone-950">{voucher.code}</p> : null}
                                 <p className="mt-2 text-xs leading-5 text-stone-500">{voucher.transferable ? t("transferable") : t("personal")}</p>
                             </article>

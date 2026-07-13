@@ -3,6 +3,7 @@
 import {useEffect, useMemo, useState} from "react";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
+import OverlayPortal from "@/components/ui/overlay/OverlayPortal";
 import type {UserRole} from "@/features/auth/auth.roles";
 import {useListUsersQuery, useUpdateUserEnabledMutation, useUpdateUserRolesMutation} from "@/features/users/users.api";
 import type {AdminUser} from "@/types/users";
@@ -25,6 +26,21 @@ export default function UsersManagement({currentUserId}: {currentUserId: number}
     const [pendingStatusUser, setPendingStatusUser] = useState<AdminUser | null>(null);
     const [updateRoles, {isLoading: isSaving}] = useUpdateUserRolesMutation();
     const [updateEnabled, {isLoading: isStatusSaving}] = useUpdateUserEnabledMutation();
+
+    useEffect(() => {
+        if (!pendingStatusUser) return;
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key === "Escape") setPendingStatusUser(null);
+        };
+        document.addEventListener("keydown", closeOnEscape);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            document.removeEventListener("keydown", closeOnEscape);
+        };
+    }, [pendingStatusUser]);
 
     useEffect(() => {
         if (users.length === 0) {
@@ -252,8 +268,10 @@ export default function UsersManagement({currentUserId}: {currentUserId: number}
                 )}
             </div>
             {pendingStatusUser ? (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 p-4">
-                    <div className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-5 shadow-2xl">
+                <OverlayPortal><div className="fixed inset-0 z-[70] flex items-center justify-center bg-stone-950/40 p-4" onMouseDown={(event) => {
+                    if (event.target === event.currentTarget) setPendingStatusUser(null);
+                }} role="presentation">
+                    <div aria-modal="true" className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-5 shadow-2xl" role="dialog">
                         <h2 className="text-base font-semibold text-stone-950">
                             {pendingStatusUser.enabled ? t("disableConfirmTitle") : t("restoreConfirmTitle")}
                         </h2>
@@ -280,7 +298,7 @@ export default function UsersManagement({currentUserId}: {currentUserId: number}
                             </button>
                         </div>
                     </div>
-                </div>
+                </div></OverlayPortal>
             ) : null}
         </section>
     );

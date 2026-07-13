@@ -17,6 +17,7 @@ import {
 import {createAdminSiteMediaUrl, createSiteMediaPath, notifySiteSliderUpdated} from "@/features/siteSettings/siteSettingsMedia";
 import type {MediaAsset} from "@/types/news";
 import type {SiteSettingsInput} from "@/types/siteSettings";
+import OverlayPortal from "@/components/ui/overlay/OverlayPortal";
 
 type FieldName = keyof SiteSettingsInput;
 type SitePage = "home" | "about" | "contact";
@@ -315,9 +316,22 @@ function SiteMediaDialog({busy, closing, isError, isFetching, media, onClose, on
     const backdropState = visible && !closing ? "opacity-100" : "opacity-0";
     const panelState = visible && !closing ? "translate-y-0 scale-100 opacity-100" : "translate-y-2 scale-[0.985] opacity-0";
 
+    useEffect(() => {
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key === "Escape") onClose();
+        };
+        document.addEventListener("keydown", closeOnEscape);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            document.removeEventListener("keydown", closeOnEscape);
+        };
+    }, [onClose]);
+
     return (
-        <div className={`${backdropState} fixed inset-0 z-50 overflow-y-auto bg-stone-950/40 p-3 transition-opacity duration-200 motion-reduce:transition-none sm:p-5`} role="presentation">
-            <section aria-modal="true" className={`${panelState} mx-auto min-h-[min(42rem,calc(100vh-2rem))] w-full max-w-6xl rounded-2xl border border-stone-200 bg-white p-4 shadow-2xl transition-[opacity,transform] duration-200 motion-reduce:transition-none sm:p-5`} role="dialog">
+        <OverlayPortal><div className={`${backdropState} fixed inset-0 z-[70] overflow-hidden bg-stone-950/40 p-0 transition-opacity duration-200 motion-reduce:transition-none sm:p-5`} onMouseDown={(event) => {if (event.target === event.currentTarget) onClose()}} role="presentation">
+            <section aria-modal="true" className={`${panelState} mx-auto h-full w-full max-w-6xl overflow-y-auto bg-white p-4 shadow-2xl transition-[opacity,transform] duration-200 motion-reduce:transition-none sm:max-h-[calc(100dvh-2.5rem)] sm:min-h-[min(42rem,calc(100vh-2rem))] sm:rounded-2xl sm:border sm:border-stone-200 sm:p-5`} role="dialog">
                 <header className="flex min-w-0 flex-col gap-3 border-b border-stone-200 pb-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                         <h2 className="break-words text-xl font-semibold text-stone-950">{t("mediaTitle")}</h2>
@@ -366,7 +380,7 @@ function SiteMediaDialog({busy, closing, isError, isFetching, media, onClose, on
                 </div>
                 {!isFetching && media.length === 0 ? <p className="mt-5 rounded-lg border border-dashed border-stone-300 bg-stone-50 px-3 py-8 text-center text-sm text-stone-500">{t("mediaEmpty")}</p> : null}
             </section>
-        </div>
+        </div></OverlayPortal>
     );
 }
 const smallButtonClass = "rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-100 disabled:cursor-not-allowed disabled:text-stone-300";

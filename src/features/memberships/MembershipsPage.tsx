@@ -10,6 +10,7 @@ import {
     useListMembershipOffersQuery,
     useListMyMembershipPurchasesQuery
 } from "@/features/memberships/memberships.api";
+import {useListServicesQuery} from "@/features/services/services.api";
 import type {Locale} from "@/i18n";
 import {formatWholeCurrencyAmount as formatAmount} from "@/shared/lib/i18n/formatNumbers";
 import {resolveApiMediaUrl} from "@/shared/lib/media/resolveApiMediaUrl";
@@ -26,6 +27,8 @@ export default function MembershipsPage() {
     const locale = useLocale() as Locale;
     const toast = useToast();
     const {data: offers = [], isFetching, isError} = useListMembershipOffersQuery();
+    const {data: servicesData} = useListServicesQuery({lang: locale, size: 200});
+    const services = servicesData?.content ?? [];
     const {data: purchasesData} = useListMyMembershipPurchasesQuery({size: 50});
     const [createPurchase, {isLoading}] = useCreateMembershipPurchaseMutation();
     const [createPaymentSession, {isLoading: isCreatingPaymentSession}] = useCreateMembershipPaymentSessionMutation();
@@ -97,7 +100,7 @@ export default function MembershipsPage() {
             <section className="mx-auto w-full max-w-[1180px] px-4 py-8 pb-20 sm:px-6 lg:px-8 lg:pb-24">
                 {isError ? <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("loadError")}</p> : null}
                 {isFetching ? <p className="mb-4 text-sm text-stone-500">{t("loading")}</p> : null}
-                <div className="grid gap-4 lg:grid-cols-3">
+                <div className="grid gap-5 md:grid-cols-2">
                     {offers.map((offer) => (
                         <OfferCard
                             disabled={isProcessingCheckout}
@@ -118,7 +121,7 @@ export default function MembershipsPage() {
                 <PurchaseSummary locale={locale} onPay={(purchase) => void resumePayment(purchase)} purchases={purchases} t={t} />
             </section>
 
-            {selectedOffer ? <OfferDetails locale={locale} offer={selectedOffer} onBuy={openPaymentDialog} onClose={() => setSelectedOffer(null)} pending={pendingPurchases.has(selectedOffer.id)} t={t} /> : null}
+            {selectedOffer ? <OfferDetails locale={locale} offer={selectedOffer} onBuy={openPaymentDialog} onClose={() => setSelectedOffer(null)} pending={pendingPurchases.has(selectedOffer.id)} services={services} t={t} /> : null}
             {checkoutOffer ? (
                 <PaymentConfirmationDialog
                     isLoading={isProcessingCheckout}
@@ -138,9 +141,9 @@ type T = ReturnType<typeof useTranslations<"memberships.page">>;
 
 function OfferCard({disabled, locale, offer, onBuy, onDetails, onPayPending, pending, t}: {disabled: boolean; locale: Locale; offer: MembershipOffer; onBuy: (offer: MembershipOffer) => void; onDetails: (offer: MembershipOffer) => void; onPayPending: () => void; pending: boolean; t: T}) {
     return (
-        <article className="flex min-w-0 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+        <article className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm sm:flex-row">
             {offer.backgroundMediaUrl ? (
-                <div className="min-h-64 w-36 shrink-0 bg-stone-100 max-sm:hidden">
+                <div className="h-52 w-full shrink-0 bg-stone-100 sm:h-auto sm:w-44">
                     {/* eslint-disable-next-line @next/next/no-img-element -- membership offer background is served by the API. */}
                     <img alt="" className="h-full w-full object-cover" src={resolveApiMediaUrl(offer.backgroundMediaUrl)} />
                 </div>
@@ -172,7 +175,7 @@ function OfferCard({disabled, locale, offer, onBuy, onDetails, onPayPending, pen
     );
 }
 
-function OfferDetails({locale, offer, onBuy, onClose, pending, t}: {locale: Locale; offer: MembershipOffer; onBuy: (offer: MembershipOffer) => void; onClose: () => void; pending: boolean; t: T}) {
+function OfferDetails({locale, offer, onBuy, onClose, pending, services, t}: {locale: Locale; offer: MembershipOffer; onBuy: (offer: MembershipOffer) => void; onClose: () => void; pending: boolean; services: Array<{id: number; title: string}>; t: T}) {
     return (
         <div className="fixed inset-0 z-50 flex items-end bg-black/40 px-3 py-3 sm:items-center sm:justify-center" role="presentation">
             <section aria-labelledby="membership-details-title" className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-stone-200 bg-white p-5 shadow-2xl" role="dialog" aria-modal="true">
@@ -194,6 +197,13 @@ function OfferDetails({locale, offer, onBuy, onClose, pending, t}: {locale: Loca
                     <ul className="mt-3 space-y-2 text-sm leading-6 text-stone-600">
                         {(includedByCode[offer.code] ?? ["support"]).map((key) => <li className="break-words" key={key}>{t(`included.${key}`)}</li>)}
                     </ul>
+                </section>
+                <section className="mt-4 min-w-0 rounded-xl border border-stone-200 bg-white p-4">
+                    <h3 className="text-sm font-semibold text-stone-950">{t("eligibleServicesTitle")}</h3>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                        {services.filter((service) => offer.eligibleServiceIds.includes(service.id)).map((service) => <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-medium text-stone-700" key={service.id}>{service.title}</span>)}
+                        {services.every((service) => !offer.eligibleServiceIds.includes(service.id)) ? <p className="text-sm text-stone-500">{t("eligibleServicesEmpty")}</p> : null}
+                    </div>
                 </section>
                 <div className="mt-5 flex flex-wrap justify-end gap-2">
                     <button className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100" onClick={onClose} type="button">{t("close")}</button>

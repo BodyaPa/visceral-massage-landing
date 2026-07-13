@@ -156,6 +156,13 @@ export const scheduleApi = createApi({
                 {type: "ScheduleAvailability", id: "EVENTS"}
 	            ]
 	        }),
+        deleteSpecialistEvent: build.mutation<void, number>({
+            query: (id) => ({url: `/admin/schedule/events/${id}`, method: "DELETE"}),
+            invalidatesTags: [
+                {type: "ScheduleAvailability", id: "SPECIALIST_EVENTS"},
+                {type: "ScheduleAvailability", id: "EVENTS"}
+            ]
+        }),
 	        copyDayPlan: build.mutation<DayPlanCopyResponse, DayPlanCopyInput>({
 	            query: (body) => ({url: "/admin/schedule/day-copy", method: "POST", body}),
 	            invalidatesTags: [
@@ -192,6 +199,7 @@ export const {
     useCancelFixedEventEnrollmentMutation,
     useCreateSpecialistEventMutation,
     useDeleteAvailabilityMutation,
+    useDeleteSpecialistEventMutation,
     useEnrollFixedEventMutation,
     useListPublicAvailabilityQuery,
     useListPublicEventsQuery,

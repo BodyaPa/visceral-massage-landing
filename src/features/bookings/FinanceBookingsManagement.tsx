@@ -11,6 +11,7 @@ import {
     useConfirmPaymentMutation,
     useConfirmEventEnrollmentPaymentMutation,
     useCreateFinanceExpenseMutation,
+    useDeleteFinanceExpenseMutation,
     useGetFinanceSettingsQuery,
     useGetFinanceSummaryQuery,
     useListFinanceBookingsQuery,
@@ -424,7 +425,18 @@ function ExpensesSection({expenses, isError, isFetching, locale, offices, t}: {e
 }
 
 function ExpenseRow({expense, locale, t}: {expense: FinanceExpense; locale: string; t: T}) {
-    return <article className="flex min-w-0 flex-col gap-3 rounded-xl border border-stone-200 bg-white p-4 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="flex min-w-0 flex-wrap items-center gap-2"><strong className="break-words text-sm text-stone-950">{expense.category}</strong><span className="max-w-full break-words rounded-full bg-stone-100 px-2 py-1 text-xs text-stone-600">{expense.officeName ?? t("withoutOffice")}</span></div><p className="mt-2 break-words text-sm text-stone-600">{expense.description}</p><p className="mt-2 break-words text-xs text-stone-500">{formatDate(expense.expenseDate, locale)}</p></div><strong className="break-words text-sm text-stone-950 sm:shrink-0">{formatAmount(expense.amount, locale)}</strong></article>;
+    const toast = useToast();
+    const [deleteExpense, {isLoading}] = useDeleteFinanceExpenseMutation();
+    async function remove() {
+        if (!window.confirm(t("expenses.deleteConfirm"))) return;
+        try {
+            await deleteExpense(expense.id).unwrap();
+            toast.success(t("expenses.deleted"));
+        } catch {
+            toast.error(t("expenses.deleteError"));
+        }
+    }
+    return <article className="flex min-w-0 flex-col gap-3 rounded-xl border border-stone-200 bg-white p-4 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="flex min-w-0 flex-wrap items-center gap-2"><strong className="break-words text-sm text-stone-950">{expense.category}</strong><span className="max-w-full break-words rounded-full bg-stone-100 px-2 py-1 text-xs text-stone-600">{expense.officeName ?? t("withoutOffice")}</span></div><p className="mt-2 break-words text-sm text-stone-600">{expense.description}</p><p className="mt-2 break-words text-xs text-stone-500">{formatDate(expense.expenseDate, locale)}</p></div><div className="flex shrink-0 items-center gap-2"><strong className="break-words text-sm text-stone-950">{formatAmount(expense.amount, locale)}</strong><button aria-label={t("expenses.delete")} className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg border border-red-200 bg-white text-red-700 transition-colors hover:bg-red-50 disabled:text-red-300" disabled={isLoading} onClick={() => void remove()} type="button">×</button></div></article>;
 }
 
 function ExpenseForm({offices, t}: {offices: Office[]; t: T}) {

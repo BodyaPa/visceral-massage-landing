@@ -169,6 +169,7 @@ export default function UsersManagement({currentUserId}: {currentUserId: number}
                                                 <span className={`mt-1 block break-words text-xs ${active ? "text-stone-200" : "text-stone-600"}`}>
                                                     {user.email ?? user.phone ?? t("noContact")}
                                                 </span>
+                                                {user.dateOfBirth ? <span className={`mt-1 block text-xs ${active ? "text-stone-300" : "text-stone-500"}`}>{t("ageValue", {age: calculateAge(user.dateOfBirth)})}</span> : null}
                                             </span>
                                             <StatusBadge active={active} enabled={user.enabled} label={user.enabled ? t("enabled") : t("disabled")} />
                                         </span>
@@ -205,6 +206,7 @@ export default function UsersManagement({currentUserId}: {currentUserId: number}
                         <div className="grid gap-2 text-sm text-stone-700 sm:grid-cols-2">
                             <Info label={t("phone")} value={selectedUser.phone ?? t("emptyValue")} />
                             <Info label={t("email")} value={selectedUser.email ?? t("emptyValue")} />
+                            <Info label={t("age")} value={selectedUser.dateOfBirth ? t("ageValue", {age: calculateAge(selectedUser.dateOfBirth)}) : t("emptyValue")} />
                             <Info label={t("status")} value={selectedUser.enabled ? t("enabled") : t("disabled")} />
                             <Info label={t("createdAt")} value={new Date(selectedUser.createdAt).toLocaleString()} />
                         </div>
@@ -335,4 +337,14 @@ function Info({label, value}: {label: string; value: string}) {
             <span className="mt-1 block break-words">{value}</span>
         </div>
     );
+}
+
+function calculateAge(dateOfBirth: string) {
+    const birthDate = new Date(`${dateOfBirth}T00:00:00`);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const beforeBirthday = today.getMonth() < birthDate.getMonth()
+        || (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate());
+    if (beforeBirthday) age -= 1;
+    return Math.max(0, age);
 }

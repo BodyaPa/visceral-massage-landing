@@ -14,6 +14,7 @@ import {
     useCreateAvailabilityMutation,
     useCopyDayPlanMutation,
     useCreateSpecialistEventMutation,
+    useDeleteSpecialistEventMutation,
     useGetScheduleConfigQuery,
     useListAvailabilityQuery,
     useListSpecialistEventEnrollmentsQuery,
@@ -51,7 +52,7 @@ const defaultAppointmentBufferMinutes = 30;
 type CalendarView = typeof personalViews[number];
 type PlannerMode = "plan" | "bookings" | "all";
 type PlannerScope = "mine" | "team";
-type PlannerTool = "availability" | "blocking" | "event" | "template" | "copy" | "bookings";
+type PlannerTool = "availability" | "event" | "copy" | "bookings";
 
 type Props = {
     canManageAllSpecialists: boolean;
@@ -126,6 +127,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const [copyDayPlan, {isLoading: isCopyingDayPlan}] = useCopyDayPlanMutation();
     const [createSpecialistEvent, {isLoading: isCreatingEvent}] = useCreateSpecialistEventMutation();
     const [updateSpecialistEvent, {isLoading: isUpdatingEvent}] = useUpdateSpecialistEventMutation();
+    const [deleteSpecialistEvent] = useDeleteSpecialistEventMutation();
     const [updateAvailability, {isLoading: isUpdatingAvailability}] = useUpdateAvailabilityMutation();
     const [selectedView, setSelectedView] = useState<CalendarView>("week");
     const [plannerMode, setPlannerMode] = useState<PlannerMode>("all");
@@ -213,36 +215,6 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
         setSelectedCalendarDetail(detail);
     }
 
-    function updateSlotService(serviceId: string) {
-        const service = individualServices.find((item) => String(item.id) === serviceId);
-        setForm((current) => {
-            if (!service) {
-                return {...current, serviceId};
-            }
-            const start = new Date(current.startsAt);
-            if (Number.isNaN(start.getTime())) {
-                return {...current, serviceId};
-            }
-            const end = new Date(start);
-            end.setMinutes(end.getMinutes() + service.durationMinutes);
-            return {...current, serviceId, endsAt: toDateTimeLocalValue(end)};
-        });
-    }
-
-    function updateSlotStart(startsAt: string) {
-        setForm((current) => {
-            if (current.itemType !== "APPOINTMENT_SLOT" || !current.serviceId) {
-                return {...current, startsAt};
-            }
-            const service = individualServices.find((item) => item.id === Number(current.serviceId));
-            const start = new Date(startsAt);
-            if (!service || Number.isNaN(start.getTime())) return {...current, startsAt};
-            const end = new Date(start);
-            end.setMinutes(end.getMinutes() + service.durationMinutes);
-            return {...current, startsAt, endsAt: toDateTimeLocalValue(end)};
-        });
-    }
-
     async function saveAvailability() {
         try {
             const startsAt = toIsoDateTime(form.startsAt);
@@ -266,10 +238,10 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
             const body = {
                 officeId: form.officeId ? Number(form.officeId) : null,
                 specialistId: selectedSpecialistId === "" ? null : selectedSpecialistId,
-                status: form.status,
-                itemType: form.status === "BLOCKED" ? "BLOCK" : form.itemType,
-                serviceId: form.status === "AVAILABLE" && form.itemType === "APPOINTMENT_SLOT" && form.serviceId ? Number(form.serviceId) : null,
-                capacity: form.status === "AVAILABLE" && form.itemType === "APPOINTMENT_SLOT" ? 1 : null,
+                status: "AVAILABLE" as const,
+                itemType: "OPEN_RANGE" as const,
+                serviceId: null,
+                capacity: null,
                 startsAt,
                 endsAt,
                 notes: form.notes.trim() || null
@@ -305,11 +277,13 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
         setPlannerMode(tool === "bookings" ? "bookings" : "plan");
         setActiveTool(tool);
         setToolsOpen(true);
-        if (tool === "availability" || tool === "blocking") {
+        if (tool === "availability") {
             setForm((current) => ({
                 ...current,
-                status: tool === "availability" ? "AVAILABLE" : "BLOCKED",
-                itemType: tool === "availability" ? current.itemType === "BLOCK" ? "APPOINTMENT_SLOT" : current.itemType : "BLOCK"
+                status: "AVAILABLE",
+                itemType: "OPEN_RANGE",
+                serviceId: "",
+                capacity: 1
             }));
         }
     }
@@ -367,12 +341,9 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 	                                </label> : null}
 	                                </>
 	                            ) : null}
-	                            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+	                            <div>
 	                                <button className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-stone-700" onClick={() => openTool("availability")} type="button">
 	                                    {t("actions.availability")}
-	                                </button>
-	                                <button className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100" onClick={() => openTool("blocking")} type="button">
-	                                    {t("actions.blocking")}
 	                                </button>
 	                            </div>
 	                        </div>
@@ -488,9 +459,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     <div className="flex min-w-max gap-1" role="tablist">
                         {([
                             ["availability", copy.toolAvailability],
-                            ["blocking", copy.toolBlocking],
                             ["event", copy.toolEvent],
-                            ["template", copy.toolTemplate],
                             ["copy", copy.toolCopy],
                             ["bookings", copy.toolBookings]
                         ] as Array<[PlannerTool, string]>).map(([tool, label]) => (
@@ -499,46 +468,19 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                     </div>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5">
-                {activeTool === "availability" || activeTool === "blocking" ? (
+                {activeTool === "availability" ? (
                     <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(300px,0.78fr)_minmax(0,1.22fr)]">
                 <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5" id="availability-form">
                     <div className="border-b border-stone-100 pb-3">
                         <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-                            <h2 className="min-w-0 break-words text-base font-semibold text-stone-950">{editingBlock ? copy.editAvailability : form.status === "AVAILABLE" ? t("form.availableTitle") : t("form.blockedTitle")}</h2>
+                            <h2 className="min-w-0 break-words text-base font-semibold text-stone-950">{editingBlock ? copy.editAvailability : t("form.availableTitle")}</h2>
                             {editingBlock ? <button className="rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100" onClick={cancelAvailabilityEdit} type="button">{copy.cancelEdit}</button> : null}
                         </div>
                         <p className="mt-1 text-xs leading-5 text-stone-500">{t("form.hint")}</p>
                         {editingBlock?.booked ? <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">{copy.bookedBlockEditHint}</p> : null}
                     </div>
                     <div className="mt-5 space-y-4">
-                        {form.status === "AVAILABLE" ? (
-                            <Field label={copy.itemType}>
-                                <select
-                                    className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                                    onChange={(event) => updateForm("itemType", event.target.value as ScheduleBlockType)}
-                                    value={form.itemType}
-                                >
-                                    <option value="APPOINTMENT_SLOT">{copy.appointmentSlot}</option>
-                                    <option value="OPEN_RANGE">{copy.openRange}</option>
-                                </select>
-                            </Field>
-                        ) : null}
-                        {form.status === "AVAILABLE" && form.itemType === "APPOINTMENT_SLOT" ? (
-                            <>
-                                <Field label={copy.slotService}>
-                                    <select
-                                        className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                                        disabled={servicesFetching}
-                                        onChange={(event) => updateSlotService(event.target.value)}
-                                        value={form.serviceId}
-                                    >
-                                        <option value="">{servicesFetching ? copy.loading : copy.selectSlotService}</option>
-                                        {individualServices.map((service) => <option key={service.id} value={service.id}>{service.title}</option>)}
-                                    </select>
-                                </Field>
-                                <p className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-xs leading-5 text-stone-600">{copy.appointmentSlotHint}</p>
-                            </>
-                        ) : null}
+                        <p className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-xs leading-5 text-stone-600">{t("form.hint")}</p>
                         <Field label={t("form.office")}>
                             <select
                                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
@@ -558,7 +500,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         <Field label={t("form.startsAt")}>
                             <input
                                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                                onChange={(event) => updateSlotStart(event.target.value)}
+                                onChange={(event) => updateForm("startsAt", event.target.value)}
                                 type="datetime-local"
                                 value={form.startsAt}
                             />
@@ -566,7 +508,6 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         <Field label={t("form.endsAt")}>
                             <input
                                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                                disabled={form.status === "AVAILABLE" && form.itemType === "APPOINTMENT_SLOT"}
                                 onChange={(event) => updateForm("endsAt", event.target.value)}
                                 type="datetime-local"
                                 value={form.endsAt}
@@ -582,11 +523,11 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         </Field>
                         <button
                             className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300"
-                            disabled={Boolean(draftConflict) || isCreating || isUpdatingAvailability || (form.status === "AVAILABLE" && form.itemType === "APPOINTMENT_SLOT" && !form.serviceId)}
+                            disabled={Boolean(draftConflict) || isCreating || isUpdatingAvailability}
                             onClick={saveAvailability}
                             type="button"
                         >
-                            {isCreating || isUpdatingAvailability ? t("form.saving") : editingBlock ? copy.saveAvailability : form.status === "AVAILABLE" ? t("actions.availability") : t("actions.blocking")}
+                            {isCreating || isUpdatingAvailability ? t("form.saving") : editingBlock ? copy.saveAvailability : t("actions.availability")}
                         </button>
                     </div>
                 </section>
@@ -661,16 +602,18 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                             toast.error(copy.eventError);
                         }
                     }}
+                    onDelete={async (event) => {
+                        try {
+                            await deleteSpecialistEvent(event.id).unwrap();
+                            void refetchEvents();
+                            toast.success(copy.eventDeleted);
+                        } catch (error) {
+                            toast.error(apiErrorMessage(error) ?? copy.eventDeleteError);
+                        }
+                    }}
                     onEdit={editEvent}
                 />
                 </div> : null}
-                {activeTool === "template" ? <DayPlanTemplateForm
-                    copy={copy}
-                    individualServices={individualServices}
-                    offices={offices}
-                    onCreated={refetchAvailability}
-                    selectedSpecialistId={selectedSpecialistId}
-                /> : null}
                 {activeTool === "copy" ? <DayPlanCopyForm
                     conflictsLabel={copy.copyConflicts}
                     copy={copy}
@@ -1661,10 +1604,10 @@ function DayPlanCopyForm({
                     <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => setSourceDate(event.target.value)} type="date" value={sourceDate} />
                 </Field>
                 <Field label={copy.copyTargetDates}>
-                    <textarea
-                        className="min-h-20 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                    <input
+                        className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
                         onChange={(event) => setTargetDatesText(event.target.value)}
-                        placeholder={copy.copyTargetPlaceholder}
+                        type="date"
                         value={targetDatesText}
                     />
                 </Field>
@@ -1698,7 +1641,7 @@ function DayPlanCopyForm({
     );
 }
 
-function EventsPanel({copy, events, isError, isFetching, locale, onDeactivate, onEdit}: {copy: ReturnType<typeof scheduleCopy>; events: SpecialistFixedEvent[]; isError: boolean; isFetching: boolean; locale: string; onDeactivate: (event: SpecialistFixedEvent) => void; onEdit: (event: SpecialistFixedEvent) => void}) {
+function EventsPanel({copy, events, isError, isFetching, locale, onDeactivate, onDelete, onEdit}: {copy: ReturnType<typeof scheduleCopy>; events: SpecialistFixedEvent[]; isError: boolean; isFetching: boolean; locale: string; onDeactivate: (event: SpecialistFixedEvent) => void; onDelete: (event: SpecialistFixedEvent) => void; onEdit: (event: SpecialistFixedEvent) => void}) {
     const [pendingDeactivateId, setPendingDeactivateId] = useState<number | null>(null);
 
     return (
@@ -1723,6 +1666,7 @@ function EventsPanel({copy, events, isError, isFetching, locale, onDeactivate, o
                         <p className="mt-2 text-xs font-medium text-stone-700">{formatDateTime(event.startsAt, locale)} - {formatDateTime(event.endsAt, locale)}</p>
                         <div className="mt-3 flex flex-wrap gap-2">
                             <button className="rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100" onClick={() => onEdit(event)} type="button">{copy.editEvent}</button>
+                            {event.enrolledCount === 0 ? <button className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50" onClick={() => {if (window.confirm(copy.eventDeleteConfirm)) onDelete(event)}} type="button">{copy.deleteEvent}</button> : null}
                             {event.active ? (
                                 pendingDeactivateId === event.id ? (
                                     <>
@@ -1876,107 +1820,6 @@ function ManualBookingForm({
             </div>
         </section>
     );
-}
-
-function DayPlanTemplateForm({
-    copy,
-    individualServices,
-    offices,
-    onCreated,
-    selectedSpecialistId
-}: {
-    copy: ReturnType<typeof scheduleCopy>;
-    individualServices: PublicService[];
-    offices: Array<{id: number; name: string}>;
-    onCreated: () => void;
-    selectedSpecialistId: number | "";
-}) {
-    const toast = useToast();
-    const [createAvailability, {isLoading}] = useCreateAvailabilityMutation();
-    const [date, setDate] = useState(() => toDateInputValue(new Date()));
-    const [officeId, setOfficeId] = useState("");
-    const [serviceId, setServiceId] = useState("");
-    const selectedService = individualServices.find((service) => String(service.id) === serviceId);
-    const disabled = isLoading || !date || !selectedService;
-    const templatePreview = selectedService
-        ? ["09:00", addMinutesToClock(addMinutesToClock("09:00", selectedService.durationMinutes), 30), "13:00", addMinutesToClock(addMinutesToClock("13:00", selectedService.durationMinutes), 30)]
-            .map((start) => `${start}–${addMinutesToClock(start, selectedService.durationMinutes)}`)
-            .join(" · ")
-        : "—";
-
-    async function submit() {
-        if (!selectedService) return;
-        const morningFirstEnd = addMinutesToClock("09:00", selectedService.durationMinutes);
-        const morningBreakEnd = addMinutesToClock(morningFirstEnd, 30);
-        const morningSecondEnd = addMinutesToClock(morningBreakEnd, selectedService.durationMinutes);
-        const afternoonFirstEnd = addMinutesToClock("13:00", selectedService.durationMinutes);
-        const afternoonBreakEnd = addMinutesToClock(afternoonFirstEnd, 30);
-        const afternoonSecondEnd = addMinutesToClock(afternoonBreakEnd, selectedService.durationMinutes);
-        const plan = [
-            {start: "09:00", end: morningFirstEnd, type: "slot"},
-            {start: morningFirstEnd, end: morningBreakEnd, type: "break"},
-            {start: morningBreakEnd, end: morningSecondEnd, type: "slot"},
-            {start: "13:00", end: afternoonFirstEnd, type: "slot"},
-            {start: afternoonFirstEnd, end: afternoonBreakEnd, type: "break"},
-            {start: afternoonBreakEnd, end: afternoonSecondEnd, type: "slot"}
-        ] as const;
-
-        try {
-            for (const item of plan) {
-                await createAvailability({
-                    capacity: item.type === "slot" ? 1 : null,
-                    endsAt: toIsoDateAndTime(date, item.end),
-                    itemType: item.type === "slot" ? "APPOINTMENT_SLOT" : "BLOCK",
-                    notes: item.type === "slot" ? copy.templateSlotNote : copy.templateBreakNote,
-                    officeId: officeId ? Number(officeId) : null,
-                    serviceId: item.type === "slot" ? selectedService.id : null,
-                    specialistId: selectedSpecialistId === "" ? null : selectedSpecialistId,
-                    startsAt: toIsoDateAndTime(date, item.start),
-                    status: item.type === "slot" ? "AVAILABLE" : "BLOCKED"
-                }).unwrap();
-            }
-            toast.success(copy.templateCreated);
-            onCreated();
-        } catch {
-            toast.error(copy.templateError);
-        }
-    }
-
-    return (
-        <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-            <h2 className="break-words text-sm font-semibold uppercase tracking-wide text-stone-500">{copy.templateTitle}</h2>
-            <p className="mt-2 break-words text-xs leading-5 text-stone-500">{copy.templateBody}</p>
-            <div className="mt-4 grid gap-3">
-                <Field label={copy.copySourceDate}>
-                    <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => setDate(event.target.value)} type="date" value={date} />
-                </Field>
-                <Field label={copy.office}>
-                    <select className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => setOfficeId(event.target.value)} value={officeId}>
-                        <option value="">{copy.noOffice}</option>
-                        {offices.map((office) => <option key={office.id} value={office.id}>{office.name}</option>)}
-                    </select>
-                </Field>
-                <Field label={copy.slotService}>
-                    <select className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => setServiceId(event.target.value)} value={serviceId}>
-                        <option value="">{copy.selectSlotService}</option>
-                        {individualServices.map((service) => <option key={service.id} value={service.id}>{service.title}</option>)}
-                    </select>
-                </Field>
-                <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-xs leading-5 text-stone-600">
-                    {templatePreview}
-                </div>
-                <button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={disabled} onClick={submit} type="button">
-                    {isLoading ? copy.saving : copy.templateAction}
-                </button>
-            </div>
-        </section>
-    );
-}
-
-function addMinutesToClock(value: string, minutes: number) {
-    const [hours, minute] = value.split(":").map(Number);
-    const total = hours * 60 + minute + minutes;
-    return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
 function BookingsPanel({bookings, copy, isError, isFetching, locale, t}: {bookings: SpecialistBooking[]; copy: ReturnType<typeof scheduleCopy>; isError: boolean; isFetching: boolean; locale: string; t: T}) {
@@ -2327,6 +2170,10 @@ function scheduleCopy(t: T) {
         createEvent: t("schedule.createEvent"),
         saveEvent: t("schedule.saveEvent"),
         editEvent: t("schedule.editEvent"),
+        deleteEvent: t("schedule.deleteEvent"),
+        eventDeleteConfirm: t("schedule.eventDeleteConfirm"),
+        eventDeleted: t("schedule.eventDeleted"),
+        eventDeleteError: t("schedule.eventDeleteError"),
         cancelEdit: t("schedule.cancelEdit"),
         deactivateEvent: t("schedule.deactivateEvent"),
         deactivateConfirmBody: t("schedule.deactivateConfirmBody"),
@@ -2451,7 +2298,7 @@ function buildDefaultForm(): AvailabilityForm {
     return {
         officeId: "",
         status: "AVAILABLE",
-        itemType: "APPOINTMENT_SLOT",
+        itemType: "OPEN_RANGE",
         serviceId: "",
         capacity: 1,
         startsAt: toDateTimeLocalValue(start),
@@ -2472,10 +2319,6 @@ function toIsoDateTime(value: string) {
     }
 
     return date.toISOString();
-}
-
-function toIsoDateAndTime(date: string, time: string) {
-    return new Date(`${date}T${time}:00`).toISOString();
 }
 
 function formatDateTime(value: string, locale: string) {

@@ -19,6 +19,8 @@ const emptyForm: ServiceInput = {
     descriptionEn: "",
     durationMinutes: 60,
     basePrice: 0,
+    businessDirection: "MASSAGE",
+    requiredResourceType: "MASSAGE_ROOM",
     bookingMode: "INDIVIDUAL_APPOINTMENT",
     active: true,
     externalPaymentUrl: "",
@@ -91,6 +93,8 @@ export default function ServicesManagement() {
             descriptionEn: selectedService.descriptionEn ?? "",
             durationMinutes: selectedService.durationMinutes,
             basePrice: selectedService.basePrice,
+            businessDirection: selectedService.businessDirection,
+            requiredResourceType: selectedService.requiredResourceType,
             bookingMode: selectedService.bookingMode,
             active: selectedService.active,
             externalPaymentUrl: selectedService.externalPaymentUrl ?? "",
@@ -278,6 +282,7 @@ export default function ServicesManagement() {
                                         <span className="flex flex-wrap gap-1.5">
                                             <MetaBadge active={selected} label={`${service.durationMinutes} ${t("minutesShort")}`} />
                                             <MetaBadge active={selected} label={service.bookingMode === "FIXED_EVENT" ? t("fixedEvent") : t("individualAppointment")} />
+                                            <MetaBadge active={selected} label={service.businessDirection === "TRAINING" ? t("directionTraining") : t("directionMassage")} />
                                             <MetaBadge active={selected} label={String(service.basePrice)} />
                                             {service.externalPaymentUrl ? <MetaBadge active={selected} label={t("externalPaymentUrl")} /> : null}
                                             {service.loyaltyPointsAward > 0 ? <MetaBadge active={selected} label={t("loyaltyPointsBadge", {count: service.loyaltyPointsAward})} /> : null}
@@ -377,6 +382,26 @@ export default function ServicesManagement() {
                         </Field>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
+                        <Field label={t("businessDirection")} tooltip={t("businessDirectionHint")}>
+                            <select
+                                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                                onChange={(event) => {
+                                    const businessDirection = event.target.value as ServiceInput["businessDirection"];
+                                    setForm((current) => ({
+                                        ...current,
+                                        businessDirection,
+                                        requiredResourceType: businessDirection === "TRAINING" ? "TRAINING_HALL" : "MASSAGE_ROOM"
+                                    }));
+                                }}
+                                value={form.businessDirection}
+                            >
+                                <option value="MASSAGE">{t("directionMassage")}</option>
+                                <option value="TRAINING">{t("directionTraining")}</option>
+                            </select>
+                        </Field>
+                        <Field label={t("requiredResourceType")} tooltip={t("requiredResourceTypeHint")}>
+                            <input className="w-full rounded-lg border border-stone-200 bg-stone-100 px-3 py-2 text-sm text-stone-700" readOnly value={form.requiredResourceType === "TRAINING_HALL" ? t("resourceTrainingHall") : t("resourceMassageRoom")} />
+                        </Field>
                         <Field label={t("bookingMode")} tooltip={t("bookingModeHint")}>
                             <select
                                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"

@@ -1,6 +1,8 @@
 import type {PageResponse} from "@/types/news";
 
 export type ServiceBookingMode = "INDIVIDUAL_APPOINTMENT" | "FIXED_EVENT";
+export type ServiceBusinessDirection = "MASSAGE" | "TRAINING";
+export type RequiredResourceType = "MASSAGE_ROOM" | "TRAINING_HALL";
 
 export interface AdminService {
     id: number;
@@ -10,6 +12,8 @@ export interface AdminService {
     descriptionEn: string | null;
     durationMinutes: number;
     basePrice: number;
+    businessDirection: ServiceBusinessDirection;
+    requiredResourceType: RequiredResourceType;
     bookingMode: ServiceBookingMode;
     active: boolean;
     externalPaymentUrl: string | null;
@@ -24,6 +28,8 @@ export interface PublicService {
     description: string | null;
     durationMinutes: number;
     basePrice: number;
+    businessDirection: ServiceBusinessDirection;
+    requiredResourceType: RequiredResourceType;
     bookingMode: ServiceBookingMode;
     loyaltyPointsAward?: number;
 }
@@ -38,6 +44,8 @@ export type ServiceInput = {
     descriptionEn?: string | null;
     durationMinutes: number;
     basePrice: number;
+    businessDirection: ServiceBusinessDirection;
+    requiredResourceType: RequiredResourceType;
     bookingMode: ServiceBookingMode;
     active: boolean;
     externalPaymentUrl?: string | null;

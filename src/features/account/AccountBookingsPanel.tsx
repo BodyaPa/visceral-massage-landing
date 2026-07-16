@@ -31,12 +31,14 @@ export default function AccountBookingsPanel({locale}: {locale: Locale}) {
     const range = useMemo(() => buildAccountRange(), []);
     const [filter, setFilter] = useState<AccountBookingFilter>("upcoming");
     const [bookingsPage, setBookingsPage] = useState(0);
+    const [eventsPage, setEventsPage] = useState(0);
     const [pendingCancel, setPendingCancel] = useState<{id: number; title: string; type: "booking" | "event"} | null>(null);
     const {data: bookingsData, isFetching: bookingsFetching, isError: bookingsError} = useListMyBookingsQuery({page: bookingsPage, size: 20});
-    const {data: events = [], isFetching: eventsFetching, isError: eventsError} = useListMyFixedEventEnrollmentsQuery({...range, lang: locale});
+    const {data: eventsData, isFetching: eventsFetching, isError: eventsError} = useListMyFixedEventEnrollmentsQuery({...range, lang: locale, page: eventsPage, size: 20});
     const [cancelBooking, {isLoading: cancellingBooking}] = useCancelBookingMutation();
     const [cancelEnrollment, {isLoading: cancellingEnrollment}] = useCancelFixedEventEnrollmentMutation();
     const bookings = useMemo(() => bookingsData?.content ?? [], [bookingsData?.content]);
+    const events = useMemo(() => eventsData?.content ?? [], [eventsData?.content]);
     const filteredBookings = useMemo(() => filterBookings(bookings, filter), [bookings, filter]);
     const filteredEvents = useMemo(() => filterEvents(events, filter), [events, filter]);
     const counts = useMemo(() => ({
@@ -75,7 +77,7 @@ export default function AccountBookingsPanel({locale}: {locale: Locale}) {
             </div>
             <div className="mt-4 grid gap-1 rounded-xl bg-stone-100 p-1 sm:grid-cols-4">
                 {(["upcoming", "history", "cancelled", "all"] as const).map((item) => (
-                    <button aria-pressed={filter === item} className={filter === item ? activeFilterClass : filterClass} key={item} onClick={() => {setFilter(item);setBookingsPage(0)}} type="button">
+                    <button aria-pressed={filter === item} className={filter === item ? activeFilterClass : filterClass} key={item} onClick={() => {setFilter(item);setBookingsPage(0);setEventsPage(0)}} type="button">
                         <span>{copy.filters[item]}</span>
                         <span className={filter === item ? "rounded-full bg-white/15 px-1.5 py-0.5 text-[10px]" : "rounded-full bg-white px-1.5 py-0.5 text-[10px] text-stone-500"}>{counts[item]}</span>
                     </button>
@@ -87,6 +89,7 @@ export default function AccountBookingsPanel({locale}: {locale: Locale}) {
                 <EventList cancelling={cancellingEnrollment} copy={copy} events={filteredEvents} isError={eventsError} locale={locale} onCancel={(event) => setPendingCancel({id: event.id, title: event.title, type: "event"})} />
             </div>
             {bookingsData && bookingsData.totalPages > 1 ? <div className="mt-4 flex justify-end gap-2"><button className={pagerButtonClass} disabled={bookingsPage === 0} onClick={() => setBookingsPage((page) => page - 1)} type="button">{copy.previous}</button><button className={pagerButtonClass} disabled={bookingsPage + 1 >= bookingsData.totalPages} onClick={() => setBookingsPage((page) => page + 1)} type="button">{copy.next}</button></div> : null}
+            {eventsData && eventsData.totalPages > 1 ? <div className="mt-2 flex justify-end gap-2"><button className={pagerButtonClass} disabled={eventsPage === 0} onClick={() => setEventsPage((page) => page - 1)} type="button">{copy.previous}</button><button className={pagerButtonClass} disabled={eventsPage + 1 >= eventsData.totalPages} onClick={() => setEventsPage((page) => page + 1)} type="button">{copy.next}</button></div> : null}
 
             {pendingCancel ? (
                 <CancelConfirmationModal

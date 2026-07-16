@@ -15,6 +15,7 @@ import type {
 } from "@/types/schedule";
 import type {BookingStatus} from "@/types/bookings";
 import type {Locale} from "@/i18n";
+import type {PageResponse} from "@/types/news";
 
 type ListAvailabilityArgs = {
     from: string;
@@ -70,9 +71,9 @@ export const scheduleApi = createApi({
             },
             providesTags: [{type: "ScheduleAvailability", id: "EVENTS"}]
         }),
-        listMyFixedEventEnrollments: build.query<PublicFixedEvent[], ListAvailabilityArgs & {lang: Locale}>({
-            query: ({from, to, lang}) => {
-                const params = new URLSearchParams({from, to, lang});
+        listMyFixedEventEnrollments: build.query<PageResponse<PublicFixedEvent>, ListAvailabilityArgs & {lang: Locale; page?: number; size?: number}>({
+            query: ({from, to, lang, page = 0, size = 20}) => {
+                const params = new URLSearchParams({from, to, lang, page: String(page), size: String(size), sort: "createdAt,desc"});
                 return `/schedule/events/my?${params.toString()}`;
             },
             providesTags: [{type: "ScheduleAvailability", id: "MY_EVENTS"}]

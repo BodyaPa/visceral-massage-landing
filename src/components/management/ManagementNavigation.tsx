@@ -54,7 +54,7 @@ export default function ManagementNavigation({locale, showNews, showUsers, showO
     ];
 
     return (
-        <nav className="sticky top-2 z-20 max-w-full rounded-2xl border border-stone-200/80 bg-white/90 p-1.5 shadow-sm backdrop-blur lg:top-4" aria-label={t("label")}>
+        <nav className="sticky top-2 z-20 max-w-full rounded-2xl border border-stone-200/80 bg-white/90 p-1.5 shadow-sm backdrop-blur print:hidden lg:top-4" aria-label={t("label")}>
             <div className="flex max-w-full gap-1.5 overflow-x-auto pb-0.5 lg:flex-col lg:overflow-visible lg:pb-0">
                 {items.filter((item) => item.visible).map((item) => {
                     const active = isActivePath(pathname, item.href);

@@ -500,7 +500,15 @@
       "promos": "Promo codes",
       "loyalty": "Loyalty",
       "specialist": "Schedule",
+      "workSchedule": "Work shifts",
       "finance": "Finance"
+    },
+    "workSchedule": {
+      "eyebrow": "Team planning", "title": "Work schedule", "intro": "Planned shifts, days off, vacations and absences kept separate from customer appointments.",
+      "print": "Print / PDF", "add": "Add entry", "edit": "Edit entry", "close": "Close", "cancel": "Cancel", "delete": "Delete", "save": "Save",
+      "specialist": "Specialist", "allSpecialists": "All specialists", "office": "Branch", "allOffices": "All branches", "resource": "Room / resource", "selectResource": "Select a resource",
+      "type": "Entry type", "startsAt": "Starts", "endsAt": "Ends", "notes": "Internal note", "today": "This week", "loading": "Updating…", "error": "Could not load the work schedule.",
+      "types": {"WORKING": "Working shift", "DAY_OFF": "Day off", "VACATION": "Vacation", "ABSENCE": "Absence"}
     },
     "promos": {
       "eyebrow": "ADMIN",

@@ -50,7 +50,8 @@ export default async function AdminLayout({children, params}: Props) {
                         showUsers={hasRole(user, "ADMIN")}
                         showOffices={hasRole(user, "ADMIN")}
                         showServices={hasRole(user, "ADMIN")}
-                        showSpecialist={hasRole(user, "SPECIALIST")}
+                        showSpecialist={hasRole(user, "ADMIN") || hasRole(user, "SPECIALIST")}
+                        showWorkSchedule={hasRole(user, "ADMIN")}
                         showFinance={hasRole(user, "FINANCE_MANAGER")}
                     />
                     <AnimatedManagementContent>

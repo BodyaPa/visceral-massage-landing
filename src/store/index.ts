@@ -5,6 +5,7 @@ import { usersApi } from "@/features/users/users.api";
 import { officesApi } from "@/features/offices/offices.api";
 import { servicesApi } from "@/features/services/services.api";
 import { scheduleApi } from "@/features/schedule/schedule.api";
+import { workScheduleApi } from "@/features/workSchedule/workSchedule.api";
 import { bookingsApi } from "@/features/bookings/bookings.api";
 import { siteSettingsApi } from "@/features/siteSettings/siteSettings.api";
 import { membershipsApi } from "@/features/memberships/memberships.api";
@@ -20,6 +21,7 @@ export const makeStore = () =>
             officesApi.middleware,
             servicesApi.middleware,
             scheduleApi.middleware,
+            workScheduleApi.middleware,
             bookingsApi.middleware,
             membershipsApi.middleware,
             promosApi.middleware,

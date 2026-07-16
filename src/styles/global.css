@@ -1,5 +1,12 @@
 @import "tailwindcss";
 @import "react-big-calendar/lib/css/react-big-calendar.css";
+@import "react-day-picker/style.css";
+
+.rdp-root {
+  --rdp-accent-color: #1c1917;
+  --rdp-accent-background-color: #f5f5f4;
+  color: #292524;
+}
 
 *,
 *::before,

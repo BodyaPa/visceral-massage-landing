@@ -10,6 +10,8 @@ import {bookingServiceTitle} from "@/features/bookings/bookingTitles";
 import {useListPublicOfficesQuery} from "@/features/offices/offices.api";
 import {useListServicesQuery} from "@/features/services/services.api";
 import {useListUsersQuery} from "@/features/users/users.api";
+import {useListWorkScheduleQuery} from "@/features/workSchedule/workSchedule.api";
+import type {WorkScheduleEntry} from "@/types/workSchedule";
 import {
     useCreateAvailabilityMutation,
     useCopyDayPlanMutation,
@@ -126,6 +128,14 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
     const offices = officesData?.content ?? [];
     const services = servicesData?.content ?? [];
     const specialists = specialistsData?.content ?? [];
+    const selectedDayRange = useMemo(() => {
+        const from = new Date(currentDate); from.setHours(0, 0, 0, 0);
+        const to = new Date(from); to.setDate(to.getDate() + 1);
+        return {from: from.toISOString(), to: to.toISOString()};
+    }, [currentDate]);
+    const {data: workScheduleEntries = []} = useListWorkScheduleQuery(selectedDayRange, {
+        skip: !canManageAllSpecialists || plannerScope !== "team"
+    });
     const [createAvailability, {isLoading: isCreating}] = useCreateAvailabilityMutation();
     const [copyDayPlan, {isLoading: isCopyingDayPlan}] = useCopyDayPlanMutation();
     const [createSpecialistEvent, {isLoading: isCreatingEvent}] = useCreateSpecialistEventMutation();
@@ -445,6 +455,13 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
                             plannerMode={plannerMode}
                             selectedView={selectedView}
                             teamScope={plannerScope === "team" && selectedSpecialistId === ""}
+                            specialists={specialists}
+                            workScheduleEntries={workScheduleEntries}
+                            onCreateAt={(specialistId, startsAt) => {
+                                setSelectedSpecialistId(specialistId);
+                                setForm((current) => ({...current, startsAt: toDateTimeLocalValue(startsAt), endsAt: toDateTimeLocalValue(new Date(startsAt.getTime() + 60 * 60_000))}));
+                                openTool("availability");
+                            }}
                             copy={copy}
                             t={t}
                         />
@@ -721,6 +738,9 @@ function CalendarSurface({
     plannerMode,
     selectedView,
     teamScope,
+    specialists,
+    workScheduleEntries,
+    onCreateAt,
     t
 }: {
     bookings: SpecialistBooking[];
@@ -735,6 +755,9 @@ function CalendarSurface({
     plannerMode: PlannerMode;
     selectedView: CalendarView;
     teamScope: boolean;
+    specialists: AdminUser[];
+    workScheduleEntries: WorkScheduleEntry[];
+    onCreateAt: (specialistId: number, startsAt: Date) => void;
     t: T;
 }) {
     const detailByEventId = new Map<string, CalendarDetail>();
@@ -754,7 +777,10 @@ function CalendarSurface({
                 events={visibleEvents}
                 locale={locale}
                 onSelectDetail={onSelectDetail}
+                onCreateAt={onCreateAt}
+                specialists={specialists}
                 t={t}
+                workScheduleEntries={workScheduleEntries}
             />
         );
     }
@@ -848,7 +874,7 @@ function CalendarSurface({
     );
 }
 
-function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, locale, onSelectDetail, t}: {
+function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, locale, onCreateAt, onSelectDetail, specialists, t, workScheduleEntries}: {
     bookings: SpecialistBooking[];
     blocks: SpecialistAvailabilityBlock[];
     buffers: CalendarBuffer[];
@@ -857,7 +883,10 @@ function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, 
     events: SpecialistFixedEvent[];
     locale: string;
     onSelectDetail: (detail: CalendarDetail) => void;
+    onCreateAt: (specialistId: number, startsAt: Date) => void;
+    specialists: AdminUser[];
     t: T;
+    workScheduleEntries: WorkScheduleEntry[];
 }) {
     const selectedDay = dateKey(currentDate);
     const entries = [
@@ -866,6 +895,7 @@ function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, 
             end: block.endsAt,
             id: `block-${block.id}`,
             meta: [blockStatusLabel(block, copy, t), block.officeName ?? copy.noOffice, block.serviceTitle].filter(Boolean).join(" · "),
+            specialistId: block.specialistId,
             specialistName: block.specialistName,
             start: block.startsAt,
             tone: calendarToneForBlock(block)
@@ -875,6 +905,7 @@ function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, 
             end: booking.endsAt,
             id: `booking-${booking.id}`,
             meta: [bookingStatusLabel(booking, copy, t), booking.officeName ?? copy.noOffice].join(" · "),
+            specialistId: booking.specialistId,
             specialistName: booking.specialistName,
             start: booking.startsAt,
             tone: calendarToneForBooking(booking)
@@ -884,6 +915,7 @@ function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, 
             end: event.endsAt,
             id: `event-${event.id}`,
             meta: [eventStatusLabel(event, copy), `${event.enrolledCount}/${event.capacity}`, event.officeName ?? copy.noOffice].join(" · "),
+            specialistId: event.specialistId,
             specialistName: event.specialistName,
             start: event.startsAt,
             tone: calendarToneForEvent(event)
@@ -893,6 +925,7 @@ function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, 
             end: buffer.endsAt,
             id: `buffer-${buffer.id}`,
             meta: [copy.buffer, buffer.officeName ?? copy.noOffice].join(" · "),
+            specialistId: specialists.find((specialist) => userDisplayName(specialist) === buffer.specialistName)?.id ?? -1,
             specialistName: buffer.specialistName,
             start: buffer.startsAt,
             tone: "buffer" as const
@@ -900,43 +933,46 @@ function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, 
     ]
         .filter((entry) => dateKey(new Date(entry.start)) === selectedDay)
         .sort((first, second) => new Date(first.start).getTime() - new Date(second.start).getTime());
-    const groups = entries.reduce<Map<string, typeof entries>>((result, entry) => {
-        const name = entry.specialistName || copy.notAssigned;
-        result.set(name, [...(result.get(name) ?? []), entry]);
-        return result;
-    }, new Map());
-
-    if (groups.size === 0) {
+    const visibleSpecialists = specialists.length ? specialists : Array.from(new Map(entries.map((entry) => [entry.specialistId, {id: entry.specialistId, firstName: entry.specialistName, lastName: ""} as AdminUser])).values());
+    if (visibleSpecialists.length === 0) {
         return <p className="rounded-xl border border-dashed border-stone-200 bg-stone-50 px-4 py-10 text-center text-sm text-stone-500">{copy.teamDayEmpty}</p>;
     }
-
+    const startHour = 8;
+    const endHour = 20;
+    const pixelsPerHour = 72;
+    const canvasHeight = (endHour - startHour) * pixelsPerHour;
+    const now = new Date();
+    const nowOffset = dateKey(now) === selectedDay ? ((now.getHours() + now.getMinutes() / 60) - startHour) * pixelsPerHour : null;
     return (
-        <div className="overflow-x-auto pb-2">
-            <div className="grid min-w-max auto-cols-[minmax(260px,320px)] grid-flow-col gap-3" role="list">
-                {Array.from(groups.entries()).map(([specialistName, groupEntries]) => (
-                    <section className="rounded-xl border border-stone-200 bg-stone-50 p-3" key={specialistName} role="listitem">
-                        <div className="mb-3 border-b border-stone-200 pb-2">
-                            <h3 className="text-sm font-semibold text-stone-950">{specialistName}</h3>
-                            <p className="mt-0.5 text-xs text-stone-500">{copy.teamDayItems(groupEntries.length)}</p>
-                        </div>
-                        <div className="space-y-2">
-                            {groupEntries.map((entry) => (
-                                <button className="w-full rounded-lg border border-stone-200 bg-white p-3 text-left transition-colors hover:border-stone-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500" key={entry.id} onClick={() => onSelectDetail(entry.detail)} type="button">
-                                    <span className="flex items-center gap-2">
-                                        <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${agendaToneDot(entry.tone)}`} />
-                                        <span className="text-sm font-semibold text-stone-950">{formatTimeRange(entry.start, entry.end, locale)}</span>
-                                    </span>
-                                    <span className="mt-1 block text-sm font-medium text-stone-800">{entry.detail.title}</span>
-                                    <span className="mt-1 block text-xs leading-5 text-stone-500">{entry.meta}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </section>
-                ))}
+        <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white">
+            <div className="space-y-3 p-3 md:hidden">{visibleSpecialists.map(specialist => <section className="rounded-xl border border-stone-200 bg-stone-50 p-3" key={specialist.id}><h3 className="text-sm font-semibold text-stone-950">{userDisplayName(specialist)}</h3><div className="mt-2 space-y-2">{entries.filter(entry=>entry.specialistId===specialist.id).map(entry=><button className="w-full rounded-lg border border-stone-200 bg-white p-3 text-left text-xs" key={entry.id} onClick={()=>onSelectDetail(entry.detail)} type="button"><span className="font-semibold">{formatTimeRange(entry.start,entry.end,locale)}</span><span className="mt-1 block truncate">{entry.detail.title}</span><span className="mt-1 block truncate text-stone-500">{entry.meta}</span></button>)}{entries.every(entry=>entry.specialistId!==specialist.id)?<p className="py-3 text-xs text-stone-500">{copy.teamDayEmpty}</p>:null}</div></section>)}</div>
+            <div className="hidden min-w-max md:grid" style={{gridTemplateColumns: `72px repeat(${visibleSpecialists.length}, minmax(220px, 1fr))`}}>
+                <div className="sticky left-0 z-30 border-b border-r border-stone-200 bg-stone-50" />
+                {visibleSpecialists.map((specialist) => <div className="sticky top-0 z-20 border-b border-r border-stone-200 bg-stone-50 px-3 py-2" key={specialist.id}><p className="text-sm font-semibold text-stone-950">{userDisplayName(specialist)}</p><p className="text-xs text-stone-500">{copy.teamDayItems(entries.filter(entry => entry.specialistId === specialist.id).length)}</p></div>)}
+                <div className="sticky left-0 z-20 border-r border-stone-200 bg-white" style={{height: canvasHeight}}>{Array.from({length:endHour-startHour+1},(_,index)=><span className="absolute right-2 -translate-y-1/2 text-[11px] text-stone-500" key={index} style={{top:index*pixelsPerHour}}>{String(startHour+index).padStart(2,"0")}:00</span>)}</div>
+                {visibleSpecialists.map((specialist) => {
+                    const specialistEntries = entries.filter(entry => entry.specialistId === specialist.id);
+                    const shifts = workScheduleEntries.filter(entry => entry.specialistId === specialist.id && entry.entryType === "WORKING");
+                    return <div className="relative border-r border-stone-200 bg-stone-50/30" key={specialist.id} onDoubleClick={(event) => {
+                        if ((event.target as HTMLElement).closest("button")) return;
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        const minutes = Math.max(0, Math.min((endHour-startHour)*60, Math.round(((event.clientY-rect.top)/pixelsPerHour*60)/15)*15));
+                        const start = new Date(currentDate); start.setHours(startHour, minutes, 0, 0); onCreateAt(specialist.id, start);
+                    }} style={{height:canvasHeight}}>
+                        {Array.from({length:endHour-startHour+1},(_,index)=><span aria-hidden="true" className="absolute inset-x-0 border-t border-stone-200" key={index} style={{top:index*pixelsPerHour}} />)}
+                        {shifts.map(shift => <div aria-label={copy.workScheduleBackground} className="absolute inset-x-1 rounded-md border border-emerald-100 bg-emerald-50/70" key={shift.id} style={timelineStyle(shift.startsAt,shift.endsAt,startHour,endHour,pixelsPerHour)} />)}
+                        {nowOffset !== null && nowOffset >= 0 && nowOffset <= canvasHeight ? <div aria-label={copy.currentTime} className="absolute inset-x-0 z-10 border-t-2 border-red-500" style={{top:nowOffset}}><span className="absolute -top-1.5 left-0 h-3 w-3 rounded-full bg-red-500" /></div> : null}
+                        {specialistEntries.map(entry => <button className={`absolute inset-x-2 z-10 overflow-hidden rounded-lg border p-2 text-left text-xs shadow-sm transition hover:z-20 hover:shadow-md ${timelineTone(entry.tone)}`} key={entry.id} onClick={()=>onSelectDetail(entry.detail)} style={timelineStyle(entry.start,entry.end,startHour,endHour,pixelsPerHour)} type="button"><span className="block font-semibold">{formatTimeRange(entry.start,entry.end,locale)}</span><span className="mt-0.5 block truncate font-medium">{entry.detail.title}</span><span className="mt-0.5 block truncate opacity-70">{entry.meta}</span></button>)}
+                    </div>;
+                })}
             </div>
+            <p className="border-t border-stone-200 px-3 py-2 text-xs text-stone-500">{copy.emptyTimeHint}</p>
         </div>
     );
 }
+
+function timelineStyle(startValue:string,endValue:string,startHour:number,endHour:number,pixelsPerHour:number){const start=new Date(startValue);const end=new Date(endValue);const startDecimal=start.getHours()+start.getMinutes()/60;const endDecimal=end.getHours()+end.getMinutes()/60;const top=Math.max(0,(startDecimal-startHour)*pixelsPerHour);const bottom=Math.min(endHour-startHour,endDecimal-startHour)*pixelsPerHour;return {top,height:Math.max(20,bottom-top)};}
+function timelineTone(tone:string){if(tone==="booking")return "border-stone-800 bg-stone-900 text-white";if(tone==="event")return "border-sky-300 bg-sky-100 text-sky-950";if(tone==="cancelled")return "border-red-200 bg-red-50 text-red-900";if(tone==="buffer")return "border-amber-200 bg-amber-50 text-amber-900";return "border-emerald-200 bg-white text-stone-900";}
 
 function PlannerModeSwitch({copy, mode, onChange}: {copy: ReturnType<typeof scheduleCopy>; mode: PlannerMode; onChange: (mode: PlannerMode) => void}) {
     const options: Array<{label: string; value: PlannerMode}> = [
@@ -2219,6 +2255,9 @@ function scheduleCopy(t: T) {
         previewConflict: (item: string) => t("schedule.previewConflict", {item}),
         teamDayEmpty: t("schedule.teamDayEmpty"),
         teamDayItems: (count: number) => t("schedule.teamDayItems", {count}),
+        currentTime: t("schedule.currentTime"),
+        workScheduleBackground: t("schedule.workScheduleBackground"),
+        emptyTimeHint: t("schedule.emptyTimeHint"),
         specialistFilter: t("schedule.specialistFilter"),
         allSpecialists: t("schedule.allSpecialists"),
         specialistsError: t("schedule.specialistsError"),

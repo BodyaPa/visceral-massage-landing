@@ -1160,6 +1160,9 @@
       "empty": "No offices found.",
       "name": "Name",
       "address": "Address",
+      "businessDirection": "Direction",
+      "directionMassage": "Massage",
+      "directionTraining": "Training",
       "status": "Status",
       "directions": "How to find it",
       "googleMapsUrl": "Google Maps URL",
@@ -1178,7 +1181,20 @@
       "saving": "Saving...",
       "created": "Office created.",
       "updated": "Office updated.",
-      "saveError": "Unable to save office."
+      "saveError": "Unable to save office.",
+      "resourcesTitle": "Rooms and resources",
+      "resourcesHint": "Individual treatment rooms or training halls at this branch.",
+      "resourcesSaveOfficeFirst": "Save the office first, then add its rooms or halls.",
+      "resourcesEmpty": "No resources yet.",
+      "newResource": "New resource",
+      "resourceName": "Room or hall name",
+      "capacity": "Capacity",
+      "capacityShort": "capacity: {count}",
+      "resourceActive": "Resource active",
+      "saveResource": "Save resource",
+      "resourceCreated": "Resource created.",
+      "resourceUpdated": "Resource updated.",
+      "resourceSaveError": "Unable to save resource."
     },
     "services": {
       "meta": {

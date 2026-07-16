@@ -1160,6 +1160,9 @@
       "empty": "Офісів не знайдено.",
       "name": "Назва",
       "address": "Адреса",
+      "businessDirection": "Напрям",
+      "directionMassage": "Масаж",
+      "directionTraining": "Тренування",
       "status": "Статус",
       "directions": "Як знайти",
       "googleMapsUrl": "Посилання на Google Maps",
@@ -1178,7 +1181,20 @@
       "saving": "Збереження...",
       "created": "Офіс створено.",
       "updated": "Офіс оновлено.",
-      "saveError": "Не вдалося зберегти офіс."
+      "saveError": "Не вдалося зберегти офіс.",
+      "resourcesTitle": "Кімнати та ресурси",
+      "resourcesHint": "Окремі робочі кімнати або зали цієї філії.",
+      "resourcesSaveOfficeFirst": "Спочатку збережіть офіс, потім додайте його кімнати або зали.",
+      "resourcesEmpty": "Ресурсів ще немає.",
+      "newResource": "Новий ресурс",
+      "resourceName": "Назва кімнати або залу",
+      "capacity": "Місткість",
+      "capacityShort": "місць: {count}",
+      "resourceActive": "Ресурс активний",
+      "saveResource": "Зберегти ресурс",
+      "resourceCreated": "Ресурс створено.",
+      "resourceUpdated": "Ресурс оновлено.",
+      "resourceSaveError": "Не вдалося зберегти ресурс."
     },
     "services": {
       "meta": {

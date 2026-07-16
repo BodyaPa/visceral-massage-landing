@@ -4,15 +4,16 @@ import {useEffect, useState, type ChangeEvent} from "react";
 import type {FetchBaseQueryError} from "@reduxjs/toolkit/query";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
-import {useCreateOfficeMutation, useListOfficesQuery, useUpdateOfficeMutation, useUploadOfficeMediaMutation} from "@/features/offices/offices.api";
+import {useCreateOfficeMutation, useCreateOfficeResourceMutation, useListOfficeResourcesQuery, useListOfficesQuery, useUpdateOfficeMutation, useUpdateOfficeResourceMutation, useUploadOfficeMediaMutation} from "@/features/offices/offices.api";
 import {createAdminMediaUrl} from "@/features/news/newsMedia";
-import type {Office, OfficeInput} from "@/types/offices";
+import type {BusinessDirection, Office, OfficeInput, OfficeResource, OfficeResourceInput, OfficeResourceType} from "@/types/offices";
 
 const emptyOffices: Office[] = [];
 const emptyForm: OfficeInput = {
     name: "",
     address: "",
     active: true,
+    businessDirection: "MASSAGE",
     directions: "",
     googleMapsUrl: "",
     photoMediaId: null,
@@ -57,6 +58,7 @@ export default function OfficesManagement() {
             name: selectedOffice.name,
             address: selectedOffice.address,
             active: selectedOffice.active,
+            businessDirection: selectedOffice.businessDirection,
             directions: selectedOffice.directions ?? selectedOffice.locationDetails ?? "",
             googleMapsUrl: selectedOffice.googleMapsUrl ?? "",
             photoMediaId: selectedOffice.photoMediaId,
@@ -239,6 +241,16 @@ export default function OfficesManagement() {
                             value={form.address}
                         />
                     </Field>
+                    <Field label={t("businessDirection")}>
+                        <select
+                            className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                            onChange={(event) => updateField("businessDirection", event.target.value as OfficeInput["businessDirection"])}
+                            value={form.businessDirection}
+                        >
+                            <option value="MASSAGE">{t("directionMassage")}</option>
+                            <option value="TRAINING">{t("directionTraining")}</option>
+                        </select>
+                    </Field>
                     <Field label={t("directions")}>
                         <textarea
                             className="min-h-20 w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
@@ -300,9 +312,69 @@ export default function OfficesManagement() {
                     >
                         {saving ? t("saving") : t("save")}
                     </button>
+                    {selectedOffice ? <OfficeResourcesEditor direction={form.businessDirection} officeId={selectedOffice.id} /> : (
+                        <p className="rounded-lg bg-stone-50 px-3 py-2 text-sm text-stone-600">{t("resourcesSaveOfficeFirst")}</p>
+                    )}
                 </div>
             </div>
         </section>
+    );
+}
+
+function OfficeResourcesEditor({direction, officeId}: {direction: BusinessDirection; officeId: number}) {
+    const t = useTranslations("admin.offices");
+    const toast = useToast();
+    const {data: resources = [], isFetching} = useListOfficeResourcesQuery(officeId);
+    const [selectedId, setSelectedId] = useState<number | null>(null);
+    const expectedType: OfficeResourceType = direction === "TRAINING" ? "TRAINING_HALL" : "MASSAGE_ROOM";
+    const emptyResource: OfficeResourceInput = {name: "", resourceType: expectedType, capacity: direction === "TRAINING" ? 12 : 1, active: true};
+    const [resourceForm, setResourceForm] = useState<OfficeResourceInput>(emptyResource);
+    const [createResource, {isLoading: isCreating}] = useCreateOfficeResourceMutation();
+    const [updateResource, {isLoading: isUpdating}] = useUpdateOfficeResourceMutation();
+
+    useEffect(() => {
+        setSelectedId(null);
+        setResourceForm(emptyResource);
+        // Reset the draft when the selected office or its direction changes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [officeId, direction]);
+
+    function selectResource(resource: OfficeResource) {
+        setSelectedId(resource.id);
+        setResourceForm({name: resource.name, resourceType: resource.resourceType, capacity: resource.capacity, active: resource.active});
+    }
+
+    async function saveResource() {
+        try {
+            const body = {...resourceForm, name: resourceForm.name.trim(), resourceType: expectedType};
+            const saved = selectedId === null
+                ? await createResource({officeId, body}).unwrap()
+                : await updateResource({officeId, resourceId: selectedId, body}).unwrap();
+            setSelectedId(saved.id);
+            setResourceForm({name: saved.name, resourceType: saved.resourceType, capacity: saved.capacity, active: saved.active});
+            toast.success(t(selectedId === null ? "resourceCreated" : "resourceUpdated"));
+        } catch (error) {
+            toast.error(apiErrorMessage(error) ?? t("resourceSaveError"));
+        }
+    }
+
+    return (
+        <div className="mt-3 border-t border-stone-200 pt-5">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+                <div><h3 className="font-semibold text-stone-950">{t("resourcesTitle")}</h3><p className="mt-1 text-sm text-stone-600">{t("resourcesHint")}</p></div>
+                <button className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium hover:bg-stone-50" onClick={() => {setSelectedId(null); setResourceForm(emptyResource)}} type="button">{t("newResource")}</button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+                {resources.map((resource) => <button aria-pressed={selectedId === resource.id} className={`rounded-lg border px-3 py-2 text-left text-sm ${selectedId === resource.id ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white hover:border-stone-400"}`} key={resource.id} onClick={() => selectResource(resource)} type="button"><span className="font-medium">{resource.name}</span><span className="ml-2 opacity-70">{t("capacityShort", {count: resource.capacity})}</span></button>)}
+                {!isFetching && resources.length === 0 ? <p className="text-sm text-stone-500">{t("resourcesEmpty")}</p> : null}
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <Field label={t("resourceName")}><input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" onChange={(event) => setResourceForm((current) => ({...current, name: event.target.value}))} value={resourceForm.name} /></Field>
+                <Field label={t("capacity")}><input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" min="1" max="500" onChange={(event) => setResourceForm((current) => ({...current, capacity: Number(event.target.value)}))} type="number" value={resourceForm.capacity} /></Field>
+            </div>
+            <label className="mt-3 flex items-center gap-2 text-sm text-stone-700"><input checked={resourceForm.active} onChange={(event) => setResourceForm((current) => ({...current, active: event.target.checked}))} type="checkbox" />{t("resourceActive")}</label>
+            <button className="mt-3 rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700 disabled:bg-stone-400" disabled={!resourceForm.name.trim() || resourceForm.capacity < 1 || isCreating || isUpdating} onClick={saveResource} type="button">{isCreating || isUpdating ? t("saving") : t("saveResource")}</button>
+        </div>
     );
 }
 

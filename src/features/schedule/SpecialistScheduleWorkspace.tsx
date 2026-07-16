@@ -895,8 +895,9 @@ function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, 
     const creationEndHour = 20;
     const pixelsPerHour = 72;
     const scrollRef = useRef<HTMLDivElement>(null);
-    const [hoverDraft, setHoverDraft] = useState<{specialistId: number; minuteOfDay: number} | null>(null);
-    const entries = [
+    const hoverFrameRef = useRef<number | null>(null);
+    const specialistIdsByName = useMemo(() => new Map(specialists.map((specialist) => [userDisplayName(specialist), specialist.id])), [specialists]);
+    const entries = useMemo(() => [
         ...blocks.map((block) => ({
             detail: blockCalendarDetail(block, copy, locale, t),
             end: block.endsAt,
@@ -932,18 +933,40 @@ function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, 
             end: buffer.endsAt,
             id: `buffer-${buffer.id}`,
             meta: [copy.buffer, buffer.officeName ?? copy.noOffice].join(" · "),
-            specialistId: specialists.find((specialist) => userDisplayName(specialist) === buffer.specialistName)?.id ?? -1,
+            specialistId: specialistIdsByName.get(buffer.specialistName) ?? -1,
             specialistName: buffer.specialistName,
             start: buffer.startsAt,
             tone: "buffer" as const
         }))
     ]
         .filter((entry) => dateKey(new Date(entry.start)) === selectedDay)
-        .sort((first, second) => new Date(first.start).getTime() - new Date(second.start).getTime());
-    const visibleSpecialists = specialists.length ? specialists : Array.from(new Map(entries.map((entry) => [entry.specialistId, {id: entry.specialistId, firstName: entry.specialistName, lastName: ""} as AdminUser])).values());
+        .sort((first, second) => new Date(first.start).getTime() - new Date(second.start).getTime()), [blocks, bookings, buffers, copy, events, locale, selectedDay, specialistIdsByName, t]);
+    const entriesBySpecialist = useMemo(() => {
+        const grouped = new Map<number, typeof entries>();
+        entries.forEach((entry) => {
+            const group = grouped.get(entry.specialistId);
+            if (group) group.push(entry);
+            else grouped.set(entry.specialistId, [entry]);
+        });
+        return grouped;
+    }, [entries]);
+    const workingShiftsBySpecialist = useMemo(() => {
+        const grouped = new Map<number, WorkScheduleEntry[]>();
+        workScheduleEntries.forEach((entry) => {
+            if (entry.entryType !== "WORKING") return;
+            const group = grouped.get(entry.specialistId);
+            if (group) group.push(entry);
+            else grouped.set(entry.specialistId, [entry]);
+        });
+        return grouped;
+    }, [workScheduleEntries]);
+    const visibleSpecialists = useMemo(() => specialists.length ? specialists : Array.from(new Map(entries.map((entry) => [entry.specialistId, {id: entry.specialistId, firstName: entry.specialistName, lastName: ""} as AdminUser])).values()), [entries, specialists]);
     useEffect(() => {
         if (scrollRef.current) scrollRef.current.scrollTop = Math.max(0, (creationStartHour - viewStartHour - 1) * pixelsPerHour);
     }, [selectedDay, visibleSpecialists.length]);
+    useEffect(() => () => {
+        if (hoverFrameRef.current !== null) cancelAnimationFrame(hoverFrameRef.current);
+    }, []);
     if (visibleSpecialists.length === 0) {
         return <p className="rounded-xl border border-dashed border-stone-200 bg-stone-50 px-4 py-10 text-center text-sm text-stone-500">{copy.teamDayEmpty}</p>;
     }
@@ -952,19 +975,31 @@ function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, 
     const nowOffset = dateKey(now) === selectedDay ? ((now.getHours() + now.getMinutes() / 60) - viewStartHour) * pixelsPerHour : null;
     return (
         <div className="max-h-[72dvh] overflow-auto rounded-xl border border-stone-200 bg-white" ref={scrollRef}>
-            <div className="space-y-3 p-3 md:hidden">{visibleSpecialists.map(specialist => <section className="rounded-xl border border-stone-200 bg-stone-50 p-3" key={specialist.id}><h3 className="text-sm font-semibold text-stone-950">{userDisplayName(specialist)}</h3><div className="mt-2 space-y-2">{entries.filter(entry=>entry.specialistId===specialist.id).map(entry=><button className="w-full rounded-lg border border-stone-200 bg-white p-3 text-left text-xs" key={entry.id} onClick={()=>onSelectDetail(entry.detail)} type="button"><span className="font-semibold">{formatTimeRange(entry.start,entry.end,locale)}</span><span className="mt-1 block truncate">{entry.detail.title}</span><span className="mt-1 block truncate text-stone-500">{entry.meta}</span></button>)}{entries.every(entry=>entry.specialistId!==specialist.id)?<p className="py-3 text-xs text-stone-500">{copy.teamDayEmpty}</p>:null}</div></section>)}</div>
+            <div className="space-y-3 p-3 md:hidden">{visibleSpecialists.map(specialist => {const specialistEntries=entriesBySpecialist.get(specialist.id)??[];return <section className="rounded-xl border border-stone-200 bg-stone-50 p-3" key={specialist.id}><h3 className="text-sm font-semibold text-stone-950">{userDisplayName(specialist)}</h3><div className="mt-2 space-y-2">{specialistEntries.map(entry=><button className="w-full rounded-lg border border-stone-200 bg-white p-3 text-left text-xs" key={entry.id} onClick={()=>onSelectDetail(entry.detail)} type="button"><span className="font-semibold">{formatTimeRange(entry.start,entry.end,locale)}</span><span className="mt-1 block truncate">{entry.detail.title}</span><span className="mt-1 block truncate text-stone-500">{entry.meta}</span></button>)}{specialistEntries.length===0?<p className="py-3 text-xs text-stone-500">{copy.teamDayEmpty}</p>:null}</div></section>;})}</div>
             <div className="hidden min-w-max md:grid" style={{gridTemplateColumns: `72px repeat(${visibleSpecialists.length}, minmax(220px, 1fr))`}}>
                 <div className="sticky left-0 z-30 border-b border-r border-stone-200 bg-stone-50" />
-                {visibleSpecialists.map((specialist) => <div className="sticky top-0 z-20 border-b border-r border-stone-200 bg-stone-50 px-3 py-2" key={specialist.id}><p className="text-sm font-semibold text-stone-950">{userDisplayName(specialist)}</p><p className="text-xs text-stone-500">{copy.teamDayItems(entries.filter(entry => entry.specialistId === specialist.id).length)}</p></div>)}
+                {visibleSpecialists.map((specialist) => <div className="sticky top-0 z-20 border-b border-r border-stone-200 bg-stone-50 px-3 py-2" key={specialist.id}><p className="text-sm font-semibold text-stone-950">{userDisplayName(specialist)}</p><p className="text-xs text-stone-500">{copy.teamDayItems(entriesBySpecialist.get(specialist.id)?.length ?? 0)}</p></div>)}
                 <div className="sticky left-0 z-20 border-r border-stone-200 bg-white" style={{height: canvasHeight}}>{Array.from({length:viewEndHour-viewStartHour+1},(_,index)=><span className="absolute right-2 -translate-y-1/2 text-[11px] text-stone-500" key={index} style={{top:index*pixelsPerHour}}>{String((viewStartHour+index)%24).padStart(2,"0")}:00</span>)}</div>
                 {visibleSpecialists.map((specialist) => {
-                    const specialistEntries = entries.filter(entry => entry.specialistId === specialist.id);
-                    const shifts = workScheduleEntries.filter(entry => entry.specialistId === specialist.id && entry.entryType === "WORKING");
-                    return <div className="relative border-r border-stone-200 bg-stone-50/30" key={specialist.id} onMouseLeave={() => setHoverDraft(current => current?.specialistId === specialist.id ? null : current)} onMouseMove={(event) => {
-                        if ((event.target as HTMLElement).closest("button")) {setHoverDraft(null); return;}
-                        const rect = event.currentTarget.getBoundingClientRect();
-                        const minuteOfDay = Math.max(0, Math.min(24 * 60 - 15, Math.round(((event.clientY - rect.top) / pixelsPerHour * 60) / 15) * 15));
-                        setHoverDraft(minuteOfDay >= creationStartHour * 60 && minuteOfDay < creationEndHour * 60 ? {specialistId: specialist.id, minuteOfDay} : null);
+                    const specialistEntries = entriesBySpecialist.get(specialist.id) ?? [];
+                    const shifts = workingShiftsBySpecialist.get(specialist.id) ?? [];
+                    return <div className="relative border-r border-stone-200 bg-stone-50/30" key={specialist.id} onMouseLeave={(event) => {
+                        if (hoverFrameRef.current !== null) cancelAnimationFrame(hoverFrameRef.current);
+                        const preview = event.currentTarget.querySelector<HTMLElement>("[data-hover-draft]");
+                        if (preview) preview.style.opacity = "0";
+                    }} onMouseMove={(event) => {
+                        const column = event.currentTarget;
+                        const clientY = event.clientY;
+                        const overEntry = Boolean((event.target as HTMLElement).closest("button"));
+                        if (hoverFrameRef.current !== null) cancelAnimationFrame(hoverFrameRef.current);
+                        hoverFrameRef.current = requestAnimationFrame(() => {
+                            const preview = column.querySelector<HTMLElement>("[data-hover-draft]");
+                            if (!preview) return;
+                            const minuteOfDay = Math.max(0, Math.min(24 * 60 - 15, Math.round(((clientY - column.getBoundingClientRect().top) / pixelsPerHour * 60) / 15) * 15));
+                            const canCreate = !overEntry && minuteOfDay >= creationStartHour * 60 && minuteOfDay < creationEndHour * 60;
+                            preview.style.opacity = canCreate ? "1" : "0";
+                            if (canCreate) preview.style.transform = `translateY(${minuteOfDay / 60 * pixelsPerHour}px)`;
+                        });
                     }} onDoubleClick={(event) => {
                         if ((event.target as HTMLElement).closest("button")) return;
                         const rect = event.currentTarget.getBoundingClientRect();
@@ -975,7 +1010,7 @@ function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, 
                         {Array.from({length:viewEndHour-viewStartHour+1},(_,index)=><span aria-hidden="true" className="absolute inset-x-0 border-t border-stone-200" key={index} style={{top:index*pixelsPerHour}} />)}
                         {shifts.map(shift => <div aria-label={copy.workScheduleBackground} className="absolute inset-x-1 rounded-md border border-emerald-100 bg-emerald-50/70" key={shift.id} style={timelineStyle(shift.startsAt,shift.endsAt,viewStartHour,viewEndHour,pixelsPerHour)} />)}
                         {nowOffset !== null && nowOffset >= 0 && nowOffset <= canvasHeight ? <div aria-label={copy.currentTime} className="absolute inset-x-0 z-10 border-t-2 border-red-500" style={{top:nowOffset}}><span className="absolute -top-1.5 left-0 h-3 w-3 rounded-full bg-red-500" /></div> : null}
-                        {hoverDraft?.specialistId === specialist.id ? <div aria-hidden="true" className="pointer-events-none absolute inset-x-2 z-20 flex h-9 items-center rounded-lg border border-dashed border-stone-500 bg-white/95 px-2 text-xs font-semibold text-stone-800 shadow-md" style={{top:(hoverDraft.minuteOfDay/60-viewStartHour)*pixelsPerHour}}><span className="mr-1 text-base">＋</span>{copy.newEntryHover}</div> : null}
+                        <div aria-hidden="true" className="pointer-events-none absolute inset-x-2 top-0 z-20 flex h-9 items-center rounded-lg border border-dashed border-stone-500 bg-white/95 px-2 text-xs font-semibold text-stone-800 opacity-0 shadow-md will-change-transform" data-hover-draft><span className="mr-1 text-base">＋</span>{copy.newEntryHover}</div>
                         {specialistEntries.map(entry => <button className={`absolute inset-x-2 z-10 overflow-hidden rounded-lg border p-2 text-left text-xs shadow-sm transition hover:z-20 hover:shadow-md ${timelineTone(entry.tone)}`} key={entry.id} onClick={()=>onSelectDetail(entry.detail)} style={timelineStyle(entry.start,entry.end,viewStartHour,viewEndHour,pixelsPerHour)} type="button"><span className="block font-semibold">{formatTimeRange(entry.start,entry.end,locale)}</span><span className="mt-0.5 block truncate font-medium">{entry.detail.title}</span><span className="mt-0.5 block truncate opacity-70">{entry.meta}</span></button>)}
                     </div>;
                 })}

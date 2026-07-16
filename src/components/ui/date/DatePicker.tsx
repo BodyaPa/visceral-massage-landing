@@ -10,5 +10,6 @@ import {formatDate, parseDate} from "./dateValue";
 
 export default function DatePicker({value, onChange, label, placeholder, locale, disabled}: {value: string; onChange: (value: string) => void; label: string; placeholder: string; locale: Locale; disabled?: boolean}) {
     const [month, setMonth] = useState(parseDate(value) ?? new Date());
-    return <Popover label={label} trigger={({open, toggle}) => <Button aria-expanded={open} disabled={disabled} onClick={toggle} variant="secondary">{value || placeholder}</Button>}><DayPicker captionLayout="dropdown" locale={locale === "ua" ? uk : enUS} mode="single" month={month} onMonthChange={setMonth} onSelect={(date) => onChange(formatDate(date))} selected={parseDate(value)} /></Popover>;
+    const displayValue = parseDate(value)?.toLocaleDateString(locale === "ua" ? "uk-UA" : "en-GB");
+    return <Popover label={label} trigger={({open, toggle}) => <Button aria-expanded={open} aria-haspopup="dialog" disabled={disabled} onClick={toggle} variant="secondary">{displayValue || placeholder}</Button>}>{(close) => <DayPicker captionLayout="dropdown" locale={locale === "ua" ? uk : enUS} mode="single" month={month} onMonthChange={setMonth} onSelect={(date) => {onChange(formatDate(date));if(date) close();}} selected={parseDate(value)} />}</Popover>;
 }

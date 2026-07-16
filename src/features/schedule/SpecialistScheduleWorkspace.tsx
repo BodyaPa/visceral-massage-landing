@@ -894,6 +894,7 @@ function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, 
     const creationStartHour = 8;
     const creationEndHour = 20;
     const pixelsPerHour = 72;
+    const pixelsPerQuarterHour = pixelsPerHour / 4;
     const scrollRef = useRef<HTMLDivElement>(null);
     const hoverFrameRef = useRef<number | null>(null);
     const specialistIdsByName = useMemo(() => new Map(specialists.map((specialist) => [userDisplayName(specialist), specialist.id])), [specialists]);
@@ -998,7 +999,7 @@ function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, 
                             const minuteOfDay = Math.max(0, Math.min(24 * 60 - 15, Math.round(((clientY - column.getBoundingClientRect().top) / pixelsPerHour * 60) / 15) * 15));
                             const canCreate = !overEntry && minuteOfDay >= creationStartHour * 60 && minuteOfDay < creationEndHour * 60;
                             preview.style.opacity = canCreate ? "1" : "0";
-                            if (canCreate) preview.style.transform = `translateY(${minuteOfDay / 60 * pixelsPerHour}px)`;
+                            if (canCreate) preview.style.transform = `translateY(${minuteOfDay / 60 * pixelsPerHour - pixelsPerQuarterHour / 2}px)`;
                         });
                     }} onDoubleClick={(event) => {
                         if ((event.target as HTMLElement).closest("button")) return;
@@ -1006,11 +1007,13 @@ function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, 
                         const minuteOfDay = Math.max(0, Math.min(24*60-15, Math.round(((event.clientY-rect.top)/pixelsPerHour*60)/15)*15));
                         if (minuteOfDay < creationStartHour * 60 || minuteOfDay >= creationEndHour * 60) return;
                         const start = new Date(currentDate); start.setHours(Math.floor(minuteOfDay / 60), minuteOfDay % 60, 0, 0); onCreateAt(specialist.id, start);
-                    }} style={{height:canvasHeight}}>
-                        {Array.from({length:viewEndHour-viewStartHour+1},(_,index)=><span aria-hidden="true" className="absolute inset-x-0 border-t border-stone-200" key={index} style={{top:index*pixelsPerHour}} />)}
+                    }} style={{
+                        backgroundImage: "repeating-linear-gradient(to bottom, transparent 0, transparent 17px, rgb(231 229 228 / 0.65) 17px, rgb(231 229 228 / 0.65) 18px), repeating-linear-gradient(to bottom, transparent 0, transparent 71px, rgb(168 162 158 / 0.8) 71px, rgb(168 162 158 / 0.8) 72px)",
+                        height:canvasHeight
+                    }}>
                         {shifts.map(shift => <div aria-label={copy.workScheduleBackground} className="absolute inset-x-1 rounded-md border border-emerald-100 bg-emerald-50/70" key={shift.id} style={timelineStyle(shift.startsAt,shift.endsAt,viewStartHour,viewEndHour,pixelsPerHour)} />)}
                         {nowOffset !== null && nowOffset >= 0 && nowOffset <= canvasHeight ? <div aria-label={copy.currentTime} className="absolute inset-x-0 z-10 border-t-2 border-red-500" style={{top:nowOffset}}><span className="absolute -top-1.5 left-0 h-3 w-3 rounded-full bg-red-500" /></div> : null}
-                        <div aria-hidden="true" className="pointer-events-none absolute inset-x-2 top-0 z-20 flex h-9 items-center rounded-lg border border-dashed border-stone-500 bg-white/95 px-2 text-xs font-semibold text-stone-800 opacity-0 shadow-md will-change-transform" data-hover-draft><span className="mr-1 text-base">＋</span>{copy.newEntryHover}</div>
+                        <div aria-hidden="true" className="pointer-events-none absolute inset-x-2 top-0 z-20 flex items-center overflow-hidden rounded border border-dashed border-stone-500 bg-white/95 px-1.5 text-[10px] font-semibold leading-none text-stone-800 opacity-0 shadow-sm will-change-transform" data-hover-draft style={{height:pixelsPerQuarterHour}}><span className="mr-1 text-xs">＋</span>{copy.newEntryHover}</div>
                         {specialistEntries.map(entry => <button className={`absolute inset-x-2 z-10 overflow-hidden rounded-lg border p-2 text-left text-xs shadow-sm transition hover:z-20 hover:shadow-md ${timelineTone(entry.tone)}`} key={entry.id} onClick={()=>onSelectDetail(entry.detail)} style={timelineStyle(entry.start,entry.end,viewStartHour,viewEndHour,pixelsPerHour)} type="button"><span className="block font-semibold">{formatTimeRange(entry.start,entry.end,locale)}</span><span className="mt-0.5 block truncate font-medium">{entry.detail.title}</span><span className="mt-0.5 block truncate opacity-70">{entry.meta}</span></button>)}
                     </div>;
                 })}
@@ -1020,7 +1023,7 @@ function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, 
     );
 }
 
-function timelineStyle(startValue:string,endValue:string,startHour:number,endHour:number,pixelsPerHour:number){const start=new Date(startValue);const end=new Date(endValue);const startDecimal=start.getHours()+start.getMinutes()/60;const endDecimal=end.getHours()+end.getMinutes()/60;const top=Math.max(0,(startDecimal-startHour)*pixelsPerHour);const bottom=Math.min(endHour-startHour,endDecimal-startHour)*pixelsPerHour;return {top,height:Math.max(20,bottom-top)};}
+function timelineStyle(startValue:string,endValue:string,startHour:number,endHour:number,pixelsPerHour:number){const start=new Date(startValue);const end=new Date(endValue);const startDecimal=start.getHours()+start.getMinutes()/60;const endDecimal=end.getHours()+end.getMinutes()/60;const top=Math.max(0,(startDecimal-startHour)*pixelsPerHour);const bottom=Math.min(endHour-startHour,endDecimal-startHour)*pixelsPerHour;return {top,height:Math.max(pixelsPerHour/4,bottom-top)};}
 function timelineTone(tone:string){if(tone==="booking")return "border-stone-800 bg-stone-900 text-white";if(tone==="event")return "border-sky-300 bg-sky-100 text-sky-950";if(tone==="cancelled")return "border-red-200 bg-red-50 text-red-900";if(tone==="buffer")return "border-amber-200 bg-amber-50 text-amber-900";return "border-emerald-200 bg-white text-stone-900";}
 
 function PlannerModeSwitch({copy, mode, onChange}: {copy: ReturnType<typeof scheduleCopy>; mode: PlannerMode; onChange: (mode: PlannerMode) => void}) {

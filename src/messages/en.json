@@ -919,7 +919,7 @@
           "currentTime": "Current time",
           "workScheduleBackground": "Planned working shift",
           "newEntryHover": "New booking",
-          "emptyTimeHint": "The calendar shows the full day. Hover and double-click empty time between 08:00 and 20:00 to create a draft.",
+          "emptyTimeHint": "The calendar shows the full day. Click an empty 15-minute cell between 08:00 and 20:00 to create a draft.",
           "allSpecialists": "All specialists",
           "specialistsError": "Unable to load specialists.",
           "allOffices": "All offices",

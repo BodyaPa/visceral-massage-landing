@@ -1001,7 +1001,7 @@ function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, 
                             preview.style.opacity = canCreate ? "1" : "0";
                             if (canCreate) preview.style.transform = `translateY(${minuteOfDay / 60 * pixelsPerHour}px)`;
                         });
-                    }} onDoubleClick={(event) => {
+                    }} onClick={(event) => {
                         if ((event.target as HTMLElement).closest("button")) return;
                         const rect = event.currentTarget.getBoundingClientRect();
                         const minuteOfDay = Math.max(0, Math.min(24*60-15, Math.floor(((event.clientY-rect.top)/pixelsPerHour*60)/15)*15));

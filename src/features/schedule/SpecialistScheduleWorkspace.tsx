@@ -371,29 +371,6 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
                     </div>
                 </header>
 
-                <PlannerDayFocus
-                    blocks={blocks}
-                    bookings={bookings}
-                    copy={copy}
-                    currentDate={currentDate}
-                    events={events}
-                    locale={locale}
-                    onOpenAgenda={() => {
-                        setPlannerMode("all");
-                        setSelectedView("list");
-                    }}
-                    onOpenBookings={() => {
-                        setPlannerMode("bookings");
-                        setActiveTool("bookings");
-                        setToolsOpen(true);
-                    }}
-                    onOpenPlan={() => {
-                        openTool("availability");
-                    }}
-                    onSelectDetail={openCalendarDetail}
-                    t={t}
-                />
-
                 <section className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
                     <div className="flex min-w-0 flex-col gap-3 border-b border-stone-200 bg-stone-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
@@ -1050,139 +1027,6 @@ function PlannerModeSwitch({copy, mode, onChange}: {copy: ReturnType<typeof sche
             </div>
         </div>
     );
-}
-
-function PlannerDayFocus({
-    blocks,
-    bookings,
-    copy,
-    currentDate,
-    events,
-    locale,
-    onOpenAgenda,
-    onOpenBookings,
-    onOpenPlan,
-    onSelectDetail,
-    t
-}: {
-    blocks: SpecialistAvailabilityBlock[];
-    bookings: SpecialistBooking[];
-    copy: ReturnType<typeof scheduleCopy>;
-    currentDate: Date;
-    events: SpecialistFixedEvent[];
-    locale: string;
-    onOpenAgenda: () => void;
-    onOpenBookings: () => void;
-    onOpenPlan: () => void;
-    onSelectDetail: (detail: CalendarDetail) => void;
-    t: T;
-}) {
-    const dayItems = useMemo(() => {
-        const key = dateKey(currentDate);
-        return {
-            available: blocks.filter((block) => block.status === "AVAILABLE" && !block.booked && dateKey(new Date(block.startsAt)) === key),
-            blocked: blocks.filter((block) => block.status === "BLOCKED" && dateKey(new Date(block.startsAt)) === key),
-            bookings: bookings.filter((booking) => booking.status !== "CANCELLED" && dateKey(new Date(booking.startsAt)) === key),
-            pendingBookings: bookings.filter((booking) => booking.status === "AWAITING_PAYMENT_CONFIRMATION" && dateKey(new Date(booking.startsAt)) === key),
-            events: events.filter((event) => event.active && dateKey(new Date(event.startsAt)) === key)
-        };
-    }, [blocks, bookings, currentDate, events]);
-    const allNextItems = [
-        ...dayItems.bookings.map((booking) => ({
-            id: `booking-${booking.id}`,
-            detail: bookingCalendarDetail(booking, copy, locale, t),
-            startsAt: booking.startsAt,
-            title: bookingServiceTitle(booking, locale),
-            meta: booking.clientName,
-            tone: "booking" as const
-        })),
-        ...dayItems.events.map((event) => ({
-            id: `event-${event.id}`,
-            detail: eventCalendarDetail(event, copy, locale),
-            startsAt: event.startsAt,
-            title: event.serviceTitle,
-            meta: `${event.enrolledCount}/${event.capacity}`,
-            tone: "event" as const
-        })),
-        ...dayItems.available.map((block) => ({
-            id: `block-${block.id}`,
-            detail: blockCalendarDetail(block, copy, locale, t),
-            startsAt: block.startsAt,
-            title: scheduleBlockTypeLabel(block, copy),
-            meta: block.officeName ?? copy.noOffice,
-            tone: "available" as const
-        })),
-        ...dayItems.blocked.map((block) => ({
-            id: `blocked-${block.id}`,
-            detail: blockCalendarDetail(block, copy, locale, t),
-            startsAt: block.startsAt,
-            title: scheduleBlockTypeLabel(block, copy),
-            meta: block.officeName ?? copy.noOffice,
-            tone: "blocked" as const
-        }))
-    ].sort((first, second) => new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime());
-    const nextItems = allNextItems.slice(0, 5);
-    const hiddenNextItems = Math.max(0, allNextItems.length - nextItems.length);
-
-    return (
-        <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
-            <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{copy.dayFocusEyebrow}</p>
-                    <h2 className="mt-1 text-lg font-semibold text-stone-950">{copy.dayFocusTitle}</h2>
-                    <p className="mt-1 text-sm text-stone-500">{formatLongDate(currentDate, locale)}</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    <button className={controlButtonClass} onClick={onOpenPlan} type="button">{copy.planMode}</button>
-                    <button className={controlButtonClass} onClick={onOpenBookings} type="button">{copy.bookingsTitle}</button>
-                    <button className={controlButtonClass} onClick={onOpenAgenda} type="button">{copy.agendaAction}</button>
-                </div>
-            </div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-                <CompactMetric label={copy.bookingsTitle} value={dayItems.bookings.length} />
-                <CompactMetric label={copy.dayFocusPending} tone={dayItems.pendingBookings.length > 0 ? "warning" : "neutral"} value={dayItems.pendingBookings.length} />
-                <CompactMetric label={copy.eventsTitle} value={dayItems.events.length} />
-                <CompactMetric label={copy.availabilityTitle} value={dayItems.available.length} />
-                <CompactMetric label={copy.blocksTitle} value={dayItems.blocked.length} />
-            </div>
-            {nextItems.length > 0 ? (
-                <div className="mt-4">
-                    <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
-                        <h3 className="break-words text-sm font-semibold text-stone-950">{copy.dayFocusNext}</h3>
-                        {hiddenNextItems > 0 ? <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-1 text-xs text-stone-500">{copy.dayFocusMore(hiddenNextItems)}</span> : null}
-                    </div>
-                    <div className="grid gap-2 lg:grid-cols-5">
-                        {nextItems.map((item) => (
-                            <button className={`${dayFocusItemClass(item.tone)} text-left transition-colors hover:border-stone-400 hover:bg-white`} key={item.id} onClick={() => onSelectDetail(item.detail)} type="button">
-                                <p className="text-xs font-semibold text-stone-500">{formatTime(item.startsAt, locale)}</p>
-                                <h3 className="mt-1 line-clamp-2 text-sm font-semibold text-stone-950">{item.title}</h3>
-                                <p className="mt-1 truncate text-xs text-stone-500">{item.meta}</p>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            ) : (
-                <p className="mt-4 rounded-lg border border-dashed border-stone-200 bg-stone-50 px-3 py-4 text-sm text-stone-500">{copy.dayFocusEmpty}</p>
-            )}
-        </section>
-    );
-}
-
-function CompactMetric({label, tone = "neutral", value}: {label: string; tone?: "neutral" | "warning"; value: number}) {
-    return (
-        <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2">
-            <p className="text-xs font-medium text-stone-500">{label}</p>
-            <p className={`mt-1 text-lg font-semibold ${tone === "warning" ? "text-amber-800" : "text-stone-950"}`}>{value}</p>
-        </div>
-    );
-}
-
-function dayFocusItemClass(tone: "available" | "blocked" | "booking" | "event") {
-    const base = "min-w-0 rounded-lg border px-3 py-2";
-    if (tone === "available") return `${base} border-emerald-200 bg-emerald-50`;
-    if (tone === "event") return `${base} border-sky-200 bg-sky-50`;
-    if (tone === "blocked") return `${base} border-amber-200 bg-amber-50`;
-    return `${base} border-stone-300 bg-stone-50`;
 }
 
 function PlannerAgendaList({
@@ -2279,13 +2123,6 @@ function scheduleCopy(t: T) {
         bookingsTitle: t("schedule.bookingsTitle"),
         planMode: t("schedule.planMode"),
         allMode: t("schedule.allMode"),
-        agendaAction: t("schedule.agendaAction"),
-        dayFocusEyebrow: t("schedule.dayFocusEyebrow"),
-        dayFocusTitle: t("schedule.dayFocusTitle"),
-        dayFocusEmpty: t("schedule.dayFocusEmpty"),
-        dayFocusNext: t("schedule.dayFocusNext"),
-        dayFocusMore: (count: number) => t("schedule.dayFocusMore", {count}),
-        dayFocusPending: t("schedule.dayFocusPending"),
         detailsTitle: t("schedule.detailsTitle"),
         detailsBody: t("schedule.detailsBody"),
         scopeLabel: t("schedule.scopeLabel"),

@@ -207,6 +207,7 @@ export type BookingInput = {
     availabilityBlockId: number;
     resourceId?: number | null;
     serviceId: number;
+    serviceVariantId?: number | null;
     startsAt?: string;
     reminderOptIn: boolean;
     membershipPurchaseId?: number | null;

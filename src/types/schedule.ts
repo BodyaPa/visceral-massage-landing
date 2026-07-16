@@ -49,6 +49,26 @@ export interface PublicScheduleAvailabilityBlock {
     endsAt: string;
 }
 
+export interface FittingServiceOption {
+    variantId: number;
+    serviceId: number;
+    serviceTitle: string;
+    variantName: string;
+    durationMinutes: number;
+    price: number;
+    bufferBeforeMinutes: number;
+    bufferAfterMinutes: number;
+    depositAmount: number;
+    specialistId: number;
+    specialistName: string;
+    officeId: number;
+    officeName: string;
+    resourceId: number;
+    resourceName: string;
+    startsAt: string;
+    endsAt: string;
+}
+
 export interface PublicScheduleUnavailableBlock {
     id: string;
     status: "OCCUPIED" | "UNAVAILABLE" | "BUFFER";

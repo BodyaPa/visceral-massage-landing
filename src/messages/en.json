@@ -250,6 +250,8 @@
         "chooseServiceFirst": "Choose a service for this time.",
         "chooseServiceForTime": "Choose a service for this time",
         "slotTooShort": "This time range is too short for the selected service. Choose another time.",
+        "noFittingOptions": "No service, specialist, and room combination is available for this time.",
+        "fittingOptionsError": "Unable to verify available options. Please try again.",
         "unavailableClick": "This time is unavailable. Choose another slot.",
         "individualServiceTitle": "Individual service",
         "individualServiceHint": "Choose an individual service to highlight available slots.",

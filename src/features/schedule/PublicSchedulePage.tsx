@@ -10,6 +10,7 @@ import {useListPublicOfficesQuery} from "@/features/offices/offices.api";
 import {
     useCancelFixedEventEnrollmentMutation,
     useEnrollFixedEventMutation,
+    useListFittingOptionsQuery,
     useListPublicAvailabilityQuery,
     useListPublicEventsQuery
 } from "@/features/schedule/schedule.api";
@@ -20,7 +21,6 @@ import {
     buildSelectedDayItems,
     dateKey,
     filterScheduleEvents,
-    serviceDurationSlot,
     startOfDay,
     slotKey,
     toId,
@@ -41,7 +41,7 @@ import {initialsFromName} from "@/shared/lib/text/initials";
 import {useValidatePromoMutation} from "@/features/promos/promos.api";
 import type {PromoValidation} from "@/types/promos";
 import type {Office} from "@/types/offices";
-import type {PublicFixedEvent, PublicScheduleAvailabilityBlock} from "@/types/schedule";
+import type {FittingServiceOption, PublicFixedEvent, PublicScheduleAvailabilityBlock} from "@/types/schedule";
 import type {PublicService} from "@/types/services";
 import type {MembershipOffer, MembershipPurchase} from "@/types/memberships";
 import {useActivateLoyaltyVoucherMutation, useGetLoyaltyVouchersQuery} from "@/features/loyalty/loyalty.api";
@@ -49,7 +49,7 @@ import type {LoyaltyVoucher} from "@/types/loyalty";
 
 const savedFiltersKey = "ataraksia.publicScheduleFilters";
 type PendingBooking =
-    | {type: "individual"; service: PublicService; slot: PublicScheduleAvailabilityBlock}
+    | {type: "individual"; service: PublicService; slot: PublicScheduleAvailabilityBlock; fitting: FittingServiceOption}
     | {type: "event"; event: PublicFixedEvent};
 type ChoiceSectionKey = "office" | "specialist";
 type PaymentPrompt = {
@@ -189,6 +189,7 @@ export default function PublicSchedulePage() {
                     availabilityBlockId: pendingBooking.slot.id,
                     resourceId: pendingBooking.slot.resourceId,
                     serviceId: pendingBooking.service.id,
+                    serviceVariantId: pendingBooking.fitting.variantId,
                     startsAt: pendingBooking.slot.startsAt,
                     reminderOptIn,
                     membershipPurchaseId: selectedMembershipPurchaseId === "" ? null : selectedMembershipPurchaseId,
@@ -327,14 +328,10 @@ export default function PublicSchedulePage() {
                     copy={copy}
                     locale={locale}
                     onClose={() => setSlotForServiceChoice(null)}
-                    onSelect={(service) => {
-                        const appointmentSlot = serviceDurationSlot(slotForServiceChoice, service);
-                        if (!appointmentSlot) {
-                            toast.error(copy.slotTooShort);
-                            return;
-                        }
+                    onSelect={(service, fitting) => {
+                        const appointmentSlot = {...slotForServiceChoice, resourceId: fitting.resourceId, resourceName: fitting.resourceName, endsAt: fitting.endsAt};
                         setFilters((current) => ({...current, mode: "individual", status: "available"}));
-                        setPendingBooking({type: "individual", service, slot: appointmentSlot});
+                        setPendingBooking({type: "individual", service, slot: appointmentSlot, fitting});
                         setSlotForServiceChoice(null);
                     }}
                     services={individualServices}
@@ -1151,8 +1148,16 @@ function localeTitle(titleUa: string, titleEn: string, locale: string) {
     return locale === "en" ? titleEn || titleUa : titleUa || titleEn;
 }
 
-function ServiceChoiceModal({copy, locale, onClose, onSelect, returnFocusTo, services, slot}: {copy: Copy; locale: string; onClose: () => void; onSelect: (service: PublicService) => void; returnFocusTo: HTMLElement | null; services: PublicService[]; slot: PublicScheduleAvailabilityBlock}) {
-    const fittingServices = services.filter((service) => Boolean(serviceDurationSlot(slot, service)));
+function ServiceChoiceModal({copy, locale, onClose, onSelect, returnFocusTo, services, slot}: {copy: Copy; locale: Locale; onClose: () => void; onSelect: (service: PublicService, fitting: FittingServiceOption) => void; returnFocusTo: HTMLElement | null; services: PublicService[]; slot: PublicScheduleAvailabilityBlock}) {
+    const {data: fittingOptions = [], isError, isFetching} = useListFittingOptionsQuery({
+        startsAt: slot.startsAt,
+        endsAt: slot.endsAt,
+        officeId: slot.officeId ?? 0,
+        specialistId: slot.specialistId,
+        resourceId: slot.resourceId ?? undefined,
+        lang: locale
+    }, {skip: slot.officeId === null});
+    const serviceById = new Map(services.map((service) => [service.id, service]));
     const dialogRef = useModalFocus(onClose, returnFocusTo);
 
     return (
@@ -1160,15 +1165,17 @@ function ServiceChoiceModal({copy, locale, onClose, onSelect, returnFocusTo, ser
             <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5">
                 <h2 className="break-words text-xl font-semibold text-stone-950" id="service-choice-title">{copy.chooseServiceForTime}</h2>
                 <p className="mt-2 break-words text-sm leading-6 text-stone-500">{formatDateTimeRange(slot.startsAt, slot.endsAt, locale)} · {slot.specialistName} · {slot.officeName ?? copy.withoutOffice}</p>
-                {fittingServices.length === 0 ? <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-800">{copy.slotTooShort}</p> : null}
+                {isFetching ? <p className="mt-4 text-sm text-stone-500">{copy.loading}</p> : null}
+                {!isFetching && isError ? <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm leading-6 text-red-800">{copy.fittingOptionsError}</p> : null}
+                {!isFetching && !isError && fittingOptions.length === 0 ? <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-800">{copy.noFittingOptions}</p> : null}
                 <div className="mt-5 space-y-2">
-                    {services.map((service) => {
-                        const fitsSlot = Boolean(serviceDurationSlot(slot, service));
+                    {fittingOptions.map((fitting) => {
+                        const service = serviceById.get(fitting.serviceId);
+                        if (!service) return null;
                         return (
-                            <button className={fitsSlot ? "block w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white" : "block w-full max-w-full cursor-not-allowed rounded-xl border border-stone-200 bg-stone-100 p-3 text-left opacity-60"} disabled={!fitsSlot} key={service.id} onClick={() => onSelect(service)} type="button">
-                                <span className="block break-words text-sm font-semibold text-stone-950">{service.title}</span>
-                                <span className="mt-1 block break-words text-xs text-stone-500">{copy.minutes(service.durationMinutes)} · {formatAmount(service.basePrice, locale)}</span>
-                                {!fitsSlot ? <span className="mt-2 block break-words text-xs font-medium text-amber-800">{copy.slotTooShort}</span> : null}
+                            <button className="block w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white" key={`${fitting.variantId}-${fitting.specialistId}-${fitting.resourceId}`} onClick={() => onSelect(service, fitting)} type="button">
+                                <span className="block break-words text-sm font-semibold text-stone-950">{service.title} · {fitting.variantName}</span>
+                                <span className="mt-1 block break-words text-xs text-stone-500">{copy.minutes(fitting.durationMinutes)} · {formatAmount(fitting.price, locale)} · {fitting.resourceName}</span>
                             </button>
                         );
                     })}
@@ -1552,7 +1559,8 @@ function labels(t: T) {
         loadError: t("loadError"),
         chooseServiceFirst: t("public.chooseServiceFirst"),
         chooseServiceForTime: t("public.chooseServiceForTime"),
-        slotTooShort: t("public.slotTooShort"),
+        noFittingOptions: t("public.noFittingOptions"),
+        fittingOptionsError: t("public.fittingOptionsError"),
         unavailableClick: t("public.unavailableClick"),
         individualServiceTitle: t("public.individualServiceTitle"),
         individualServiceHint: t("public.individualServiceHint"),

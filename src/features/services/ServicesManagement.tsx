@@ -4,10 +4,12 @@ import {useEffect, useState, type ChangeEvent, type ReactNode} from "react";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {useCreateAdminMembershipOfferMutation, useListAdminMembershipOffersQuery, useUpdateAdminMembershipOfferMutation, useUploadAdminMembershipOfferMediaMutation} from "@/features/memberships/memberships.api";
-import {useCreateServiceMutation, useListAdminServicesQuery, useUpdateServiceMutation} from "@/features/services/services.api";
+import {useCreateServiceMutation, useListAdminServicesQuery, useUpdateServiceMutation, useListServiceVariantsQuery, useCreateServiceVariantMutation, useUpdateServiceVariantMutation} from "@/features/services/services.api";
+import {useListUsersQuery} from "@/features/users/users.api";
+import {useListPublicOfficesQuery,useListOfficeResourcesQuery} from "@/features/offices/offices.api";
 import {resolveApiMediaUrl} from "@/shared/lib/media/resolveApiMediaUrl";
 import type {MembershipOffer, MembershipOfferKind, MembershipOfferUpdateInput} from "@/types/memberships";
-import type {AdminService, ServiceInput} from "@/types/services";
+import type {AdminService, ServiceInput, ServiceVariantInput} from "@/types/services";
 
 type ServiceEditorLanguage = "ua" | "en";
 
@@ -463,6 +465,7 @@ export default function ServicesManagement() {
             </div>
             </div>
             </div>
+            {selectedService ? <ServiceVariantsPanel service={selectedService} t={t} /> : null}
             <MembershipOffersPanel
                 allServices={allServices}
                 form={offerForm}
@@ -490,6 +493,19 @@ export default function ServicesManagement() {
         </section>
     );
 }
+
+const emptyVariant:ServiceVariantInput={nameUa:"",nameEn:null,durationMinutes:60,price:0,bufferBeforeMinutes:0,bufferAfterMinutes:0,depositAmount:0,active:true,specialistIds:[],resourceIds:[]};
+function ServiceVariantsPanel({service,t}:{service:AdminService;t:ReturnType<typeof useTranslations<"admin.services">>}){
+    const {data:variants=[]}=useListServiceVariantsQuery(service.id);const {data:users}=useListUsersQuery({role:"SPECIALIST",enabled:true,size:100});const {data:officePage}=useListPublicOfficesQuery({size:100});
+    const [selectedId,setSelectedId]=useState<number|null>(null);const selected=variants.find(item=>item.id===selectedId)??null;const [form,setForm]=useState<ServiceVariantInput>(emptyVariant);const [officeId,setOfficeId]=useState<number>(0);const {data:resources=[]}=useListOfficeResourcesQuery(officeId,{skip:!officeId});const [create,{isLoading:creating}]=useCreateServiceVariantMutation();const [update,{isLoading:updating}]=useUpdateServiceVariantMutation();
+    useEffect(()=>{if(selected)setForm({...selected});else setForm({...emptyVariant,durationMinutes:service.durationMinutes,price:service.basePrice,nameUa:service.titleUa,nameEn:service.titleEn});},[selected,service]);
+    function field<K extends keyof ServiceVariantInput>(key:K,value:ServiceVariantInput[K]){setForm(current=>({...current,[key]:value}));}
+    async function save(){if(selected)await update({serviceId:service.id,id:selected.id,body:form}).unwrap();else{const saved=await create({serviceId:service.id,body:form}).unwrap();setSelectedId(saved.id);}}
+    return <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{t("variants.eyebrow")}</p><h2 className="mt-1 text-xl font-semibold">{t("variants.title")}</h2><p className="mt-1 text-sm text-stone-500">{t("variants.subtitle")}</p></div><button className="rounded-lg bg-stone-900 px-3 py-2 text-sm font-semibold text-white" onClick={()=>setSelectedId(null)} type="button">{t("variants.new")}</button></div><div className="mt-4 grid gap-4 lg:grid-cols-[250px_1fr]"><div className="space-y-2">{variants.map(item=><button className={`w-full rounded-lg border p-3 text-left text-sm ${item.id===selectedId?"border-stone-900 bg-stone-900 text-white":"border-stone-200 bg-stone-50"}`} key={item.id} onClick={()=>setSelectedId(item.id)} type="button"><span className="font-semibold">{item.nameUa}</span><span className="mt-1 block text-xs opacity-70">{item.durationMinutes} min · {item.price}</span></button>)}</div><div className="grid gap-3 sm:grid-cols-2"><VariantField label={t("variants.nameUa")}><input className={variantInput} onChange={e=>field("nameUa",e.target.value)} value={form.nameUa}/></VariantField><VariantField label={t("variants.nameEn")}><input className={variantInput} onChange={e=>field("nameEn",e.target.value||null)} value={form.nameEn??""}/></VariantField><NumberVariant label={t("variants.duration")} value={form.durationMinutes} onChange={value=>field("durationMinutes",value)}/><NumberVariant label={t("variants.price")} value={form.price} onChange={value=>field("price",value)}/><NumberVariant label={t("variants.bufferBefore")} value={form.bufferBeforeMinutes} onChange={value=>field("bufferBeforeMinutes",value)}/><NumberVariant label={t("variants.bufferAfter")} value={form.bufferAfterMinutes} onChange={value=>field("bufferAfterMinutes",value)}/><NumberVariant label={t("variants.deposit")} value={form.depositAmount} onChange={value=>field("depositAmount",value)}/><VariantField label={t("variants.office")}><select className={variantInput} onChange={e=>setOfficeId(Number(e.target.value))} value={officeId}><option value="">—</option>{(officePage?.content??[]).map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></VariantField><div className="sm:col-span-2"><p className="text-sm font-medium">{t("variants.specialists")}</p><div className="mt-2 flex flex-wrap gap-2">{(users?.content??[]).map(user=><label className="rounded-lg border border-stone-200 px-3 py-2 text-xs" key={user.id}><input checked={form.specialistIds.includes(user.id)} className="mr-2" onChange={e=>field("specialistIds",e.target.checked?[...form.specialistIds,user.id]:form.specialistIds.filter(id=>id!==user.id))} type="checkbox"/>{[user.firstName,user.lastName].filter(Boolean).join(" ")}</label>)}</div></div><div className="sm:col-span-2"><p className="text-sm font-medium">{t("variants.resources")}</p><div className="mt-2 flex flex-wrap gap-2">{resources.map(resource=><label className="rounded-lg border border-stone-200 px-3 py-2 text-xs" key={resource.id}><input checked={form.resourceIds.includes(resource.id)} className="mr-2" onChange={e=>field("resourceIds",e.target.checked?[...form.resourceIds,resource.id]:form.resourceIds.filter(id=>id!==resource.id))} type="checkbox"/>{resource.name}</label>)}</div></div><label className="flex items-center gap-2 text-sm"><input checked={form.active} onChange={e=>field("active",e.target.checked)} type="checkbox"/>{t("active")}</label><button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={creating||updating||!form.nameUa.trim()||form.durationMinutes<1||form.price<0||form.depositAmount>form.price} onClick={save} type="button">{t("save")}</button></div></div></section>;
+}
+const variantInput="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900";
+function VariantField({label,children}:{label:string;children:ReactNode}){return <label className="block text-sm font-medium text-stone-800">{label}<span className="mt-1 block">{children}</span></label>}
+function NumberVariant({label,value,onChange}:{label:string;value:number;onChange:(value:number)=>void}){return <VariantField label={label}><input className={variantInput} min={0} onChange={e=>onChange(Number(e.target.value))} type="number" value={value}/></VariantField>}
 
 function MembershipOffersPanel({allServices, creatingKind, form, isError, isFetching, isSaving, isUploadingMedia, offers, onChange, onSave, onSelect, onStartCreate, onUploadMedia, selectedOffer, t}: {
     allServices: AdminService[];

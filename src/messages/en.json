@@ -1267,6 +1267,22 @@
       "created": "Service created.",
       "updated": "Service updated.",
       "saveError": "Unable to save service.",
+      "variants": {
+        "eyebrow": "Service formats",
+        "title": "Duration and price variants",
+        "subtitle": "Configure duration, buffers, deposit, and eligible specialists or resources for each format.",
+        "new": "New variant",
+        "nameUa": "Ukrainian name",
+        "nameEn": "English name",
+        "duration": "Duration, min",
+        "price": "Price",
+        "bufferBefore": "Buffer before, min",
+        "bufferAfter": "Buffer after, min",
+        "deposit": "Deposit",
+        "office": "Office for resource selection",
+        "specialists": "Eligible specialists",
+        "resources": "Eligible resources"
+      },
       "memberships": {
         "eyebrow": "Memberships and certificates",
         "title": "Membership offers",

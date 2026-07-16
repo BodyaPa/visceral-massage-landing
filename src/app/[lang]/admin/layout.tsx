@@ -29,7 +29,7 @@ export default async function AdminLayout({children, params}: Props) {
         <main className="fixed inset-0 z-[5] overflow-y-auto overflow-x-clip p-2 sm:p-5" data-management-scroll>
             <ManagementScrollReset />
             <section className="management-workspace mx-auto flex min-h-[calc(100vh-1rem)] w-full max-w-[1680px] flex-col rounded-2xl border border-stone-200/80 bg-stone-50/95 shadow-2xl backdrop-blur-sm sm:min-h-[calc(100vh-2.5rem)]">
-                <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-stone-200 px-3 py-3 sm:gap-4 sm:px-6 sm:py-4">
+                <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-stone-200 px-3 py-3 print:hidden sm:gap-4 sm:px-6 sm:py-4">
                     <Link
                         className="shrink-0 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100"
                         href={withLocale("/", locale)}
@@ -43,14 +43,15 @@ export default async function AdminLayout({children, params}: Props) {
                         <AuthSessionPanel loading={false} tone="light" user={user} variant="management" />
                     </div>
                 </div>
-                <div className="management-layout grid w-full flex-1 grid-cols-1 content-start items-start gap-4 p-3 sm:p-6 lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-6 xl:grid-cols-[220px_minmax(0,1fr)] xl:px-8 xl:py-7">
+                <div className="management-layout grid w-full flex-1 grid-cols-1 content-start items-start gap-4 p-3 print:block print:p-0 sm:p-6 lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-6 xl:grid-cols-[220px_minmax(0,1fr)] xl:px-8 xl:py-7">
                     <ManagementNavigation
                         locale={locale}
                         showNews={hasRole(user, "SMM")}
                         showUsers={hasRole(user, "ADMIN")}
                         showOffices={hasRole(user, "ADMIN")}
                         showServices={hasRole(user, "ADMIN")}
-                        showSpecialist={hasRole(user, "SPECIALIST")}
+                        showSpecialist={hasRole(user, "ADMIN") || hasRole(user, "SPECIALIST")}
+                        showWorkSchedule={hasRole(user, "ADMIN")}
                         showFinance={hasRole(user, "FINANCE_MANAGER")}
                     />
                     <AnimatedManagementContent>

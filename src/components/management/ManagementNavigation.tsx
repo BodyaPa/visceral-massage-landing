@@ -13,6 +13,7 @@ type Props = {
     showOffices: boolean;
     showServices: boolean;
     showSpecialist: boolean;
+    showWorkSchedule: boolean;
     showFinance: boolean;
 };
 
@@ -26,7 +27,7 @@ type NavigationItem = {
     visible: boolean;
 };
 
-export default function ManagementNavigation({locale, showNews, showUsers, showOffices, showServices, showSpecialist, showFinance}: Props) {
+export default function ManagementNavigation({locale, showNews, showUsers, showOffices, showServices, showSpecialist, showWorkSchedule, showFinance}: Props) {
     const pathname = usePathname();
     const t = useTranslations("admin.navigation");
     const newsHref = withLocale("/admin/news", locale);
@@ -34,6 +35,7 @@ export default function ManagementNavigation({locale, showNews, showUsers, showO
     const officesHref = withLocale("/admin/offices", locale);
     const servicesHref = withLocale("/admin/services", locale);
     const scheduleHref = withLocale("/admin/schedule", locale);
+    const workScheduleHref = withLocale("/admin/work-schedule", locale);
     const financeHref = withLocale("/admin/finance", locale);
     const siteSettingsHref = withLocale("/admin/site-settings", locale);
     const promosHref = withLocale("/admin/promo-codes", locale);
@@ -47,11 +49,12 @@ export default function ManagementNavigation({locale, showNews, showUsers, showO
         {href: promosHref, label: t("promos"), visible: showServices},
         {href: loyaltyHref, label: t("loyalty"), visible: showServices},
         {href: scheduleHref, label: t("specialist"), visible: showSpecialist},
+        {href: workScheduleHref, label: t("workSchedule"), visible: showWorkSchedule},
         {href: financeHref, label: t("finance"), visible: showFinance}
     ];
 
     return (
-        <nav className="sticky top-2 z-20 max-w-full rounded-2xl border border-stone-200/80 bg-white/90 p-1.5 shadow-sm backdrop-blur lg:top-4" aria-label={t("label")}>
+        <nav className="sticky top-2 z-20 max-w-full rounded-2xl border border-stone-200/80 bg-white/90 p-1.5 shadow-sm backdrop-blur print:hidden lg:top-4" aria-label={t("label")}>
             <div className="flex max-w-full gap-1.5 overflow-x-auto pb-0.5 lg:flex-col lg:overflow-visible lg:pb-0">
                 {items.filter((item) => item.visible).map((item) => {
                     const active = isActivePath(pathname, item.href);

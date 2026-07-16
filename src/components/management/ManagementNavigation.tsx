@@ -12,6 +12,7 @@ type Props = {
     showUsers: boolean;
     showOffices: boolean;
     showServices: boolean;
+    showTraining: boolean;
     showSpecialist: boolean;
     showWorkSchedule: boolean;
     showFinance: boolean;
@@ -27,13 +28,14 @@ type NavigationItem = {
     visible: boolean;
 };
 
-export default function ManagementNavigation({locale, showNews, showUsers, showOffices, showServices, showSpecialist, showWorkSchedule, showFinance}: Props) {
+export default function ManagementNavigation({locale, showNews, showUsers, showOffices, showServices, showTraining, showSpecialist, showWorkSchedule, showFinance}: Props) {
     const pathname = usePathname();
     const t = useTranslations("admin.navigation");
     const newsHref = withLocale("/admin/news", locale);
     const usersHref = withLocale("/admin/users", locale);
     const officesHref = withLocale("/admin/offices", locale);
     const servicesHref = withLocale("/admin/services", locale);
+    const trainingHref = withLocale("/admin/training", locale);
     const scheduleHref = withLocale("/admin/schedule", locale);
     const workScheduleHref = withLocale("/admin/work-schedule", locale);
     const financeHref = withLocale("/admin/finance", locale);
@@ -46,6 +48,7 @@ export default function ManagementNavigation({locale, showNews, showUsers, showO
         {href: officesHref, label: t("offices"), visible: showOffices},
         {href: siteSettingsHref, label: t("siteSettings"), visible: showUsers},
         {href: servicesHref, label: t("services"), visible: showServices},
+        {href: trainingHref, label: t("training"), visible: showTraining},
         {href: promosHref, label: t("promos"), visible: showServices},
         {href: loyaltyHref, label: t("loyalty"), visible: showServices},
         {href: scheduleHref, label: t("specialist"), visible: showSpecialist},

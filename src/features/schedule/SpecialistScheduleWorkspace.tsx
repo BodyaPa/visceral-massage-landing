@@ -19,6 +19,7 @@ import {
     useListAvailabilityQuery,
     useListSpecialistEventEnrollmentsQuery,
     useListSpecialistEventsQuery,
+    useListScheduleOfficeResourcesQuery,
     useUpdateAvailabilityMutation,
     useUpdateSpecialistEventMutation
 } from "@/features/schedule/schedule.api";
@@ -1477,6 +1478,8 @@ function FixedEventForm({
 }) {
     const [serviceId, setServiceId] = useState("");
     const [officeId, setOfficeId] = useState("");
+    const [resourceId, setResourceId] = useState("");
+    const {data: officeResources = [], isFetching: resourcesFetching} = useListScheduleOfficeResourcesQuery(Number(officeId), {skip: !officeId});
     const [startsAt, setStartsAt] = useState(() => toDateTimeLocalValue(new Date(Date.now() + 24 * 60 * 60 * 1000)));
     const [endsAt, setEndsAt] = useState(() => toDateTimeLocalValue(new Date(Date.now() + 25.5 * 60 * 60 * 1000)));
     const [capacity, setCapacity] = useState(5);
@@ -1487,6 +1490,7 @@ function FixedEventForm({
         if (!editingEvent) return;
         setServiceId(String(editingEvent.serviceId));
         setOfficeId(editingEvent.officeId === null ? "" : String(editingEvent.officeId));
+        setResourceId(editingEvent.resourceId === null ? "" : String(editingEvent.resourceId));
         setStartsAt(toDateTimeLocalValue(new Date(editingEvent.startsAt)));
         setEndsAt(toDateTimeLocalValue(new Date(editingEvent.endsAt)));
         setCapacity(editingEvent.capacity);
@@ -1502,6 +1506,7 @@ function FixedEventForm({
             specialistId: selectedSpecialistId === "" ? null : selectedSpecialistId,
             serviceId: Number(serviceId),
             officeId: officeId ? Number(officeId) : null,
+            resourceId: resourceId ? Number(resourceId) : null,
             startsAt: startsAtIso,
             endsAt: endsAtIso,
             capacity,
@@ -1526,9 +1531,18 @@ function FixedEventForm({
                     </select>
                 </Field>
                 <Field label={copy.office}>
-                    <select className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" disabled={officesFetching} onChange={(event) => setOfficeId(event.target.value)} value={officeId}>
+                    <select className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" disabled={officesFetching} onChange={(event) => {setOfficeId(event.target.value); setResourceId("")}} value={officeId}>
                         <option value="">{copy.noOffice}</option>
                         {offices.map((office) => <option key={office.id} value={office.id}>{office.name}</option>)}
+                    </select>
+                </Field>
+                <Field label={copy.resource}>
+                    <select className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" disabled={!officeId || resourcesFetching} onChange={(event) => setResourceId(event.target.value)} value={resourceId}>
+                        <option value="">{officeId ? copy.selectResource : copy.selectOfficeFirst}</option>
+                        {officeResources.filter((resource) => {
+                            const service = services.find((item) => item.id === Number(serviceId));
+                            return resource.active && (!service || resource.resourceType === service.requiredResourceType);
+                        }).map((resource) => <option key={resource.id} value={resource.id}>{resource.name} · {resource.capacity}</option>)}
                     </select>
                 </Field>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -1902,6 +1916,7 @@ function eventToInput(event: SpecialistFixedEvent, active: boolean): SpecialistF
         specialistId: event.specialistId,
         serviceId: event.serviceId,
         officeId: event.officeId,
+        resourceId: event.resourceId,
         startsAt: event.startsAt,
         endsAt: event.endsAt,
         capacity: event.capacity,
@@ -2222,6 +2237,9 @@ function scheduleCopy(t: T) {
         selectEventService: t("schedule.selectEventService"),
         office: t("schedule.office"),
         noOffice: t("schedule.noOffice"),
+        resource: t("schedule.resource"),
+        selectResource: t("schedule.selectResource"),
+        selectOfficeFirst: t("schedule.selectOfficeFirst"),
         startsAt: t("schedule.startsAt"),
         endsAt: t("schedule.endsAt"),
         capacity: t("schedule.capacity"),

@@ -13,6 +13,7 @@ import type {
     SpecialistFixedEventInput,
     SpecialistAvailabilityInput
 } from "@/types/schedule";
+import type {OfficeResource} from "@/types/offices";
 import type {BookingStatus} from "@/types/bookings";
 import type {Locale} from "@/i18n";
 import type {PageResponse} from "@/types/news";
@@ -41,6 +42,9 @@ export const scheduleApi = createApi({
     baseQuery,
     tagTypes: ["ScheduleAvailability"],
     endpoints: (build) => ({
+        listScheduleOfficeResources: build.query<OfficeResource[], number>({
+            query: (officeId) => `/admin/schedule/offices/${officeId}/resources`
+        }),
         getScheduleConfig: build.query<ScheduleConfig, void>({
             query: () => "/schedule/config"
         }),
@@ -194,6 +198,7 @@ export const scheduleApi = createApi({
 });
 
 export const {
+    useListScheduleOfficeResourcesQuery,
     useCreateAvailabilityMutation,
     useCopyDayPlanMutation,
     useGetScheduleConfigQuery,

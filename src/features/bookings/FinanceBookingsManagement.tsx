@@ -40,6 +40,8 @@ import {
 import type {BookingStatus, FinanceBooking, FinanceEventEnrollment, FinanceExpense, FinanceSpecialistSettings} from "@/types/bookings";
 import type {MembershipPurchase} from "@/types/memberships";
 import type {Office} from "@/types/offices";
+import Tabs from "@/components/ui/navigation/Tabs";
+import Pagination from "@/components/ui/table/Pagination";
 
 const statuses: Array<BookingStatus | ""> = ["", "AWAITING_PAYMENT_CONFIRMATION", "CONFIRMED", "CANCELLED"];
 const tabs = ["pending", "memberships", "events", "transactions", "expenses", "reports"] as const;
@@ -276,8 +278,8 @@ export default function FinanceBookingsManagement() {
             </header>
 
             <section className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-                <nav className="flex gap-1 overflow-x-auto border-b border-stone-200 bg-stone-50 p-3" aria-label={t("tabs.label")}>
-                    {tabs.map((item) => <button aria-pressed={tab === item} className={tab === item ? activeTabClass : tabClass} key={item} onClick={() => setTab(item)} type="button">{t(`tabs.${item}`)}</button>)}
+                <nav className="overflow-x-auto border-b border-stone-200 bg-stone-50 p-3" aria-label={t("tabs.label")}>
+                    <Tabs label={t("tabs.label")} onChange={setTab} options={tabs.map((item) => ({label: t(`tabs.${item}`), value: item}))} value={tab} />
                 </nav>
 
                 {isError ? <p className="m-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("loadError")}</p> : null}
@@ -303,14 +305,10 @@ export default function FinanceBookingsManagement() {
 
 type T = ReturnType<typeof useTranslations<"admin.finance.page">>;
 const inputClass = "h-10 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 outline-none transition-colors focus:border-stone-800";
-const tabClass = "whitespace-nowrap rounded-lg border border-transparent px-4 py-2 text-sm font-semibold text-stone-600 transition-[color,background-color,border-color,transform] hover:border-stone-300 hover:bg-white hover:text-stone-950 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500";
-const activeTabClass = "whitespace-nowrap rounded-lg border border-stone-900 bg-stone-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2";
 
 function ServerPager({page, totalPages, onPage, t}: {page: number; totalPages: number; onPage: (page: number) => void; t: T}) {
-    if (totalPages <= 1) return null;
-    return <div className="flex justify-end gap-2 border-t border-stone-100 px-4 py-3"><button className={pagerClass} disabled={page === 0} onClick={() => onPage(page - 1)} type="button">{t("bounded.previous")}</button><button className={pagerClass} disabled={page + 1 >= totalPages} onClick={() => onPage(page + 1)} type="button">{t("bounded.next")}</button></div>;
+    return <div className="px-4"><Pagination nextLabel={t("bounded.next")} onChange={onPage} page={page} pageLabel={(current, total) => `${current} / ${total}`} previousLabel={t("bounded.previous")} totalPages={totalPages} /></div>;
 }
-const pagerClass = "rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-40";
 
 function Filter({children, label}: {children: React.ReactNode; label: string}) {
     return <label className="block min-w-0"><span className="mb-1.5 block break-words text-[11px] font-semibold uppercase tracking-wide text-stone-500">{label}</span>{children}</label>;

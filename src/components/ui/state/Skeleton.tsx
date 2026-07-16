@@ -1,0 +1,1 @@
+export default function Skeleton({className="", label="Loading"}: {className?: string; label?: string}) {return <span aria-label={label} className={`block animate-pulse rounded-md bg-stone-200 motion-reduce:animate-none ${className}`} role="status" />;}

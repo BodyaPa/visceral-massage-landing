@@ -187,6 +187,7 @@ export default function PublicSchedulePage() {
             if (pendingBooking.type === "individual") {
                 const booking = await createBooking({
                     availabilityBlockId: pendingBooking.slot.id,
+                    resourceId: pendingBooking.slot.resourceId,
                     serviceId: pendingBooking.service.id,
                     startsAt: pendingBooking.slot.startsAt,
                     reminderOptIn,
@@ -761,7 +762,7 @@ function CompactOpenSlotRow({copy, locale, onChoose, slot}: {copy: Copy; locale:
                 <SpecialistAvatar name={slot.specialistName} selected={false} url={slot.specialistAvatarMediaUrl} />
                 <div className="min-w-0">
                     <p className="break-words text-sm font-semibold text-stone-950">{formatDateTimeRange(slot.startsAt, slot.endsAt, locale)}</p>
-                    <p className="mt-1 break-words text-xs text-stone-600">{slot.specialistName} · {slot.officeName ?? copy.withoutOffice}</p>
+                    <p className="mt-1 break-words text-xs text-stone-600">{slot.specialistName} · {slot.officeName ?? copy.withoutOffice}{slot.resourceName ? ` · ${slot.resourceName}` : ""}</p>
                 </div>
             </div>
             <OfficeDetailsInline copy={copy} details={slot} />

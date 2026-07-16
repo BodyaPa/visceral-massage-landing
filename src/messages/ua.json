@@ -1,5 +1,6 @@
 {
   "nav": {
+    "publicNavigation": "Основна навігація",
     "home": "Головна",
     "about": "Про нас",
     "contact": "Контакти",
@@ -449,7 +450,7 @@
     "memberships": {"title": "Мої абонементи", "body": "Абонементи та сертифікати показані окремо від записів у календарі.", "loading": "Оновлення абонементів...", "loadError": "Не вдалося завантажити абонементи.", "empty": "Абонементів або сертифікатів ще немає.", "visits": "Залишок", "certificate": "Сертифікат", "expires": "Діє до", "pay": "Оплатити ↗", "paymentOpening": "Відкриття…", "manualPayment": "Оплата очікує ручного підтвердження.", "paymentError": "Не вдалося відкрити оплату.", "showing": "Показано {visible} з {total}", "showMore": "Показати ще", "showLess": "Згорнути", "previous": "Назад", "next": "Далі", "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Очікує оплати", "ACTIVE": "Активний", "CANCELLED": "Скасовано"}},
     "roles": {
       "USER": "Користувач",
-      "MASTER": "Майстер",
+      "ADMIN": "Адміністратор",
       "SPECIALIST": "Спеціаліст",
       "FINANCE_MANAGER": "Фінанси",
       "SMM": "SMM"
@@ -502,7 +503,7 @@
       "finance": "Фінанси"
     },
     "promos": {
-      "eyebrow": "MASTER",
+      "eyebrow": "ADMIN",
       "title": "Промокоди",
       "subtitle": "Генеруйте відсоткові коди, обмежуйте строк і кількість використань та переглядайте історію.",
       "discount": "Знижка, %",
@@ -544,7 +545,7 @@
       "meta": {
         "title": "Налаштування сайту"
       },
-      "eyebrow": "MASTER",
+      "eyebrow": "ADMIN",
       "title": "Налаштування сайту",
       "subtitle": "Керуйте публічними сторінками через CMS-редактор і окремо налаштовуйте головний background slider.",
       "loading": "Завантаження налаштувань...",
@@ -908,6 +909,9 @@
           "selectEventService": "Оберіть послугу-подію",
           "office": "Офіс",
           "noOffice": "Без офісу",
+          "resource": "Кімната або зал",
+          "selectResource": "Оберіть ресурс",
+          "selectOfficeFirst": "Спочатку оберіть офіс",
           "startsAt": "Початок",
           "endsAt": "Кінець",
           "capacity": "Кількість місць",
@@ -1137,7 +1141,7 @@
       "restoreError": "Не вдалося відновити доступ.",
       "roles": {
         "USER": "Користувач",
-        "MASTER": "Майстер",
+        "ADMIN": "Адміністратор",
         "SPECIALIST": "Спеціаліст",
         "FINANCE_MANAGER": "Фінанси",
         "SMM": "Контент"
@@ -1159,6 +1163,9 @@
       "empty": "Офісів не знайдено.",
       "name": "Назва",
       "address": "Адреса",
+      "businessDirection": "Напрям",
+      "directionMassage": "Масаж",
+      "directionTraining": "Тренування",
       "status": "Статус",
       "directions": "Як знайти",
       "googleMapsUrl": "Посилання на Google Maps",
@@ -1177,7 +1184,20 @@
       "saving": "Збереження...",
       "created": "Офіс створено.",
       "updated": "Офіс оновлено.",
-      "saveError": "Не вдалося зберегти офіс."
+      "saveError": "Не вдалося зберегти офіс.",
+      "resourcesTitle": "Кімнати та ресурси",
+      "resourcesHint": "Окремі робочі кімнати або зали цієї філії.",
+      "resourcesSaveOfficeFirst": "Спочатку збережіть офіс, потім додайте його кімнати або зали.",
+      "resourcesEmpty": "Ресурсів ще немає.",
+      "newResource": "Новий ресурс",
+      "resourceName": "Назва кімнати або залу",
+      "capacity": "Місткість",
+      "capacityShort": "місць: {count}",
+      "resourceActive": "Ресурс активний",
+      "saveResource": "Зберегти ресурс",
+      "resourceCreated": "Ресурс створено.",
+      "resourceUpdated": "Ресурс оновлено.",
+      "resourceSaveError": "Не вдалося зберегти ресурс."
     },
     "services": {
       "meta": {
@@ -1210,6 +1230,14 @@
       "minutesShort": "хв",
       "bookingMode": "Тип запису",
       "bookingModeHint": "Індивідуальні послуги генерують вільні слоти; події мають фіксований час і кількість місць.",
+      "businessDirection": "Напрям",
+      "businessDirectionHint": "Напрям визначає, у ресурсах якого типу можна проводити послугу.",
+      "directionMassage": "Масаж",
+      "directionTraining": "Тренування",
+      "requiredResourceType": "Потрібний ресурс",
+      "requiredResourceTypeHint": "Тип ресурсу визначається напрямом і перевіряється сервером.",
+      "resourceMassageRoom": "Масажна кімната",
+      "resourceTrainingHall": "Тренувальний зал",
       "individualAppointment": "Індивідуальний запис",
       "fixedEvent": "Подія",
       "price": "Базова ціна",

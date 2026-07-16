@@ -1,5 +1,6 @@
 {
   "nav": {
+    "publicNavigation": "Main navigation",
     "home": "Home",
     "about": "About",
     "contact": "Contact",
@@ -449,7 +450,7 @@
     "memberships": {"title": "My memberships", "body": "Memberships and certificates are shown separately from calendar bookings.", "loading": "Updating memberships...", "loadError": "Unable to load memberships.", "empty": "No memberships or certificates yet.", "visits": "Remaining", "certificate": "Certificate", "expires": "Valid until", "pay": "Pay ↗", "paymentOpening": "Opening…", "manualPayment": "Payment awaits manual confirmation.", "paymentError": "Unable to open payment.", "showing": "Showing {visible} of {total}", "showMore": "Show more", "showLess": "Collapse", "previous": "Previous", "next": "Next", "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Awaiting payment", "ACTIVE": "Active", "CANCELLED": "Cancelled"}},
     "roles": {
       "USER": "User",
-      "MASTER": "Master",
+      "ADMIN": "Administrator",
       "SPECIALIST": "Specialist",
       "FINANCE_MANAGER": "Finance",
       "SMM": "SMM"
@@ -502,7 +503,7 @@
       "finance": "Finance"
     },
     "promos": {
-      "eyebrow": "MASTER",
+      "eyebrow": "ADMIN",
       "title": "Promo codes",
       "subtitle": "Generate percentage codes, limit their period and usage, and inspect complete history.",
       "discount": "Discount, %",
@@ -544,7 +545,7 @@
       "meta": {
         "title": "Site settings"
       },
-      "eyebrow": "MASTER",
+      "eyebrow": "ADMIN",
       "title": "Site settings",
       "subtitle": "Manage public pages through the CMS editor and configure the main background slider separately.",
       "loading": "Loading settings...",
@@ -908,6 +909,9 @@
           "selectEventService": "Select event service",
           "office": "Office",
           "noOffice": "No office",
+          "resource": "Room or hall",
+          "selectResource": "Select resource",
+          "selectOfficeFirst": "Select an office first",
           "startsAt": "Start",
           "endsAt": "End",
           "capacity": "Capacity",
@@ -1137,7 +1141,7 @@
       "restoreError": "Unable to restore access.",
       "roles": {
         "USER": "User",
-        "MASTER": "Master",
+        "ADMIN": "Administrator",
         "SPECIALIST": "Specialist",
         "FINANCE_MANAGER": "Finance",
         "SMM": "Content"
@@ -1159,6 +1163,9 @@
       "empty": "No offices found.",
       "name": "Name",
       "address": "Address",
+      "businessDirection": "Direction",
+      "directionMassage": "Massage",
+      "directionTraining": "Training",
       "status": "Status",
       "directions": "How to find it",
       "googleMapsUrl": "Google Maps URL",
@@ -1177,7 +1184,20 @@
       "saving": "Saving...",
       "created": "Office created.",
       "updated": "Office updated.",
-      "saveError": "Unable to save office."
+      "saveError": "Unable to save office.",
+      "resourcesTitle": "Rooms and resources",
+      "resourcesHint": "Individual treatment rooms or training halls at this branch.",
+      "resourcesSaveOfficeFirst": "Save the office first, then add its rooms or halls.",
+      "resourcesEmpty": "No resources yet.",
+      "newResource": "New resource",
+      "resourceName": "Room or hall name",
+      "capacity": "Capacity",
+      "capacityShort": "capacity: {count}",
+      "resourceActive": "Resource active",
+      "saveResource": "Save resource",
+      "resourceCreated": "Resource created.",
+      "resourceUpdated": "Resource updated.",
+      "resourceSaveError": "Unable to save resource."
     },
     "services": {
       "meta": {
@@ -1210,6 +1230,14 @@
       "minutesShort": "min",
       "bookingMode": "Booking mode",
       "bookingModeHint": "Individual services generate free slots; fixed events are concrete sessions with capacity.",
+      "businessDirection": "Direction",
+      "businessDirectionHint": "The direction determines which resource type can host the service.",
+      "directionMassage": "Massage",
+      "directionTraining": "Training",
+      "requiredResourceType": "Required resource",
+      "requiredResourceTypeHint": "The resource type follows the direction and is validated by the server.",
+      "resourceMassageRoom": "Massage room",
+      "resourceTrainingHall": "Training hall",
       "individualAppointment": "Individual",
       "fixedEvent": "Event",
       "price": "Base price",

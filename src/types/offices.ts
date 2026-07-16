@@ -5,6 +5,7 @@ export interface Office {
     name: string;
     address: string;
     active: boolean;
+    businessDirection: BusinessDirection;
     locationDetails: string | null;
     directions: string | null;
     googleMapsUrl: string | null;
@@ -22,8 +23,23 @@ export type OfficeInput = {
     name: string;
     address: string;
     active: boolean;
+    businessDirection: BusinessDirection;
     directions?: string | null;
     googleMapsUrl?: string | null;
     photoMediaId?: string | null;
     videoMediaId?: string | null;
 };
+
+export type BusinessDirection = "MASSAGE" | "TRAINING";
+export type OfficeResourceType = "MASSAGE_ROOM" | "TRAINING_HALL";
+
+export interface OfficeResource {
+    id: number;
+    officeId: number;
+    name: string;
+    resourceType: OfficeResourceType;
+    capacity: number;
+    active: boolean;
+}
+
+export type OfficeResourceInput = Pick<OfficeResource, "name" | "resourceType" | "capacity" | "active">;

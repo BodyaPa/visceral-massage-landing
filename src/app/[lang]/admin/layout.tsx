@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminLayout({children, params}: Props) {
     const {lang} = await params;
     const locale = lang as Locale;
-    const user = await requireAnyRole(["MASTER", "SPECIALIST", "FINANCE_MANAGER", "SMM"], locale);
+    const user = await requireAnyRole(["ADMIN", "SPECIALIST", "FINANCE_MANAGER", "SMM"], locale);
     const t = await getTranslations({locale, namespace: "admin"});
 
     return (
@@ -47,9 +47,9 @@ export default async function AdminLayout({children, params}: Props) {
                     <ManagementNavigation
                         locale={locale}
                         showNews={hasRole(user, "SMM")}
-                        showUsers={hasRole(user, "MASTER")}
-                        showOffices={hasRole(user, "MASTER")}
-                        showServices={hasRole(user, "MASTER")}
+                        showUsers={hasRole(user, "ADMIN")}
+                        showOffices={hasRole(user, "ADMIN")}
+                        showServices={hasRole(user, "ADMIN")}
                         showSpecialist={hasRole(user, "SPECIALIST")}
                         showFinance={hasRole(user, "FINANCE_MANAGER")}
                     />

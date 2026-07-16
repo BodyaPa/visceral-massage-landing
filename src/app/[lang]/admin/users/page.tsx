@@ -24,7 +24,7 @@ export async function generateMetadata({params}: Props): Promise<Metadata> {
 
 export default async function AdminUsersPage({params}: Props) {
     const {lang} = await params;
-    const user = await requireRole("MASTER", lang as Locale);
+    const user = await requireRole("ADMIN", lang as Locale);
 
     return <UsersManagement currentUserId={user.id} />;
 }

@@ -1,7 +1,7 @@
 import {createApi} from "@reduxjs/toolkit/query/react";
 import {baseQuery} from "@/shared/api/baseQuery";
 import type {MediaAsset} from "@/types/news";
-import type {Office, OfficeInput, OfficePageResponse} from "@/types/offices";
+import type {Office, OfficeInput, OfficePageResponse, OfficeResource, OfficeResourceInput} from "@/types/offices";
 
 type ListOfficesArgs = {
     query?: string;
@@ -31,7 +31,7 @@ function listOfficesPath({query, active, page = 0, size = 100}: ListOfficesArgs)
 export const officesApi = createApi({
     reducerPath: "officesApi",
     baseQuery,
-    tagTypes: ["Offices"],
+    tagTypes: ["Offices", "OfficeResources"],
     endpoints: (build) => ({
         listPublicOffices: build.query<OfficePageResponse, ListPublicOfficesArgs | void>({
             query: (args) => {
@@ -61,6 +61,24 @@ export const officesApi = createApi({
                 {type: "Offices", id: "LIST"}
             ]
         }),
+        listOfficeResources: build.query<OfficeResource[], number>({
+            query: (officeId) => `/admin/offices/${officeId}/resources`,
+            providesTags: (result, error, officeId) => [
+                ...(result ?? []).map((resource) => ({type: "OfficeResources" as const, id: resource.id})),
+                {type: "OfficeResources" as const, id: `OFFICE-${officeId}`}
+            ]
+        }),
+        createOfficeResource: build.mutation<OfficeResource, {officeId: number; body: OfficeResourceInput}>({
+            query: ({officeId, body}) => ({url: `/admin/offices/${officeId}/resources`, method: "POST", body}),
+            invalidatesTags: (result, error, {officeId}) => [{type: "OfficeResources", id: `OFFICE-${officeId}`}]
+        }),
+        updateOfficeResource: build.mutation<OfficeResource, {officeId: number; resourceId: number; body: OfficeResourceInput}>({
+            query: ({officeId, resourceId, body}) => ({url: `/admin/offices/${officeId}/resources/${resourceId}`, method: "PUT", body}),
+            invalidatesTags: (result, error, {officeId, resourceId}) => [
+                {type: "OfficeResources", id: resourceId},
+                {type: "OfficeResources", id: `OFFICE-${officeId}`}
+            ]
+        }),
         uploadOfficeMedia: build.mutation<MediaAsset, File>({
             query: (file) => {
                 const body = new FormData();
@@ -76,5 +94,8 @@ export const {
     useListOfficesQuery,
     useCreateOfficeMutation,
     useUpdateOfficeMutation,
+    useListOfficeResourcesQuery,
+    useCreateOfficeResourceMutation,
+    useUpdateOfficeResourceMutation,
     useUploadOfficeMediaMutation
 } = officesApi;

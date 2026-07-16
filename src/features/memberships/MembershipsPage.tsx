@@ -15,6 +15,8 @@ import type {Locale} from "@/i18n";
 import {formatWholeCurrencyAmount as formatAmount} from "@/shared/lib/i18n/formatNumbers";
 import {resolveApiMediaUrl} from "@/shared/lib/media/resolveApiMediaUrl";
 import type {MembershipOffer, MembershipPurchase} from "@/types/memberships";
+import Button from "@/components/ui/button/Button";
+import Dialog from "@/components/ui/overlay/Dialog";
 
 const includedByCode: Record<string, string[]> = {
     "care-4": ["individual", "office", "support"],
@@ -216,28 +218,28 @@ function OfferDetails({locale, offer, onBuy, onClose, pending, services, t}: {lo
 
 function PaymentConfirmationDialog({isLoading, locale, offer, onClose, onConfirm, t}: {isLoading: boolean; locale: Locale; offer: MembershipOffer; onClose: () => void; onConfirm: () => void; t: T}) {
     return (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/40 px-3 py-3 sm:items-center sm:justify-center" role="presentation">
-            <section aria-labelledby="membership-checkout-title" aria-modal="true" className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl border border-stone-200 bg-white p-5 shadow-2xl" role="dialog">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">{t("checkoutEyebrow")}</p>
-                <h2 className="mt-2 break-words text-2xl font-semibold text-stone-950" id="membership-checkout-title">{t("checkoutTitle", {kind: kindLabel(offer, t).toLowerCase()})}</h2>
-                <p className="mt-3 break-words text-sm leading-6 text-stone-600">{t("checkoutBody")}</p>
-                <dl className="mt-5 grid gap-2 rounded-xl border border-stone-200 bg-stone-50 p-4 text-sm">
-                    <InfoRow label={t("checkoutOffer")} value={localizedTitle(offer, locale)} />
-                    <InfoRow label={t("price")} value={formatAmount(offer.price, locale)} />
-                    <InfoRow label={t("visits")} value={offer.visitsTotal ? t("visitCount", {count: offer.visitsTotal}) : t("certificateValue")} />
-                    <InfoRow label={t("validity")} value={t("validityDays", {count: offer.validityDays})} />
-                </dl>
-                <p className="mt-4 rounded-xl border border-stone-200 bg-white p-4 text-sm leading-6 text-stone-600">{t("checkoutNotice")}</p>
-                <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                    <button className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-60" disabled={isLoading} onClick={onClose} type="button">
-                        {t("checkoutCancel")}
-                    </button>
-                    <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={isLoading} onClick={onConfirm} type="button">
-                        {isLoading ? t("checkoutProcessing") : t("checkoutPay")}
-                    </button>
-                </div>
-            </section>
-        </div>
+        <Dialog
+            closeLabel={t("checkoutCancel")}
+            description={t("checkoutBody")}
+            eyebrow={t("checkoutEyebrow")}
+            footer={(
+                <>
+                    <Button disabled={isLoading} onClick={onClose} variant="secondary">{t("checkoutCancel")}</Button>
+                    <Button disabled={isLoading} onClick={onConfirm}>{isLoading ? t("checkoutProcessing") : t("checkoutPay")}</Button>
+                </>
+            )}
+            onClose={onClose}
+            open
+            title={t("checkoutTitle", {kind: kindLabel(offer, t).toLowerCase()})}
+        >
+            <dl className="grid gap-2 rounded-xl border border-stone-200 bg-stone-50 p-4 text-sm">
+                <InfoRow label={t("checkoutOffer")} value={localizedTitle(offer, locale)} />
+                <InfoRow label={t("price")} value={formatAmount(offer.price, locale)} />
+                <InfoRow label={t("visits")} value={offer.visitsTotal ? t("visitCount", {count: offer.visitsTotal}) : t("certificateValue")} />
+                <InfoRow label={t("validity")} value={t("validityDays", {count: offer.validityDays})} />
+            </dl>
+            <p className="mt-4 rounded-xl border border-stone-200 bg-white p-4 text-sm leading-6 text-stone-600">{t("checkoutNotice")}</p>
+        </Dialog>
     );
 }
 

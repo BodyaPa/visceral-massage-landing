@@ -11,6 +11,8 @@ export interface Booking {
     specialistName: string;
     officeId: number | null;
     officeName: string | null;
+    resourceId: number | null;
+    resourceName: string | null;
     officeAddress: string | null;
     officeDirections: string | null;
     officeGoogleMapsUrl: string | null;
@@ -53,6 +55,8 @@ export interface FinanceBooking {
     specialistPayoutPaidByUserId: number | null;
     officeId: number | null;
     officeName: string | null;
+    resourceId: number | null;
+    resourceName: string | null;
     startsAt: string;
     endsAt: string;
     reminderOptIn: boolean;
@@ -148,6 +152,8 @@ export interface SpecialistBooking {
     serviceTitleEn: string | null;
     officeId: number | null;
     officeName: string | null;
+    resourceId: number | null;
+    resourceName: string | null;
     availabilityBlockId: number;
     startsAt: string;
     endsAt: string;
@@ -199,6 +205,7 @@ export type FinanceSettingsInput = {
 
 export type BookingInput = {
     availabilityBlockId: number;
+    resourceId?: number | null;
     serviceId: number;
     startsAt?: string;
     reminderOptIn: boolean;

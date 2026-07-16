@@ -27,13 +27,13 @@ export async function generateMetadata({params}: Props): Promise<Metadata> {
 export default async function AdminPage({params}: Props) {
     const {lang} = await params;
     const locale = lang as Locale;
-    const user = await requireAnyRole(["SMM", "MASTER", "SPECIALIST", "FINANCE_MANAGER"], locale);
+    const user = await requireAnyRole(["SMM", "ADMIN", "SPECIALIST", "FINANCE_MANAGER"], locale);
 
     if (hasRole(user, "SMM")) {
         redirect(withLocale("/admin/news", locale));
     }
 
-    if (hasRole(user, "MASTER")) {
+    if (hasRole(user, "ADMIN")) {
         redirect(withLocale("/admin/users", locale));
     }
 

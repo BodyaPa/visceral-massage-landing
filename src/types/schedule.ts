@@ -13,6 +13,8 @@ export interface SpecialistAvailabilityBlock {
     specialistAvatarMediaUrl: string | null;
     officeId: number | null;
     officeName: string | null;
+    resourceId: number | null;
+    resourceName: string | null;
     status: ScheduleBlockStatus;
     itemType: ScheduleBlockType;
     serviceId: number | null;
@@ -34,6 +36,8 @@ export interface PublicScheduleAvailabilityBlock {
     specialistAvatarMediaUrl: string | null;
     officeId: number | null;
     officeName: string | null;
+    resourceId: number | null;
+    resourceName: string | null;
     officeAddress: string | null;
     officeDirections: string | null;
     officeGoogleMapsUrl: string | null;
@@ -67,6 +71,8 @@ export interface PublicFixedEvent {
     specialistAvatarMediaUrl: string | null;
     officeId: number | null;
     officeName: string | null;
+    resourceId: number | null;
+    resourceName: string | null;
     officeAddress: string | null;
     officeDirections: string | null;
     officeGoogleMapsUrl: string | null;
@@ -100,6 +106,8 @@ export interface SpecialistFixedEvent {
     serviceTitle: string;
     officeId: number | null;
     officeName: string | null;
+    resourceId: number | null;
+    resourceName: string | null;
     startsAt: string;
     endsAt: string;
     capacity: number;
@@ -147,6 +155,7 @@ export type SpecialistFixedEventInput = {
     specialistId?: number | null;
     serviceId: number;
     officeId?: number | null;
+    resourceId?: number | null;
     startsAt: string;
     endsAt: string;
     capacity: number;
@@ -165,6 +174,7 @@ export type DayPlanCopyInput = {
 export type SpecialistAvailabilityInput = {
     specialistId?: number | null;
     officeId?: number | null;
+    resourceId?: number | null;
     status: ScheduleBlockStatus;
     itemType?: ScheduleBlockType;
     serviceId?: number | null;

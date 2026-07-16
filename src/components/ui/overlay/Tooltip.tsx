@@ -1,0 +1,2 @@
+import {useId, type ReactNode} from "react";
+export default function Tooltip({label, children}: {label: string; children: ReactNode}) {const id=useId();return <span className="group relative inline-flex"><span aria-describedby={id}>{children}</span><span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden w-max max-w-64 -translate-x-1/2 rounded-md bg-stone-950 px-2 py-1 text-xs text-white shadow-lg group-hover:block group-focus-within:block" id={id} role="tooltip">{label}</span></span>;}

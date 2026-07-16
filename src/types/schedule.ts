@@ -36,6 +36,8 @@ export interface PublicScheduleAvailabilityBlock {
     specialistAvatarMediaUrl: string | null;
     officeId: number | null;
     officeName: string | null;
+    resourceId: number | null;
+    resourceName: string | null;
     officeAddress: string | null;
     officeDirections: string | null;
     officeGoogleMapsUrl: string | null;

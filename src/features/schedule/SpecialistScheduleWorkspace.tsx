@@ -62,6 +62,7 @@ type Props = {
 
 type AvailabilityForm = {
     officeId: string;
+    resourceId: string;
     status: ScheduleBlockStatus;
     itemType: ScheduleBlockType;
     serviceId: string;
@@ -136,6 +137,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
     const [toolsVisible, setToolsVisible] = useState(false);
     const [activeTool, setActiveTool] = useState<PlannerTool>("availability");
     const [form, setForm] = useState<AvailabilityForm>(() => buildDefaultForm());
+    const {data: availabilityResources = [], isFetching: availabilityResourcesFetching} = useListScheduleOfficeResourcesQuery(Number(form.officeId), {skip: !form.officeId});
     const [editingBlock, setEditingBlock] = useState<SpecialistAvailabilityBlock | null>(null);
     const [editingEvent, setEditingEvent] = useState<SpecialistFixedEvent | null>(null);
     const [selectedCalendarDetail, setSelectedCalendarDetail] = useState<CalendarDetail | null>(null);
@@ -238,11 +240,12 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 
             const body = {
                 officeId: form.officeId ? Number(form.officeId) : null,
+                resourceId: form.resourceId ? Number(form.resourceId) : null,
                 specialistId: selectedSpecialistId === "" ? null : selectedSpecialistId,
                 status: "AVAILABLE" as const,
-                itemType: "OPEN_RANGE" as const,
-                serviceId: null,
-                capacity: null,
+                itemType: form.itemType,
+                serviceId: form.itemType === "APPOINTMENT_SLOT" && form.serviceId ? Number(form.serviceId) : null,
+                capacity: form.itemType === "APPOINTMENT_SLOT" ? 1 : null,
                 startsAt,
                 endsAt,
                 notes: form.notes.trim() || null
@@ -284,6 +287,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                 status: "AVAILABLE",
                 itemType: "OPEN_RANGE",
                 serviceId: "",
+                resourceId: "",
                 capacity: 1
             }));
         }
@@ -487,7 +491,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                             <select
                                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
                                 disabled={officesFetching}
-                                onChange={(event) => updateForm("officeId", event.target.value)}
+                                onChange={(event) => setForm((current) => ({...current, officeId: event.target.value, resourceId: ""}))}
                                 value={form.officeId}
                             >
                                 <option value="">{officesFetching ? t("form.officesLoading") : t("form.noOffice")}</option>
@@ -499,6 +503,31 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                             </select>
                             {officesError ? <span className="mt-1 block text-xs text-red-700">{t("form.officesLoadError")}</span> : null}
                         </Field>
+                        <Field label={copy.itemType}>
+                            <select className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => setForm((current) => ({...current, itemType: event.target.value as ScheduleBlockType, serviceId: "", resourceId: ""}))} value={form.itemType}>
+                                <option value="OPEN_RANGE">{copy.openRange}</option>
+                                <option value="APPOINTMENT_SLOT">{copy.appointmentSlot}</option>
+                            </select>
+                        </Field>
+                        {form.itemType === "APPOINTMENT_SLOT" ? (
+                            <>
+                                <Field label={copy.slotService}>
+                                    <select className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" disabled={servicesFetching} onChange={(event) => setForm((current) => ({...current, serviceId: event.target.value, resourceId: ""}))} value={form.serviceId}>
+                                        <option value="">{copy.selectSlotService}</option>
+                                        {individualServices.map((service) => <option key={service.id} value={service.id}>{service.title}</option>)}
+                                    </select>
+                                </Field>
+                                <Field label={copy.resource}>
+                                    <select className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" disabled={!form.officeId || !form.serviceId || availabilityResourcesFetching} onChange={(event) => updateForm("resourceId", event.target.value)} value={form.resourceId}>
+                                        <option value="">{form.officeId ? copy.selectResource : copy.selectOfficeFirst}</option>
+                                        {availabilityResources.filter((resource) => {
+                                            const service = individualServices.find((item) => item.id === Number(form.serviceId));
+                                            return resource.active && (!service || resource.resourceType === service.requiredResourceType);
+                                        }).map((resource) => <option key={resource.id} value={resource.id}>{resource.name}</option>)}
+                                    </select>
+                                </Field>
+                            </>
+                        ) : null}
                         <Field label={t("form.startsAt")}>
                             <input
                                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
@@ -525,7 +554,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                         </Field>
                         <button
                             className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300"
-                            disabled={Boolean(draftConflict) || isCreating || isUpdatingAvailability}
+                            disabled={Boolean(draftConflict) || isCreating || isUpdatingAvailability || (form.itemType === "APPOINTMENT_SLOT" && (!form.officeId || !form.serviceId || !form.resourceId))}
                             onClick={saveAvailability}
                             type="button"
                         >
@@ -1501,7 +1530,7 @@ function FixedEventForm({
     async function submit() {
         const startsAtIso = toIsoDateTime(startsAt);
         const endsAtIso = toIsoDateTime(endsAt);
-        if (!serviceId || !startsAtIso || !endsAtIso) return;
+        if (!serviceId || !officeId || !resourceId || !startsAtIso || !endsAtIso) return;
         await onCreate({
             specialistId: selectedSpecialistId === "" ? null : selectedSpecialistId,
             serviceId: Number(serviceId),
@@ -1525,7 +1554,7 @@ function FixedEventForm({
             <p className="mt-2 break-words text-xs leading-5 text-stone-500">{copy.eventFormHint}</p>
             <div className="mt-4 space-y-3">
                 <Field label={copy.eventService}>
-                    <select className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" disabled={servicesFetching} onChange={(event) => setServiceId(event.target.value)} value={serviceId}>
+                    <select className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" disabled={servicesFetching} onChange={(event) => {setServiceId(event.target.value); setResourceId("")}} value={serviceId}>
                         <option value="">{servicesFetching ? copy.loading : copy.selectEventService}</option>
                         {services.map((service) => <option key={service.id} value={service.id}>{service.title}</option>)}
                     </select>
@@ -1563,7 +1592,7 @@ function FixedEventForm({
                     <span className="min-w-0 break-words">{copy.active}</span>
                     <input checked={active} onChange={(event) => setActive(event.target.checked)} type="checkbox" />
                 </label>
-                <button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={isLoading || !serviceId || capacity < 1} onClick={submit} type="button">
+                <button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={isLoading || !serviceId || !officeId || !resourceId || capacity < 1} onClick={submit} type="button">
                     {isLoading ? copy.saving : editingEvent ? copy.saveEvent : copy.createEvent}
                 </button>
             </div>
@@ -1785,6 +1814,7 @@ function ManualBookingForm({
                 clientIdentifier: clientIdentifier.trim(),
                 specialistId: selectedSpecialistId === "" ? null : selectedSpecialistId,
                 availabilityBlockId: selectedSlot.block.id,
+                resourceId: selectedSlot.block.resourceId,
                 serviceId: Number(serviceId),
                 startsAt: selectedSlot.startsAt,
                 reminderOptIn
@@ -1980,6 +2010,7 @@ function blockCalendarDetail(block: SpecialistAvailabilityBlock, copy: ReturnTyp
             {label: copy.specialistFilter, value: block.specialistName},
             {label: copy.office, value: block.officeName ?? copy.noOffice},
             {label: copy.slotService, value: block.serviceTitle ?? copy.notAssigned},
+            {label: copy.resource, value: block.resourceName ?? copy.notAssigned},
             {label: copy.capacity, value: block.capacity === null ? copy.notAssigned : String(block.capacity)},
             {label: copy.detailBooked, value: block.booked ? copy.yes : copy.no},
             {label: copy.detailCreated, value: formatDateTime(block.createdAt, locale)},
@@ -1997,6 +2028,7 @@ function bookingCalendarDetail(booking: SpecialistBooking, copy: ReturnType<type
             {label: copy.startsAt, value: formatDateTime(booking.startsAt, locale)},
             {label: copy.endsAt, value: formatDateTime(booking.endsAt, locale)},
             {label: copy.slotService, value: bookingServiceTitle(booking, locale)},
+            {label: copy.resource, value: booking.resourceName ?? copy.notAssigned},
             {label: copy.office, value: booking.officeName ?? copy.noOffice}
         ].concat(bookingDetailRows(booking, copy, locale, t))
     };
@@ -2047,6 +2079,7 @@ function teamBookingCalendarDetail(booking: SpecialistBooking, copy: ReturnType<
             {label: copy.endsAt, value: formatDateTime(booking.endsAt, locale)},
             {label: copy.specialistFilter, value: booking.specialistName},
             {label: copy.slotService, value: bookingServiceTitle(booking, locale)},
+            {label: copy.resource, value: booking.resourceName ?? copy.notAssigned},
             {label: copy.office, value: booking.officeName ?? copy.noOffice}
         ]
     };
@@ -2064,6 +2097,7 @@ function eventCalendarDetail(event: SpecialistFixedEvent, copy: ReturnType<typeo
             {label: copy.specialistFilter, value: event.specialistName},
             {label: copy.office, value: event.officeName ?? copy.noOffice},
             {label: copy.capacity, value: `${event.enrolledCount}/${event.capacity}`},
+            {label: copy.resource, value: event.resourceName ?? copy.notAssigned},
             {label: copy.price, value: formatAmount(event.price, locale)}
         ].concat(publicNote(event.note) ? [{label: copy.note, value: publicNote(event.note) as string}] : [])
     };
@@ -2374,6 +2408,7 @@ function buildDefaultForm(): AvailabilityForm {
 
     return {
         officeId: "",
+        resourceId: "",
         status: "AVAILABLE",
         itemType: "OPEN_RANGE",
         serviceId: "",

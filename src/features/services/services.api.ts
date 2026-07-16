@@ -1,6 +1,6 @@
 import {createApi} from "@reduxjs/toolkit/query/react";
 import {baseQuery} from "@/shared/api/baseQuery";
-import type {AdminService, AdminServicePageResponse, PublicServicePageResponse, ServiceInput} from "@/types/services";
+import type {AdminService, AdminServicePageResponse, PublicServicePageResponse, ServiceInput, ServiceVariant, ServiceVariantInput} from "@/types/services";
 import type {Locale} from "@/i18n";
 
 type ListAdminServicesArgs = {
@@ -26,7 +26,7 @@ function listAdminServicesPath({query, active, page = 0, size = 100}: ListAdminS
 export const servicesApi = createApi({
     reducerPath: "servicesApi",
     baseQuery,
-    tagTypes: ["Services"],
+    tagTypes: ["Services", "ServiceVariants"],
     endpoints: (build) => ({
         listServices: build.query<PublicServicePageResponse, {lang: Locale; page?: number; size?: number}>({
             query: ({lang, page = 0, size = 50}) => `/services?lang=${lang}&page=${page}&size=${size}`
@@ -51,7 +51,10 @@ export const servicesApi = createApi({
                 {type: "Services", id},
                 {type: "Services", id: "LIST"}
             ]
-        })
+        }),
+        listServiceVariants: build.query<ServiceVariant[], number>({query:(serviceId)=>`/admin/services/${serviceId}/variants`,providesTags:["ServiceVariants"]}),
+        createServiceVariant: build.mutation<ServiceVariant,{serviceId:number;body:ServiceVariantInput}>({query:({serviceId,body})=>({url:`/admin/services/${serviceId}/variants`,method:"POST",body}),invalidatesTags:["ServiceVariants"]}),
+        updateServiceVariant: build.mutation<ServiceVariant,{serviceId:number;id:number;body:ServiceVariantInput}>({query:({serviceId,id,body})=>({url:`/admin/services/${serviceId}/variants/${id}`,method:"PUT",body}),invalidatesTags:["ServiceVariants"]})
     })
 });
 
@@ -60,4 +63,5 @@ export const {
     useListAdminServicesQuery,
     useCreateServiceMutation,
     useUpdateServiceMutation
+    ,useListServiceVariantsQuery,useCreateServiceVariantMutation,useUpdateServiceVariantMutation
 } = servicesApi;

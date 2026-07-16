@@ -3,6 +3,7 @@ import {baseQuery} from "@/shared/api/baseQuery";
 import type {
     DayPlanCopyInput,
     DayPlanCopyResponse,
+    FittingServiceOption,
     PublicFixedEvent,
     PublicScheduleAvailabilityBlock,
     PublicScheduleUnavailableBlock,
@@ -37,6 +38,16 @@ type ListPublicEventsArgs = ListPublicAvailabilityArgs & {
     lang: Locale;
 };
 
+type ListFittingOptionsArgs = {
+    startsAt: string;
+    endsAt: string;
+    officeId: number;
+    serviceId?: number;
+    specialistId?: number;
+    resourceId?: number;
+    lang: Locale;
+};
+
 export const scheduleApi = createApi({
     reducerPath: "scheduleApi",
     baseQuery,
@@ -47,6 +58,15 @@ export const scheduleApi = createApi({
         }),
         getScheduleConfig: build.query<ScheduleConfig, void>({
             query: () => "/schedule/config"
+        }),
+        listFittingOptions: build.query<FittingServiceOption[], ListFittingOptionsArgs>({
+            query: ({startsAt, endsAt, officeId, serviceId, specialistId, resourceId, lang}) => {
+                const params = new URLSearchParams({startsAt, endsAt, officeId: String(officeId), lang});
+                if (serviceId !== undefined) params.set("serviceId", String(serviceId));
+                if (specialistId !== undefined) params.set("specialistId", String(specialistId));
+                if (resourceId !== undefined) params.set("resourceId", String(resourceId));
+                return `/schedule/fitting-options?${params.toString()}`;
+            }
         }),
         listPublicAvailability: build.query<PublicScheduleAvailabilityBlock[], ListPublicAvailabilityArgs>({
             query: ({from, to, officeId, serviceId, specialistId}) => {
@@ -202,6 +222,7 @@ export const {
     useCreateAvailabilityMutation,
     useCopyDayPlanMutation,
     useGetScheduleConfigQuery,
+    useListFittingOptionsQuery,
     useCancelFixedEventEnrollmentMutation,
     useCreateSpecialistEventMutation,
     useDeleteAvailabilityMutation,

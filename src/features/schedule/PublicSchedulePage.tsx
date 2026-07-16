@@ -10,6 +10,7 @@ import {useListPublicOfficesQuery} from "@/features/offices/offices.api";
 import {
     useCancelFixedEventEnrollmentMutation,
     useEnrollFixedEventMutation,
+    useListFittingOptionsQuery,
     useListPublicAvailabilityQuery,
     useListPublicEventsQuery
 } from "@/features/schedule/schedule.api";
@@ -20,7 +21,6 @@ import {
     buildSelectedDayItems,
     dateKey,
     filterScheduleEvents,
-    serviceDurationSlot,
     startOfDay,
     slotKey,
     toId,
@@ -41,7 +41,7 @@ import {initialsFromName} from "@/shared/lib/text/initials";
 import {useValidatePromoMutation} from "@/features/promos/promos.api";
 import type {PromoValidation} from "@/types/promos";
 import type {Office} from "@/types/offices";
-import type {PublicFixedEvent, PublicScheduleAvailabilityBlock} from "@/types/schedule";
+import type {FittingServiceOption, PublicFixedEvent, PublicScheduleAvailabilityBlock} from "@/types/schedule";
 import type {PublicService} from "@/types/services";
 import type {MembershipOffer, MembershipPurchase} from "@/types/memberships";
 import {useActivateLoyaltyVoucherMutation, useGetLoyaltyVouchersQuery} from "@/features/loyalty/loyalty.api";
@@ -49,9 +49,9 @@ import type {LoyaltyVoucher} from "@/types/loyalty";
 
 const savedFiltersKey = "ataraksia.publicScheduleFilters";
 type PendingBooking =
-    | {type: "individual"; service: PublicService; slot: PublicScheduleAvailabilityBlock}
+    | {type: "individual"; service: PublicService; slot: PublicScheduleAvailabilityBlock; fitting: FittingServiceOption}
     | {type: "event"; event: PublicFixedEvent};
-type ChoiceSectionKey = "office" | "specialist";
+type ChoiceSectionKey = "service" | "office" | "specialist";
 type PaymentPrompt = {
     externalPaymentUrl: string | null;
     paidWithMembership?: boolean;
@@ -69,6 +69,7 @@ export default function PublicSchedulePage() {
     const toast = useToast();
     const [filters, setFilters] = useState<FilterState>({officeId: "", specialistId: "", mode: "all", status: "all", period: 31});
     const [currentDate, setCurrentDate] = useState(() => new Date());
+    const [selectedServiceId, setSelectedServiceId] = useState<number | "">("");
     const [reminderOptIn, setReminderOptIn] = useState(false);
     const [pendingBooking, setPendingBooking] = useState<PendingBooking | null>(null);
     const [selectedMembershipPurchaseId, setSelectedMembershipPurchaseId] = useState<number | "">("");
@@ -89,14 +90,14 @@ export default function PublicSchedulePage() {
         from: guidedRange.from,
         to: guidedRange.to,
         officeId: filters.officeId,
-        serviceId: "",
+        serviceId: selectedServiceId,
         specialistId: filters.specialistId
     });
     const {data: guidedEventsData = [], refetch: refetchEvents} = useListPublicEventsQuery({
         from: guidedRange.from,
         to: guidedRange.to,
         officeId: filters.officeId,
-        serviceId: "",
+        serviceId: selectedServiceId,
         specialistId: filters.specialistId,
         lang: locale
     });
@@ -189,6 +190,7 @@ export default function PublicSchedulePage() {
                     availabilityBlockId: pendingBooking.slot.id,
                     resourceId: pendingBooking.slot.resourceId,
                     serviceId: pendingBooking.service.id,
+                    serviceVariantId: pendingBooking.fitting.variantId,
                     startsAt: pendingBooking.slot.startsAt,
                     reminderOptIn,
                     membershipPurchaseId: selectedMembershipPurchaseId === "" ? null : selectedMembershipPurchaseId,
@@ -253,17 +255,25 @@ export default function PublicSchedulePage() {
                 currentDate={currentDate}
                 events={selectedDayEvents}
                 filters={filters}
+                services={individualServices}
+                selectedServiceId={selectedServiceId}
                 locale={locale}
                 offices={offices}
                 onChooseDate={(date) => {
                     setCurrentDate(date);
                 }}
                 onChooseOffice={(officeId) => updateFilter("officeId", officeId)}
+                onChooseService={(serviceId) => {
+                    setSelectedServiceId(serviceId);
+                    setFilters((current) => ({...current, mode: "individual", status: "available"}));
+                    setPaymentPrompt(null);
+                }}
                 onChooseMonth={(date) => {
                     setCurrentDate(date);
                 }}
                 onResetFilters={() => {
                     setFilters({officeId: "", specialistId: "", mode: "all", status: "all", period: 31});
+                    setSelectedServiceId("");
                     setCurrentDate(new Date());
                     setPaymentPrompt(null);
                 }}
@@ -327,17 +337,14 @@ export default function PublicSchedulePage() {
                     copy={copy}
                     locale={locale}
                     onClose={() => setSlotForServiceChoice(null)}
-                    onSelect={(service) => {
-                        const appointmentSlot = serviceDurationSlot(slotForServiceChoice, service);
-                        if (!appointmentSlot) {
-                            toast.error(copy.slotTooShort);
-                            return;
-                        }
+                    onSelect={(service, fitting) => {
+                        const appointmentSlot = {...slotForServiceChoice, resourceId: fitting.resourceId, resourceName: fitting.resourceName, endsAt: fitting.endsAt};
                         setFilters((current) => ({...current, mode: "individual", status: "available"}));
-                        setPendingBooking({type: "individual", service, slot: appointmentSlot});
+                        setPendingBooking({type: "individual", service, slot: appointmentSlot, fitting});
                         setSlotForServiceChoice(null);
                     }}
                     services={individualServices}
+                    selectedServiceId={selectedServiceId}
                     slot={slotForServiceChoice}
                     returnFocusTo={modalTriggerRef.current}
                 />
@@ -421,12 +428,15 @@ function GuidedBookingFlow({
     filters,
     locale,
     offices,
+    services,
+    selectedServiceId,
     onChooseDate,
     onChooseEvent,
     onEnrollEvent,
     onChooseEventMode,
     onChooseIndividualMode,
     onChooseOffice,
+    onChooseService,
     onChooseMonth,
     onResetFilters,
     onChooseSpecialist,
@@ -441,12 +451,15 @@ function GuidedBookingFlow({
     filters: FilterState;
     locale: string;
     offices: Office[];
+    services: PublicService[];
+    selectedServiceId: number | "";
     onChooseDate: (date: Date) => void;
     onChooseEvent: (event: PublicFixedEvent) => void;
     onEnrollEvent: (event: PublicFixedEvent) => void;
     onChooseEventMode: () => void;
     onChooseIndividualMode: () => void;
     onChooseOffice: (officeId: number | "") => void;
+    onChooseService: (serviceId: number | "") => void;
     onChooseMonth: (date: Date) => void;
     onResetFilters: () => void;
     onChooseSpecialist: (specialistId: number | "") => void;
@@ -467,6 +480,7 @@ function GuidedBookingFlow({
     const monthDays = useMemo(() => buildMonthPickerDays(currentDate), [currentDate]);
     const nearestDay = availableDays.find((day) => day.date.getTime() >= startOfDay(new Date()).getTime()) ?? availableDays[0];
     const selectedOffice = filters.officeId === "" ? undefined : offices.find((office) => office.id === filters.officeId);
+    const selectedService = selectedServiceId === "" ? undefined : services.find((service) => service.id === selectedServiceId);
     const selectedSpecialist = filters.specialistId === "" ? undefined : specialists.find((specialist) => specialist.id === filters.specialistId);
     const selectedDayItems = useMemo(() => buildSelectedDayItems(slots, events), [events, slots]);
     const visibleSelectedDayItems = selectedDayItems.slice(0, visibleResultCount);
@@ -484,7 +498,7 @@ function GuidedBookingFlow({
 
     useEffect(() => {
         setVisibleResultCount(10);
-    }, [selectedKey, filters.officeId, filters.specialistId, filters.mode]);
+    }, [selectedKey, filters.officeId, filters.specialistId, filters.mode, selectedServiceId]);
 
     useEffect(() => {
         if (openSection) {
@@ -530,7 +544,15 @@ function GuidedBookingFlow({
                     </div>
                 </div>
                 <div className="min-w-0 rounded-xl border border-stone-200 bg-stone-50 p-3">
-                    <div className="mb-3 grid gap-2 lg:grid-cols-2">
+                    <div className="mb-3 grid gap-2 lg:grid-cols-3">
+                        <ChoiceFilterTrigger
+                            active={selectedServiceId !== ""}
+                            open={openSection === "service"}
+                            state={filterChoiceState(selectedServiceId !== "", slots.length + events.length)}
+                            summary={selectedService?.title ?? copy.allServices}
+                            title={copy.chooseServiceFirst}
+                            onToggle={() => toggleSection("service")}
+                        />
                         <ChoiceFilterTrigger
                             active={filters.officeId !== ""}
                             open={openSection === "office"}
@@ -550,6 +572,22 @@ function GuidedBookingFlow({
                     </div>
                     <div className="mb-3">
                         <AnimatedFilterPanel open={openSection !== null}>
+                            {renderedSection === "service" ? (
+                                <>
+                                    <p className="text-xs leading-5 text-stone-500">{copy.chooseServiceHint}</p>
+                                    <div className="ataraksia-booking-enter mt-2 grid gap-2 sm:grid-cols-2">
+                                        <button className={selectedServiceId === "" ? "w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full rounded-xl border border-stone-200 bg-white p-3 text-left transition-colors hover:border-stone-400"} onClick={() => onChooseService("")} type="button">
+                                            <span className="block text-sm font-semibold">{copy.allServices}</span>
+                                        </button>
+                                        {services.map((service) => (
+                                            <button className={selectedServiceId === service.id ? "w-full rounded-xl border border-stone-900 bg-stone-900 p-3 text-left text-white" : "w-full rounded-xl border border-stone-200 bg-white p-3 text-left transition-colors hover:border-stone-400"} key={service.id} onClick={() => onChooseService(service.id)} type="button">
+                                                <span className="block text-sm font-semibold">{service.title}</span>
+                                                <span className={selectedServiceId === service.id ? "mt-1 block text-xs text-stone-200" : "mt-1 block text-xs text-stone-500"}>{copy.minutes(service.durationMinutes)} · {formatAmount(service.basePrice, locale)}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </>
+                            ) : null}
                             {renderedSection === "office" ? (
                                 <>
                                     <p className="text-xs leading-5 text-stone-500">{copy.chooseOfficeHint}</p>
@@ -594,6 +632,7 @@ function GuidedBookingFlow({
                     <div className="mb-3 rounded-xl border border-stone-200 bg-white p-3">
                         <h3 className="text-sm font-semibold text-stone-950">{copy.selectedSummary}</h3>
                         <div className="mt-2 flex flex-wrap gap-1.5">
+                            {selectedService ? <span className="max-w-full break-words rounded-full border border-stone-900 bg-stone-900 px-2.5 py-1 text-xs font-medium text-white">{selectedService.title}</span> : null}
                             {selectedFilterChips.map((chip) => (
                                 <span className="max-w-full break-words rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700" key={chip}>{chip}</span>
                             ))}
@@ -1151,8 +1190,17 @@ function localeTitle(titleUa: string, titleEn: string, locale: string) {
     return locale === "en" ? titleEn || titleUa : titleUa || titleEn;
 }
 
-function ServiceChoiceModal({copy, locale, onClose, onSelect, returnFocusTo, services, slot}: {copy: Copy; locale: string; onClose: () => void; onSelect: (service: PublicService) => void; returnFocusTo: HTMLElement | null; services: PublicService[]; slot: PublicScheduleAvailabilityBlock}) {
-    const fittingServices = services.filter((service) => Boolean(serviceDurationSlot(slot, service)));
+function ServiceChoiceModal({copy, locale, onClose, onSelect, returnFocusTo, selectedServiceId, services, slot}: {copy: Copy; locale: Locale; onClose: () => void; onSelect: (service: PublicService, fitting: FittingServiceOption) => void; returnFocusTo: HTMLElement | null; selectedServiceId: number | ""; services: PublicService[]; slot: PublicScheduleAvailabilityBlock}) {
+    const {data: fittingOptions = [], isError, isFetching} = useListFittingOptionsQuery({
+        startsAt: slot.startsAt,
+        endsAt: slot.endsAt,
+        officeId: slot.officeId ?? 0,
+        serviceId: selectedServiceId === "" ? undefined : selectedServiceId,
+        specialistId: slot.specialistId,
+        resourceId: slot.resourceId ?? undefined,
+        lang: locale
+    }, {skip: slot.officeId === null});
+    const serviceById = new Map(services.map((service) => [service.id, service]));
     const dialogRef = useModalFocus(onClose, returnFocusTo);
 
     return (
@@ -1160,15 +1208,17 @@ function ServiceChoiceModal({copy, locale, onClose, onSelect, returnFocusTo, ser
             <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5">
                 <h2 className="break-words text-xl font-semibold text-stone-950" id="service-choice-title">{copy.chooseServiceForTime}</h2>
                 <p className="mt-2 break-words text-sm leading-6 text-stone-500">{formatDateTimeRange(slot.startsAt, slot.endsAt, locale)} · {slot.specialistName} · {slot.officeName ?? copy.withoutOffice}</p>
-                {fittingServices.length === 0 ? <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-800">{copy.slotTooShort}</p> : null}
+                {isFetching ? <p className="mt-4 text-sm text-stone-500">{copy.loading}</p> : null}
+                {!isFetching && isError ? <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm leading-6 text-red-800">{copy.fittingOptionsError}</p> : null}
+                {!isFetching && !isError && fittingOptions.length === 0 ? <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-800">{copy.noFittingOptions}</p> : null}
                 <div className="mt-5 space-y-2">
-                    {services.map((service) => {
-                        const fitsSlot = Boolean(serviceDurationSlot(slot, service));
+                    {fittingOptions.map((fitting) => {
+                        const service = serviceById.get(fitting.serviceId);
+                        if (!service) return null;
                         return (
-                            <button className={fitsSlot ? "block w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white" : "block w-full max-w-full cursor-not-allowed rounded-xl border border-stone-200 bg-stone-100 p-3 text-left opacity-60"} disabled={!fitsSlot} key={service.id} onClick={() => onSelect(service)} type="button">
-                                <span className="block break-words text-sm font-semibold text-stone-950">{service.title}</span>
-                                <span className="mt-1 block break-words text-xs text-stone-500">{copy.minutes(service.durationMinutes)} · {formatAmount(service.basePrice, locale)}</span>
-                                {!fitsSlot ? <span className="mt-2 block break-words text-xs font-medium text-amber-800">{copy.slotTooShort}</span> : null}
+                            <button className="block w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-left transition-colors hover:border-stone-400 hover:bg-white" key={`${fitting.variantId}-${fitting.specialistId}-${fitting.resourceId}`} onClick={() => onSelect(service, fitting)} type="button">
+                                <span className="block break-words text-sm font-semibold text-stone-950">{service.title} · {fitting.variantName}</span>
+                                <span className="mt-1 block break-words text-xs text-stone-500">{copy.minutes(fitting.durationMinutes)} · {formatAmount(fitting.price, locale)} · {fitting.resourceName}</span>
                             </button>
                         );
                     })}
@@ -1551,8 +1601,10 @@ function labels(t: T) {
         today: t("calendarMessages.today"),
         loadError: t("loadError"),
         chooseServiceFirst: t("public.chooseServiceFirst"),
+        chooseServiceHint: t("public.chooseServiceHint"),
         chooseServiceForTime: t("public.chooseServiceForTime"),
-        slotTooShort: t("public.slotTooShort"),
+        noFittingOptions: t("public.noFittingOptions"),
+        fittingOptionsError: t("public.fittingOptionsError"),
         unavailableClick: t("public.unavailableClick"),
         individualServiceTitle: t("public.individualServiceTitle"),
         individualServiceHint: t("public.individualServiceHint"),

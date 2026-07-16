@@ -1,5 +1,6 @@
 {
   "nav": {
+    "publicNavigation": "Main navigation",
     "home": "Home",
     "about": "About",
     "contact": "Contact",

@@ -11,6 +11,7 @@ import styles from "./NewsComponent.module.scss";
 import {useListNewsQuery} from "@/features/news/news.api";
 import {getCurrentUser, hasRole} from "@/features/auth/auth.client";
 import AuthenticatedLink from "@/features/auth/AuthenticatedLink";
+import PublicPageHeader from "@/components/ui/page/PublicPageHeader";
 
 function TextPreview({content}: { content: string }) {
     const excerpt = content
@@ -51,14 +52,9 @@ export default function NewsList() {
     const news = data?.content ?? [];
 
     return (
-        <div ref={contentRef} className={styles.content} id="public-page-content">
-            <div className={styles.newsLayout}>
-                <header className={styles.newsHeader}>
-                    <div className={styles.newsHeaderText}>
-                        <h1>{newsT("title")}</h1>
-                        <p>{newsT("subtitle")}</p>
-                    </div>
-                    {canCreateNews ? (
+        <main ref={contentRef} id="public-page-content">
+            <PublicPageHeader
+                actions={canCreateNews ? (
                         <AuthenticatedLink
                             aria-label={newsT("createAction")}
                             className={styles.createNewsButton}
@@ -69,9 +65,12 @@ export default function NewsList() {
                             <span aria-hidden="true">+</span>
                             <span>{newsT("createAction")}</span>
                         </AuthenticatedLink>
-                    ) : null}
-                </header>
-
+                ) : null}
+                intro={newsT("subtitle")}
+                title={newsT("title")}
+            />
+            <div className={styles.content}>
+              <div className={styles.newsLayout}>
                 <div className={styles.newsBlock}>
                     {isLoading ? (
                         Array.from({length: 6}).map((_, index) => (
@@ -139,7 +138,8 @@ export default function NewsList() {
                         );
                     })}
                 </div>
+              </div>
             </div>
-        </div>
+        </main>
     );
 }

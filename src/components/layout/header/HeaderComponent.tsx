@@ -21,7 +21,7 @@ export default function HeaderComponent() {
     const isAuthPage = pathname.endsWith("/auth") || pathname.endsWith("/login") || pathname.endsWith("/register");
     const isAccountPage = /\/account(?:\/|$)/.test(pathname);
     const isManagementPage = pathname.includes("/admin");
-    const usesBackgroundSlider = isAuthPage || isAccountPage || isManagementPage;
+    const isHomePage = /^\/(?:ua|en)\/?$/.test(pathname);
 
     const blockRef = useRef<HTMLDivElement | null>(null);
     const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -151,11 +151,41 @@ export default function HeaderComponent() {
         };
     }, [stuck]);
 
+    if (isAccountPage || isManagementPage) {
+        return null;
+    }
+
+    if (!isHomePage) {
+        return (
+            <header className="relative z-40 border-b border-stone-800 bg-stone-950 text-white">
+                <div className="container mx-auto flex min-h-16 flex-wrap items-center justify-between gap-3 px-3 py-2 sm:px-4">
+                    <nav aria-label={t("publicNavigation")} className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+                        {buttonsConfig.map((button) => (
+                            <ButtonComponent
+                                key={button.url}
+                                localeKey={locale}
+                                styleName="stickyNavStyle"
+                                text={button.text}
+                                url={button.url}
+                            />
+                        ))}
+                    </nav>
+                    <div className="flex min-w-0 items-center gap-2">
+                        <Suspense fallback={null}>
+                            <LanguageSwitcher requiresSession={isAuthPage} />
+                        </Suspense>
+                        <AuthSessionPanel key={locale} loading={sessionLoading} onLogout={() => setUser(null)} user={user} />
+                    </div>
+                </div>
+            </header>
+        );
+    }
+
     return (
         <header className={styles.header}>
-            <SliderComponent background={usesBackgroundSlider} />
+            <SliderComponent />
 
-            {usesBackgroundSlider ? null : <div className={styles.buttonsWrap}>
+            <div className={styles.buttonsWrap}>
                 <div ref={sentinelRef} className={styles.stickySentinel} />
                 <div ref={placeholderRef} className={styles.stickyPlaceholder} />
 
@@ -172,16 +202,16 @@ export default function HeaderComponent() {
                         ))}
                     </div>
                 </div>
-            </div>}
+            </div>
 
-            {usesBackgroundSlider ? null : <div className={styles.userBlock}>
+            <div className={styles.userBlock}>
                 <div className={styles.userPanel}>
                     <Suspense fallback={null}>
                             <LanguageSwitcher requiresSession={isAccountPage || isManagementPage} />
                     </Suspense>
                     <AuthSessionPanel key={locale} user={user} loading={sessionLoading} onLogout={() => setUser(null)} />
                 </div>
-            </div>}
+            </div>
         </header>
     );
 }

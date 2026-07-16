@@ -8,6 +8,10 @@ import type {Locale} from "@/i18n";
 import {withLocale} from "@/shared/lib/locale/withLocale";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {AuthRequestError, confirmPasswordRecovery, confirmRegistration, login, requestPasswordRecovery, requestRegistration} from "./auth.client";
+import Button from "@/components/ui/button/Button";
+import Field from "@/components/ui/form/Field";
+import Input from "@/components/ui/form/Input";
+import Alert from "@/components/ui/state/Alert";
 
 type Mode = "login" | "register" | "recovery";
 
@@ -206,7 +210,7 @@ export default function AuthForm({initialMode = "login"}: Props) {
                 <>
                     <label className="block space-y-2 text-sm font-medium text-stone-800">
                         <span>{t("fields.recoveryContact")}</span>
-                        <input
+                        <Input
                             required
                             name="recoveryContact"
                             type="text"
@@ -215,7 +219,6 @@ export default function AuthForm({initialMode = "login"}: Props) {
                             placeholder={t("fields.identifierPlaceholder")}
                             value={recoveryContact}
                             onChange={(event) => setRecoveryContact(event.target.value)}
-                            className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal"
                             disabled={recoveryRequested}
                         />
                     </label>
@@ -223,64 +226,63 @@ export default function AuthForm({initialMode = "login"}: Props) {
                         <>
                             <label className="block space-y-2 text-sm font-medium text-stone-800">
                                 <span>{t("fields.recoveryCode")}</span>
-                                <input required name="code" type="text" inputMode="numeric" maxLength={16} autoComplete="one-time-code" className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal" />
+                                <Input required name="code" type="text" inputMode="numeric" maxLength={16} autoComplete="one-time-code" />
                             </label>
                             <label className="block space-y-2 text-sm font-medium text-stone-800">
                                 <span>{t("fields.newPassword")}</span>
-                                <input required name="password" type="password" value={password} minLength={12} maxLength={128} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal" />
+                                <Input required name="password" type="password" value={password} minLength={12} maxLength={128} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" />
                             </label>
                             <PasswordChecklist passwordChecks={passwordChecks} t={t} />
                         </>
                     ) : (
-                        <p className="rounded-xl bg-stone-100 p-3 text-xs leading-5 text-stone-600">{t("recovery.genericHint")}</p>
+                        <Alert>{t("recovery.genericHint")}</Alert>
                     )}
                 </>
             ) : mode === "login" ? (
-                <label className="block space-y-2 text-sm font-medium text-stone-800">
-                    <span>{t("fields.identifier")}</span>
-                    <input
+                <Field htmlFor="auth-identifier" label={t("fields.identifier")}>
+                    <Input
+                        id="auth-identifier"
                         required
                         name="identifier"
                         type="text"
                         maxLength={254}
                         autoComplete="username"
                         placeholder={t("fields.identifierPlaceholder")}
-                        className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal"
                     />
-                </label>
+                </Field>
             ) : (
                 <>
                     <div className="grid gap-3 sm:grid-cols-2">
                         <label className="block space-y-2 text-sm font-medium text-stone-800">
                             <span>{t("fields.firstName")}</span>
-                            <input required name="firstName" type="text" minLength={2} maxLength={50} autoComplete="given-name" disabled={registrationRequested} className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal disabled:bg-stone-100" />
+                            <Input required name="firstName" type="text" minLength={2} maxLength={50} autoComplete="given-name" disabled={registrationRequested} />
                         </label>
                         <label className="block space-y-2 text-sm font-medium text-stone-800">
                             <span>{t("fields.lastName")}</span>
-                            <input required name="lastName" type="text" minLength={2} maxLength={50} autoComplete="family-name" disabled={registrationRequested} className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal disabled:bg-stone-100" />
+                            <Input required name="lastName" type="text" minLength={2} maxLength={50} autoComplete="family-name" disabled={registrationRequested} />
                         </label>
                     </div>
 
                     <label className="block space-y-2 text-sm font-medium text-stone-800">
                         <span>{t("fields.dateOfBirth")}</span>
-                        <input name="dateOfBirth" type="date" autoComplete="bday" disabled={registrationRequested} className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal disabled:bg-stone-100" />
+                        <Input name="dateOfBirth" type="date" autoComplete="bday" disabled={registrationRequested} />
                     </label>
 
                     <p className="text-sm text-stone-600">{t("register.contactHint")}</p>
                     <div className="grid gap-3 sm:grid-cols-2">
                         <label className="block space-y-2 text-sm font-medium text-stone-800">
                             <span>{t("fields.phone")}</span>
-                            <input name="phone" type="tel" maxLength={32} autoComplete="tel" placeholder="+380... / 0..." disabled={registrationRequested} className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal disabled:bg-stone-100" />
+                            <Input name="phone" type="tel" maxLength={32} autoComplete="tel" placeholder="+380... / 0..." disabled={registrationRequested} />
                         </label>
                         <label className="block space-y-2 text-sm font-medium text-stone-800">
                             <span>{t("fields.email")}</span>
-                            <input name="email" type="email" maxLength={254} autoComplete="email" disabled={registrationRequested} className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal disabled:bg-stone-100" />
+                            <Input name="email" type="email" maxLength={254} autoComplete="email" disabled={registrationRequested} />
                         </label>
                     </div>
                     {registrationRequested ? (
                         <label className="block space-y-2 text-sm font-medium text-stone-800">
                             <span>{t("fields.registrationCode")}</span>
-                            <input required name="code" type="text" inputMode="numeric" maxLength={16} autoComplete="one-time-code" className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal" />
+                            <Input required name="code" type="text" inputMode="numeric" maxLength={16} autoComplete="one-time-code" />
                         </label>
                     ) : null}
                 </>
@@ -289,7 +291,7 @@ export default function AuthForm({initialMode = "login"}: Props) {
             {mode !== "recovery" ? (
                 <label className="block space-y-2 text-sm font-medium text-stone-800">
                     <span>{t("fields.password")}</span>
-                    <input
+                    <Input
                         required
                         name="password"
                         type="password"
@@ -299,45 +301,45 @@ export default function AuthForm({initialMode = "login"}: Props) {
                         onChange={(event) => setPassword(event.target.value)}
                         autoComplete={mode === "login" ? "current-password" : "new-password"}
                         disabled={mode === "register" && registrationRequested}
-                        className="w-full rounded-md border border-stone-300 px-3 py-2 font-normal disabled:bg-stone-100"
                     />
                 </label>
             ) : null}
 
             {mode === "register" && !registrationRequested ? <PasswordChecklist passwordChecks={passwordChecks} t={t} /> : null}
 
-            {error ? <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</p> : null}
+            {error ? <Alert tone="error">{error}</Alert> : null}
 
-            <button
+            <Button
                 type="submit"
                 disabled={submitting}
-                className="w-full rounded-md bg-stone-900 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                fullWidth
+                size="lg"
             >
                 {submitting ? t("submitting") : mode === "recovery" && recoveryRequested ? t("recovery.confirmSubmit") : mode === "register" && registrationRequested ? t("register.confirmSubmit") : t(`${mode}.submit`)}
-            </button>
+            </Button>
 
             {mode === "login" ? (
                 <div className="space-y-2 text-center text-sm text-stone-600">
                     <p>
                         {t("login.alternative")}{" "}
-                        <button className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-2 hover:decoration-stone-900" type="button" onClick={() => selectMode("register")}>
+                        <Button variant="link" type="button" onClick={() => selectMode("register")}>
                             {t("login.alternativeLink")}
-                        </button>
+                        </Button>
                     </p>
-                    <button className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-2 hover:decoration-stone-900" type="button" onClick={() => selectMode("recovery")}>
+                    <Button variant="link" type="button" onClick={() => selectMode("recovery")}>
                         {t("login.forgotPassword")}
-                    </button>
+                    </Button>
                 </div>
             ) : (
                 <p className="text-center text-sm text-stone-600">
                     {t(`${mode}.alternative`)}{" "}
-                    <button
-                        className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-2 hover:decoration-stone-900"
+                    <Button
+                        variant="link"
                         type="button"
                         onClick={() => selectMode("login")}
                     >
                         {t(`${mode}.alternativeLink`)}
-                    </button>
+                    </Button>
                 </p>
             )}
         </form>

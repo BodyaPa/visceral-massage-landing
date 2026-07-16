@@ -1,4 +1,4 @@
-export type UserRole = "USER" | "MASTER" | "SPECIALIST" | "FINANCE_MANAGER" | "SMM";
+export type UserRole = "USER" | "ADMIN" | "SPECIALIST" | "FINANCE_MANAGER" | "SMM";
 
 export type RoleBearingUser = {
     roles?: readonly UserRole[];
@@ -13,9 +13,9 @@ export function hasAnyRole(user: RoleBearingUser | null | undefined, roles: User
 }
 
 export function hasManagementRole(user: RoleBearingUser | null | undefined) {
-    return hasAnyRole(user, ["MASTER", "SPECIALIST", "FINANCE_MANAGER", "SMM"]);
+    return hasAnyRole(user, ["ADMIN", "SPECIALIST", "FINANCE_MANAGER", "SMM"]);
 }
 
 export function hasAdministrationSection(user: RoleBearingUser | null | undefined) {
-    return hasAnyRole(user, ["SMM", "MASTER", "SPECIALIST", "FINANCE_MANAGER"]);
+    return hasAnyRole(user, ["SMM", "ADMIN", "SPECIALIST", "FINANCE_MANAGER"]);
 }

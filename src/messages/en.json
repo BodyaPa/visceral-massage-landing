@@ -450,7 +450,7 @@
     "memberships": {"title": "My memberships", "body": "Memberships and certificates are shown separately from calendar bookings.", "loading": "Updating memberships...", "loadError": "Unable to load memberships.", "empty": "No memberships or certificates yet.", "visits": "Remaining", "certificate": "Certificate", "expires": "Valid until", "pay": "Pay ↗", "paymentOpening": "Opening…", "manualPayment": "Payment awaits manual confirmation.", "paymentError": "Unable to open payment.", "showing": "Showing {visible} of {total}", "showMore": "Show more", "showLess": "Collapse", "previous": "Previous", "next": "Next", "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Awaiting payment", "ACTIVE": "Active", "CANCELLED": "Cancelled"}},
     "roles": {
       "USER": "User",
-      "MASTER": "Master",
+      "ADMIN": "Administrator",
       "SPECIALIST": "Specialist",
       "FINANCE_MANAGER": "Finance",
       "SMM": "SMM"
@@ -503,7 +503,7 @@
       "finance": "Finance"
     },
     "promos": {
-      "eyebrow": "MASTER",
+      "eyebrow": "ADMIN",
       "title": "Promo codes",
       "subtitle": "Generate percentage codes, limit their period and usage, and inspect complete history.",
       "discount": "Discount, %",
@@ -545,7 +545,7 @@
       "meta": {
         "title": "Site settings"
       },
-      "eyebrow": "MASTER",
+      "eyebrow": "ADMIN",
       "title": "Site settings",
       "subtitle": "Manage public pages through the CMS editor and configure the main background slider separately.",
       "loading": "Loading settings...",
@@ -1141,7 +1141,7 @@
       "restoreError": "Unable to restore access.",
       "roles": {
         "USER": "User",
-        "MASTER": "Master",
+        "ADMIN": "Administrator",
         "SPECIALIST": "Specialist",
         "FINANCE_MANAGER": "Finance",
         "SMM": "Content"

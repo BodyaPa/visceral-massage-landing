@@ -56,6 +56,7 @@ type PlannerScope = "mine" | "team";
 type PlannerTool = "availability" | "event" | "copy" | "bookings";
 
 type Props = {
+    canEditSchedule: boolean;
     canManageAllSpecialists: boolean;
     currentUserId: number;
 };
@@ -77,7 +78,7 @@ type CalendarDetail = {
     rows: Array<{label: string; value: string}>;
 };
 
-export default function SpecialistScheduleWorkspace({canManageAllSpecialists, currentUserId}: Props) {
+export default function SpecialistScheduleWorkspace({canEditSchedule, canManageAllSpecialists, currentUserId}: Props) {
     const t = useTranslations("admin.specialist.page");
     const locale = useLocale();
     const copy = scheduleCopy(t);
@@ -347,9 +348,9 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
 	                                </>
 	                            ) : null}
 	                            <div>
-	                                <button className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-stone-700" onClick={() => openTool("availability")} type="button">
+	                                {canEditSchedule ? <button className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-stone-700" onClick={() => openTool("availability")} type="button">
 	                                    {t("actions.availability")}
-	                                </button>
+	                                </button> : null}
 	                            </div>
 	                        </div>
 	                    </div>
@@ -453,7 +454,7 @@ export default function SpecialistScheduleWorkspace({canManageAllSpecialists, cu
                 {selectedCalendarDetail ? <CalendarDetailPanel closeLabel={copy.closeDetails} detail={selectedCalendarDetail} onClose={() => setSelectedCalendarDetail(null)} returnFocusTo={calendarDetailTriggerRef.current} /> : null}
             </div>
 
-            {toolsOpen ? <OverlayPortal>
+            {canEditSchedule && toolsOpen ? <OverlayPortal>
             <button aria-label={copy.closeDetails} className={`fixed inset-0 z-40 bg-stone-950/20 transition-opacity duration-180 motion-reduce:transition-none ${toolsVisible ? "opacity-100" : "opacity-0"}`} onClick={closeTools} type="button" />
             <aside aria-label={copy.toolsTitle} aria-modal="true" className={`fixed inset-0 z-50 flex max-h-[100dvh] min-w-0 flex-col overflow-hidden border border-stone-200 bg-stone-50 shadow-2xl outline-none transition-[opacity,transform] duration-180 ease-out focus-visible:ring-2 focus-visible:ring-stone-500 motion-reduce:transition-none sm:inset-x-5 sm:bottom-auto sm:top-1/2 sm:mx-auto sm:h-[min(760px,92dvh)] sm:w-[min(1180px,calc(100vw-2.5rem))] sm:-translate-y-1/2 sm:rounded-2xl ${toolsVisible ? "translate-y-0 opacity-100 sm:-translate-y-1/2" : "translate-y-4 opacity-0 sm:-translate-y-[48%]"}`} ref={toolsPanelRef} role="dialog" tabIndex={-1}>
                 <div className="flex shrink-0 items-center justify-between gap-3 border-b border-stone-200 bg-white px-4 py-3 sm:px-5">

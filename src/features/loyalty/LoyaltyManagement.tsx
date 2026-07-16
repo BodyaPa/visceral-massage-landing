@@ -97,7 +97,7 @@ export default function LoyaltyManagement({locale}: {locale: Locale}) {
     return (
         <main className="space-y-6">
             <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div><p className="text-xs font-semibold uppercase tracking-[.18em] text-stone-500">MASTER</p>
+                <div><p className="text-xs font-semibold uppercase tracking-[.18em] text-stone-500">ADMIN</p>
                     <h1 className="mt-2 text-2xl font-semibold text-stone-950">{t("title")}</h1>
                     <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">{t("subtitle")}</p>
                 </div>

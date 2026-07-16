@@ -6,7 +6,7 @@ describe("auth role helpers", () => {
         const user = {roles: ["USER", "SMM"] as const};
 
         expect(hasRole(user, "SMM")).toBe(true);
-        expect(hasRole(user, "MASTER")).toBe(false);
+        expect(hasRole(user, "ADMIN")).toBe(false);
         expect(hasManagementRole(user)).toBe(true);
         expect(hasAdministrationSection(user)).toBe(true);
     });

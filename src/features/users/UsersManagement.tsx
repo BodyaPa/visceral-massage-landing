@@ -8,7 +8,7 @@ import type {UserRole} from "@/features/auth/auth.roles";
 import {useListUsersQuery, useUpdateUserEnabledMutation, useUpdateUserRolesMutation} from "@/features/users/users.api";
 import type {AdminUser} from "@/types/users";
 
-const manageableRoles: UserRole[] = ["MASTER", "SPECIALIST", "FINANCE_MANAGER", "SMM"];
+const manageableRoles: UserRole[] = ["ADMIN", "SPECIALIST", "FINANCE_MANAGER", "SMM"];
 const allFilterRoles: UserRole[] = ["USER", ...manageableRoles];
 const emptyUsers: AdminUser[] = [];
 

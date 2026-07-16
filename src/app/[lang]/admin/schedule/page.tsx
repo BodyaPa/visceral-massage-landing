@@ -1,7 +1,7 @@
 import type {Metadata} from "next";
 import {getTranslations} from "next-intl/server";
 import type {Locale} from "@/i18n";
-import {requireRole} from "@/features/auth/auth.server";
+import {requireAnyRole} from "@/features/auth/auth.server";
 import {hasRole} from "@/features/auth/auth.roles";
 import SpecialistScheduleWorkspace from "@/features/schedule/SpecialistScheduleWorkspace";
 
@@ -26,7 +26,7 @@ export async function generateMetadata({params}: Props): Promise<Metadata> {
 export default async function AdminSchedulePage({params}: Props) {
     const {lang} = await params;
     const locale = lang as Locale;
-    const user = await requireRole("SPECIALIST", locale);
+    const user = await requireAnyRole(["ADMIN", "SPECIALIST"], locale);
 
-    return <SpecialistScheduleWorkspace canManageAllSpecialists={hasRole(user, "MASTER")} currentUserId={user.id} />;
+    return <SpecialistScheduleWorkspace canEditSchedule={hasRole(user, "ADMIN")} canManageAllSpecialists={hasRole(user, "ADMIN")} currentUserId={user.id} />;
 }

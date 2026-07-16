@@ -181,7 +181,7 @@ describe("client authentication requests", () => {
             email: "owner@example.com",
             firstName: "Owner",
             lastName: "User",
-            roles: ["USER", "MASTER", "SPECIALIST", "FINANCE_MANAGER", "SMM"]
+            roles: ["USER", "ADMIN", "SPECIALIST", "FINANCE_MANAGER", "SMM"]
         };
         const fetchMock = vi.fn()
             .mockResolvedValueOnce(new Response(null, {status: 401}))

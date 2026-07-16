@@ -996,15 +996,15 @@ function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, 
                         hoverFrameRef.current = requestAnimationFrame(() => {
                             const preview = column.querySelector<HTMLElement>("[data-hover-draft]");
                             if (!preview) return;
-                            const minuteOfDay = Math.max(0, Math.min(24 * 60 - 15, Math.round(((clientY - column.getBoundingClientRect().top) / pixelsPerHour * 60) / 15) * 15));
+                            const minuteOfDay = Math.max(0, Math.min(24 * 60 - 15, Math.floor(((clientY - column.getBoundingClientRect().top) / pixelsPerHour * 60) / 15) * 15));
                             const canCreate = !overEntry && minuteOfDay >= creationStartHour * 60 && minuteOfDay < creationEndHour * 60;
                             preview.style.opacity = canCreate ? "1" : "0";
-                            if (canCreate) preview.style.transform = `translateY(${minuteOfDay / 60 * pixelsPerHour - pixelsPerQuarterHour / 2}px)`;
+                            if (canCreate) preview.style.transform = `translateY(${minuteOfDay / 60 * pixelsPerHour}px)`;
                         });
                     }} onDoubleClick={(event) => {
                         if ((event.target as HTMLElement).closest("button")) return;
                         const rect = event.currentTarget.getBoundingClientRect();
-                        const minuteOfDay = Math.max(0, Math.min(24*60-15, Math.round(((event.clientY-rect.top)/pixelsPerHour*60)/15)*15));
+                        const minuteOfDay = Math.max(0, Math.min(24*60-15, Math.floor(((event.clientY-rect.top)/pixelsPerHour*60)/15)*15));
                         if (minuteOfDay < creationStartHour * 60 || minuteOfDay >= creationEndHour * 60) return;
                         const start = new Date(currentDate); start.setHours(Math.floor(minuteOfDay / 60), minuteOfDay % 60, 0, 0); onCreateAt(specialist.id, start);
                     }} style={{

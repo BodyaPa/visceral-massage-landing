@@ -46,6 +46,8 @@ import type {PublicService} from "@/types/services";
 import type {MembershipOffer, MembershipPurchase} from "@/types/memberships";
 import {useActivateLoyaltyVoucherMutation, useGetLoyaltyVouchersQuery} from "@/features/loyalty/loyalty.api";
 import type {LoyaltyVoucher} from "@/types/loyalty";
+import {useCancelTrainingSessionMutation, useEnrollTrainingSessionMutation, useListPublicTrainingSessionsQuery} from "@/features/training/training.api";
+import type {PublicTrainingSession} from "@/types/training";
 
 const savedFiltersKey = "ataraksia.publicScheduleFilters";
 type PendingBooking =
@@ -101,6 +103,7 @@ export default function PublicSchedulePage() {
         specialistId: filters.specialistId,
         lang: locale
     });
+    const {data: trainingSessionsData = [], refetch: refetchTrainingSessions} = useListPublicTrainingSessionsQuery({from: guidedRange.from, to: guidedRange.to, officeId: filters.officeId, trainerId: filters.specialistId, lang: locale});
     const {data: specialistOptionSlotsData = []} = useListPublicAvailabilityQuery({
         from: guidedRange.from,
         to: guidedRange.to,
@@ -119,19 +122,22 @@ export default function PublicSchedulePage() {
     const [createBooking, {isLoading: bookingLoading}] = useCreateBookingMutation();
     const [enrollEvent, {isLoading: enrollmentLoading}] = useEnrollFixedEventMutation();
     const [cancelEventEnrollment, {isLoading: cancelEnrollmentLoading}] = useCancelFixedEventEnrollmentMutation();
+    const [enrollTrainingSession, {isLoading: trainingEnrollmentLoading}] = useEnrollTrainingSessionMutation();
+    const [cancelTrainingSession, {isLoading: trainingCancellationLoading}] = useCancelTrainingSessionMutation();
 
     const offices = officesData?.content ?? [];
-    const services = servicesData?.content ?? [];
+    const services = useMemo(() => servicesData?.content ?? [], [servicesData]);
     const myMemberships = myMembershipsData?.content ?? [];
     const individualServices = services.filter((service) => service.bookingMode === "INDIVIDUAL_APPOINTMENT");
     const guidedSlots = useMemo(() => (
         filters.mode === "events" || filters.status === "unavailable" || filters.status === "events" || filters.status === "mine" ? [] : guidedSlotsData
     ), [filters.mode, filters.status, guidedSlotsData]);
-    const guidedEvents = useMemo(() => filterScheduleEvents(guidedEventsData, filters), [guidedEventsData, filters]);
+    const trainingServiceIds = useMemo(() => new Set([...services.filter(service => service.businessDirection === "TRAINING").map(service => service.id), ...trainingSessionsData.map(session => session.compatibilityServiceId)]), [services, trainingSessionsData]);
+    const guidedEvents = useMemo(() => filterScheduleEvents([...guidedEventsData.filter(event => !trainingServiceIds.has(event.serviceId)), ...trainingSessionsData.map(trainingSessionAsEvent)], filters), [guidedEventsData, filters, trainingSessionsData, trainingServiceIds]);
     const specialistOptionSlots = filters.mode === "events" || filters.status === "unavailable" || filters.status === "events" || filters.status === "mine" ? [] : specialistOptionSlotsData;
     const specialistOptionEvents = filterScheduleEvents(specialistOptionEventsData, {...filters, specialistId: ""});
     const guidedSpecialists = uniqueSpecialists([...specialistOptionSlots, ...specialistOptionEvents]);
-    const isSaving = bookingLoading || enrollmentLoading || cancelEnrollmentLoading;
+    const isSaving = bookingLoading || enrollmentLoading || cancelEnrollmentLoading || trainingEnrollmentLoading || trainingCancellationLoading;
     const selectedDateKey = dateKey(currentDate);
     const availableDays = useMemo(() => buildAvailableDays(guidedSlots, guidedEvents, locale, copy), [copy, guidedEvents, guidedSlots, locale]);
     const selectedDaySlots = guidedSlots.filter((slot) => dateKey(new Date(slot.startsAt)) === selectedDateKey);
@@ -201,17 +207,25 @@ export default function PublicSchedulePage() {
                 setPaymentPrompt(booking);
                 void refetchSlots();
             } else {
-                const event = await enrollEvent({
+                const sessionId = trainingSessionId(pendingBooking.event);
+                if (sessionId !== null) {
+                    const enrollment = await enrollTrainingSession({id: sessionId, lang: locale, reminderOptIn, membershipPurchaseId: selectedMembershipPurchaseId === "" ? null : selectedMembershipPurchaseId, loyaltyVoucherId: selectedLoyaltyVoucherId === "" ? null : selectedLoyaltyVoucherId, promoCode: promoCode || null}).unwrap();
+                    toast.success(enrollment.paidWithMembership ? copy.eventEnrolledWithMembership : enrollment.paidWithLoyaltyVoucher ? copy.eventEnrolledWithVoucher : copy.eventEnrolled);
+                    setPaymentPrompt({externalPaymentUrl: enrollment.externalPaymentUrl, paidWithMembership: enrollment.paidWithMembership, paidWithLoyaltyVoucher: enrollment.paidWithLoyaltyVoucher, title: pendingBooking.event.title, startsAt: pendingBooking.event.startsAt});
+                    void refetchTrainingSessions();
+                } else {
+                    const event = await enrollEvent({
                     id: pendingBooking.event.id,
                     lang: locale,
                     reminderOptIn,
                     membershipPurchaseId: selectedMembershipPurchaseId === "" ? null : selectedMembershipPurchaseId,
                     loyaltyVoucherId: selectedLoyaltyVoucherId === "" ? null : selectedLoyaltyVoucherId,
                     promoCode: promoCode || null
-                }).unwrap();
-                toast.success(event.paidWithMembership ? copy.eventEnrolledWithMembership : event.paidWithLoyaltyVoucher ? copy.eventEnrolledWithVoucher : copy.eventEnrolled);
-                setPaymentPrompt({externalPaymentUrl: event.externalPaymentUrl, paidWithMembership: event.paidWithMembership, paidWithLoyaltyVoucher: event.paidWithLoyaltyVoucher, title: pendingBooking.event.title, startsAt: pendingBooking.event.startsAt});
-                void refetchEvents();
+                    }).unwrap();
+                    toast.success(event.paidWithMembership ? copy.eventEnrolledWithMembership : event.paidWithLoyaltyVoucher ? copy.eventEnrolledWithVoucher : copy.eventEnrolled);
+                    setPaymentPrompt({externalPaymentUrl: event.externalPaymentUrl, paidWithMembership: event.paidWithMembership, paidWithLoyaltyVoucher: event.paidWithLoyaltyVoucher, title: pendingBooking.event.title, startsAt: pendingBooking.event.startsAt});
+                    void refetchEvents();
+                }
             }
             void refetchMemberships();
             void refetchLoyaltyVouchers();
@@ -230,11 +244,14 @@ export default function PublicSchedulePage() {
 
     async function cancelSelectedEventEnrollment(event: PublicFixedEvent, reason: string) {
         try {
-            await cancelEventEnrollment({id: event.id, lang: locale, reason}).unwrap();
+            const sessionId = trainingSessionId(event);
+            if (sessionId !== null) await cancelTrainingSession({id: sessionId, lang: locale, reason}).unwrap();
+            else await cancelEventEnrollment({id: event.id, lang: locale, reason}).unwrap();
             toast.success(copy.eventCancelled);
             setSelectedEventDetails(null);
             setFilters((current) => ({...current, mode: "events", status: "events"}));
             void refetchEvents();
+            void refetchTrainingSessions();
         } catch {
             toast.error(copy.cancelEventError);
             void refetchEvents();
@@ -1188,6 +1205,51 @@ function eligibleVouchersForPending(pending: PendingBooking, vouchers: LoyaltyVo
 
 function localeTitle(titleUa: string, titleEn: string, locale: string) {
     return locale === "en" ? titleEn || titleUa : titleUa || titleEn;
+}
+
+function trainingSessionAsEvent(session: PublicTrainingSession): PublicFixedEvent & {trainingSessionId: number} {
+    return {
+        id: -session.id,
+        trainingSessionId: session.id,
+        serviceId: session.compatibilityServiceId,
+        title: session.title,
+        description: null,
+        specialistId: session.trainerId,
+        specialistName: session.trainerName,
+        specialistAvatarMediaId: null,
+        specialistAvatarMediaUrl: null,
+        officeId: session.officeId,
+        officeName: session.officeName,
+        resourceId: session.resourceId,
+        resourceName: session.resourceName,
+        officeAddress: null,
+        officeDirections: null,
+        officeGoogleMapsUrl: null,
+        officePhotoMediaId: null,
+        officePhotoMediaUrl: null,
+        officeVideoMediaId: null,
+        officeVideoMediaUrl: null,
+        startsAt: session.startsAt,
+        endsAt: session.endsAt,
+        capacity: session.capacity,
+        enrolledCount: session.enrolledCount,
+        remainingPlaces: session.remainingPlaces,
+        full: session.full,
+        enrolled: session.enrolled,
+        enrollmentStatus: session.enrollmentStatus,
+        price: session.price,
+        externalPaymentUrl: session.externalPaymentUrl,
+        paymentConfirmed: false,
+        note: null,
+        membershipPurchaseId: null,
+        paidWithMembership: false,
+        loyaltyVoucherId: null,
+        paidWithLoyaltyVoucher: false
+    };
+}
+
+function trainingSessionId(event: PublicFixedEvent) {
+    return "trainingSessionId" in event && typeof event.trainingSessionId === "number" ? event.trainingSessionId : null;
 }
 
 function ServiceChoiceModal({copy, locale, onClose, onSelect, returnFocusTo, selectedServiceId, services, slot}: {copy: Copy; locale: Locale; onClose: () => void; onSelect: (service: PublicService, fitting: FittingServiceOption) => void; returnFocusTo: HTMLElement | null; selectedServiceId: number | ""; services: PublicService[]; slot: PublicScheduleAvailabilityBlock}) {

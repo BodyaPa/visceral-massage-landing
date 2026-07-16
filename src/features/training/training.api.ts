@@ -1,6 +1,7 @@
 import {createApi} from "@reduxjs/toolkit/query/react";
 import {baseQuery} from "@/shared/api/baseQuery";
-import type {TrainingSession, TrainingSessionInput, TrainingSessionStatus, TrainingType, TrainingTypeInput} from "@/types/training";
+import type {PublicTrainingSession, TrainingEnrollment, TrainingSession, TrainingSessionInput, TrainingSessionStatus, TrainingType, TrainingTypeInput} from "@/types/training";
+import type {Locale} from "@/i18n";
 
 type SessionRange = {
     from: string;
@@ -46,6 +47,23 @@ export const trainingApi = createApi({
         updateTrainingSession: build.mutation<TrainingSession, {id: number; body: TrainingSessionInput}>({
             query: ({id, body}) => ({url: `/admin/training/sessions/${id}`, method: "PUT", body}),
             invalidatesTags: ["TrainingSessions"]
+        }),
+        listPublicTrainingSessions: build.query<PublicTrainingSession[], {from: string; to: string; officeId?: number | ""; trainerId?: number | ""; lang: Locale}>({
+            query: ({from, to, officeId, trainerId, lang}) => {
+                const params = new URLSearchParams({from, to, lang});
+                if (officeId) params.set("officeId", String(officeId));
+                if (trainerId) params.set("trainerId", String(trainerId));
+                return `/training/sessions?${params.toString()}`;
+            },
+            providesTags: ["TrainingSessions"]
+        }),
+        enrollTrainingSession: build.mutation<TrainingEnrollment, {id: number; lang: Locale; reminderOptIn: boolean; membershipPurchaseId?: number | null; loyaltyVoucherId?: number | null; promoCode?: string | null}>({
+            query: ({id, lang, ...body}) => ({url: `/training/sessions/${id}/enroll?lang=${lang}`, method: "POST", body}),
+            invalidatesTags: ["TrainingSessions"]
+        }),
+        cancelTrainingSession: build.mutation<TrainingEnrollment, {id: number; lang: Locale; reason: string; details?: string | null}>({
+            query: ({id, lang, ...body}) => ({url: `/training/sessions/${id}/cancel?lang=${lang}`, method: "POST", body}),
+            invalidatesTags: ["TrainingSessions"]
         })
     })
 });
@@ -56,5 +74,8 @@ export const {
     useUpdateTrainingTypeMutation,
     useListTrainingSessionsQuery,
     useCreateTrainingSessionMutation,
-    useUpdateTrainingSessionMutation
+    useUpdateTrainingSessionMutation,
+    useListPublicTrainingSessionsQuery,
+    useEnrollTrainingSessionMutation,
+    useCancelTrainingSessionMutation
 } = trainingApi;

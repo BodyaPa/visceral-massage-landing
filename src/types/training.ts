@@ -47,3 +47,34 @@ export type TrainingSessionInput = {
     status: TrainingSessionStatus;
     note: string | null;
 };
+
+export type PublicTrainingSession = {
+    id: number;
+    trainingTypeId: number;
+    compatibilityServiceId: number;
+    title: string;
+    trainerId: number;
+    trainerName: string;
+    officeId: number;
+    officeName: string;
+    resourceId: number;
+    resourceName: string;
+    startsAt: string;
+    endsAt: string;
+    capacity: number;
+    enrolledCount: number;
+    remainingPlaces: number;
+    full: boolean;
+    enrolled: boolean;
+    enrollmentStatus: "ACTIVE" | "CANCELLED" | null;
+    price: number;
+    depositAmount: number;
+    externalPaymentUrl: string | null;
+};
+
+export type TrainingEnrollment = Pick<PublicTrainingSession, "enrolledCount" | "remainingPlaces" | "full" | "enrolled" | "enrollmentStatus" | "externalPaymentUrl"> & {
+    sessionId: number;
+    paidWithMembership: boolean;
+    paidWithLoyaltyVoucher: boolean;
+    paymentConfirmed: boolean;
+};

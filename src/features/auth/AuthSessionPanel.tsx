@@ -5,7 +5,6 @@ import {usePathname, useRouter} from "next/navigation";
 import {useLocale, useTranslations} from "next-intl";
 import type {Locale} from "@/i18n";
 import {withLocale} from "@/shared/lib/locale/withLocale";
-import styles from "@/components/layout/header/HeaderStyles.module.scss";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {logout, type AuthenticatedUser} from "./auth.client";
 import {hasAdministrationSection} from "./auth.roles";
@@ -44,6 +43,9 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
     const accountTriggerClassName = tone === "light"
         ? "group inline-flex min-h-10 max-w-full items-center gap-2 rounded-full border border-stone-300 bg-white px-2 py-1.5 text-stone-900 shadow-sm outline-none transition-[background-color,border-color,box-shadow,transform] duration-200 hover:border-stone-400 hover:bg-stone-50 hover:shadow active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 motion-reduce:transition-none"
         : "group inline-flex min-h-10 max-w-full items-center gap-2 rounded-full border border-white/25 bg-black/25 px-2 py-1.5 text-white shadow-sm outline-none backdrop-blur-md transition-[background-color,border-color,box-shadow,transform] duration-200 hover:border-white/45 hover:bg-black/40 hover:shadow active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-stone-900 motion-reduce:transition-none";
+    const menuClassName = `relative min-w-0 max-w-full text-sm ${tone === "light" ? "text-stone-800" : "text-white"}`;
+    const dropdownClassName = `${variant === "menu" ? "absolute right-0 top-[calc(100%+0.5rem)]" : "fixed right-3 top-16"} z-[80] flex w-max min-w-48 max-w-[min(82vw,16rem)] flex-col gap-0.5 rounded-xl border p-1.5 shadow-xl backdrop-blur-xl motion-safe:animate-[popover-in_180ms_ease-out_both] motion-reduce:animate-none ${tone === "light" ? "border-stone-200 bg-stone-50/98 text-stone-800" : "border-white/15 bg-stone-950/95 text-white"}`;
+    const menuItemClassName = `block w-full rounded-lg px-3 py-2 text-left text-sm no-underline outline-none transition-colors focus-visible:ring-2 focus-visible:ring-current disabled:cursor-wait disabled:opacity-70 ${tone === "light" ? "hover:bg-stone-200/75" : "hover:bg-white/10"}`;
 
     useEffect(() => {
         function closeOnOutsideClick(event: MouseEvent) {
@@ -82,21 +84,21 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
     }
 
     if (loading) {
-        return <span className={styles.authText} aria-hidden="true">&nbsp;</span>;
+        return <span className="block min-h-10 min-w-16" aria-hidden="true">&nbsp;</span>;
     }
 
     if (!user) {
         return (
-            <div className={styles.authActions}>
-                <Link className={styles.authLink} href={withLocale("/auth?mode=login", locale)}>{t("login")}</Link>
+            <div className={`flex items-center gap-1.5 whitespace-nowrap text-sm ${tone === "light" ? "text-stone-700" : "text-white"}`}>
+                <Link className="rounded px-1 py-2 font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current" href={withLocale("/auth?mode=login", locale)}>{t("login")}</Link>
                 <span aria-hidden="true">|</span>
-                <Link className={styles.authLink} href={withLocale("/auth?mode=register", locale)}>{t("register")}</Link>
+                <Link className="rounded px-1 py-2 font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current" href={withLocale("/auth?mode=register", locale)}>{t("register")}</Link>
             </div>
         );
     }
 
     return (
-        <div className={`${styles.accountMenu} ${variant === "management" ? styles.managementAccountMenu : ""} ${variant === "account" ? styles.personalAccountMenu : ""} ${tone === "light" ? styles.accountMenuLight : ""}`} ref={menuRef}>
+        <div className={menuClassName} ref={menuRef}>
             <button
                 aria-label={t("accountMenu", {name: displayName})}
                 aria-expanded={menuOpen}
@@ -120,10 +122,10 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
                 <span aria-hidden="true" className={`text-base leading-none transition-transform duration-200 motion-reduce:transition-none ${menuOpen ? "rotate-180" : ""}`}>⌄</span>
             </button>
             {menuOpen ? (
-                <div className={styles.accountDropdown} role="menu">
+                <div className={dropdownClassName} role="menu">
                     <AuthenticatedLink
                         aria-current={accountActive ? "page" : undefined}
-                        className={`${styles.accountMenuLink} ${accountActive ? styles.accountMenuLinkActive : ""}`}
+                        className={`${menuItemClassName} ${accountActive ? tone === "light" ? "bg-stone-200 shadow-[inset_3px_0_0_currentColor]" : "bg-white/15 shadow-[inset_3px_0_0_currentColor]" : ""}`}
                         fallbackHref={withLocale("/auth?mode=login", locale)}
                         href={accountHref}
                         onSessionExpired={onLogout}
@@ -132,7 +134,7 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
                         {t("personalAccount")}
                     </AuthenticatedLink>
                     <AuthenticatedLink
-                        className={styles.accountMenuLink}
+                        className={menuItemClassName}
                         fallbackHref={withLocale("/auth?mode=login", locale)}
                         href={bookingsHref}
                         onSessionExpired={onLogout}
@@ -141,7 +143,7 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
                         {t("myBookings")}
                     </AuthenticatedLink>
                     <AuthenticatedLink
-                        className={styles.accountMenuLink}
+                        className={menuItemClassName}
                         fallbackHref={withLocale("/auth?mode=login", locale)}
                         href={membershipsHref}
                         onSessionExpired={onLogout}
@@ -150,7 +152,7 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
                         {t("myMemberships")}
                     </AuthenticatedLink>
                     <AuthenticatedLink
-                        className={styles.accountMenuLink}
+                        className={menuItemClassName}
                         fallbackHref={withLocale("/auth?mode=login", locale)}
                         href={pointsHref}
                         onSessionExpired={onLogout}
@@ -161,7 +163,7 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
                     {hasAdministrationSection(user) ? (
                         <AuthenticatedLink
                             aria-current={adminActive ? "page" : undefined}
-                            className={`${styles.accountMenuLink} ${adminActive ? styles.accountMenuLinkActive : ""}`}
+                            className={`${menuItemClassName} ${adminActive ? tone === "light" ? "bg-stone-200 shadow-[inset_3px_0_0_currentColor]" : "bg-white/15 shadow-[inset_3px_0_0_currentColor]" : ""}`}
                             fallbackHref={withLocale("/auth?mode=login", locale)}
                             href={adminHref}
                             onSessionExpired={onLogout}
@@ -171,7 +173,7 @@ export default function AuthSessionPanel({user, loading, onLogout, tone = "dark"
                         </AuthenticatedLink>
                     ) : null}
                     <button
-                        className={styles.accountMenuButton}
+                        className={menuItemClassName}
                         disabled={submitting}
                         onClick={handleLogout}
                         role="menuitem"

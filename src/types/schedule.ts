@@ -80,7 +80,7 @@ export interface PublicScheduleUnavailableBlock {
     endsAt: string;
 }
 
-export interface PublicFixedEvent {
+export interface PublicTrainingCalendarSession {
     id: number;
     serviceId: number;
     title: string;
@@ -118,7 +118,7 @@ export interface PublicFixedEvent {
     paidWithLoyaltyVoucher?: boolean;
 }
 
-export interface SpecialistFixedEvent {
+export interface SpecialistTrainingCalendarSession {
     id: number;
     specialistId: number;
     specialistName: string;
@@ -139,21 +139,6 @@ export interface SpecialistFixedEvent {
     updatedAt: string;
 }
 
-export interface SpecialistFixedEventEnrollment {
-    id: number;
-    eventId: number;
-    eventTitle: string;
-    eventStartsAt: string;
-    eventEndsAt: string;
-    clientId: number;
-    clientName: string;
-    clientContact: string;
-    status: "ACTIVE" | "CANCELLED";
-    reminderOptIn: boolean;
-    createdAt: string;
-    updatedAt: string;
-}
-
 export interface DayPlanCopyConflict {
     targetDate: string;
     itemType: string;
@@ -165,13 +150,16 @@ export interface DayPlanCopyConflict {
 export interface DayPlanCopyResponse {
     specialistId: number;
     sourceDate: string;
-    targetDates: string[];
+    targetDate: string;
+    preview: boolean;
     copiedAvailabilityCount: number;
-    copiedEventCount: number;
+    copiedTrainingSessionCount: number;
+    skippedAvailabilityCount: number;
+    skippedTrainingSessionCount: number;
     conflicts: DayPlanCopyConflict[];
 }
 
-export type SpecialistFixedEventInput = {
+export type SpecialistTrainingCalendarInput = {
     specialistId?: number | null;
     serviceId: number;
     officeId?: number | null;
@@ -186,9 +174,9 @@ export type SpecialistFixedEventInput = {
 export type DayPlanCopyInput = {
     specialistId?: number | null;
     sourceDate: string;
-    targetDates: string[];
+    targetDate: string;
     includeAvailability: boolean;
-    includeFixedEvents: boolean;
+    includeTrainingSessions: boolean;
 };
 
 export type SpecialistAvailabilityInput = {

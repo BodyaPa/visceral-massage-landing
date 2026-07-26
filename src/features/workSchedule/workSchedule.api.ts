@@ -16,15 +16,18 @@ export const workScheduleApi = createApi({
         createWorkSchedule: build.mutation<WorkScheduleEntry, WorkScheduleEntryInput>({
             query: (body) => ({url: "/admin/work-schedules", method: "POST", body}), invalidatesTags: ["WorkSchedule"]
         }),
+        previewWorkSchedule: build.mutation<{bookingConflict: boolean; trainingSessionConflict: boolean; hasConflicts: boolean}, WorkScheduleEntryInput>({
+            query: (body) => ({url: "/admin/work-schedules/preview", method: "POST", body})
+        }),
         updateWorkSchedule: build.mutation<WorkScheduleEntry, {id: number; body: WorkScheduleEntryInput}>({
             query: ({id, body}) => ({url: `/admin/work-schedules/${id}`, method: "PUT", body}), invalidatesTags: ["WorkSchedule"]
         }),
         deleteWorkSchedule: build.mutation<void, number>({
             query: (id) => ({url: `/admin/work-schedules/${id}`, method: "DELETE"}), invalidatesTags: ["WorkSchedule"]
         }),
-        bulkCopyWorkSchedule: build.mutation<WorkScheduleEntry[], {specialistId: number; sourceDate: string; targetDates: string[]}>({
+        bulkCopyWorkSchedule: build.mutation<WorkScheduleEntry[], {specialistId: number; sourceDate: string; targetDate: string}>({
             query: (body) => ({url: "/admin/work-schedules/bulk-copy", method: "POST", body}), invalidatesTags: ["WorkSchedule"]
         })
     })
 });
-export const {useListWorkScheduleQuery, useCreateWorkScheduleMutation, useUpdateWorkScheduleMutation, useDeleteWorkScheduleMutation, useBulkCopyWorkScheduleMutation} = workScheduleApi;
+export const {useListWorkScheduleQuery, useCreateWorkScheduleMutation, usePreviewWorkScheduleMutation, useUpdateWorkScheduleMutation, useDeleteWorkScheduleMutation, useBulkCopyWorkScheduleMutation} = workScheduleApi;

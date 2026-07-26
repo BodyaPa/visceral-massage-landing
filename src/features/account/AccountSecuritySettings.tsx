@@ -13,6 +13,7 @@ import {
 } from "@/features/auth/auth.client";
 import type {Locale} from "@/i18n";
 import {withLocale} from "@/shared/lib/locale/withLocale";
+import LinkedProvidersPanel from "./LinkedProvidersPanel";
 
 type ContactMode = "email" | "phone";
 
@@ -92,6 +93,7 @@ export default function AccountSecuritySettings({user}: {user: AuthenticatedUser
             <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500">{t("title")}</h2>
             <p className="mt-2 text-sm text-stone-700">{t("body")}</p>
             <div className="mt-4 grid gap-4">
+                <LinkedProvidersPanel />
                 <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
                     <h3 className="text-sm font-semibold text-stone-900">{t("contact.title")}</h3>
                     <p className="mt-1 text-xs leading-5 text-stone-500">{t("contact.current", {email: user.email ?? t("empty"), phone: user.phone ?? t("empty")})}</p>

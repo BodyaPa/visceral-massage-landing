@@ -1,18 +1,15 @@
 "use client";
 
 import {useEffect, useMemo, useRef, useState, type ReactNode} from "react";
-import {createPortal} from "react-dom";
 import {useLocale, useTranslations} from "next-intl";
 import type {Locale} from "@/i18n";
 import {useToast} from "@/components/ui/toast/ToastProvider";
+import ModalSurface from "@/components/ui/overlay/ModalSurface";
 import {useCreateBookingMutation} from "@/features/bookings/bookings.api";
 import {useListPublicOfficesQuery} from "@/features/offices/offices.api";
 import {
-    useCancelFixedEventEnrollmentMutation,
-    useEnrollFixedEventMutation,
     useListFittingOptionsQuery,
-    useListPublicAvailabilityQuery,
-    useListPublicEventsQuery
+    useListPublicAvailabilityQuery
 } from "@/features/schedule/schedule.api";
 import {
     addMonths,
@@ -41,7 +38,7 @@ import {initialsFromName} from "@/shared/lib/text/initials";
 import {useValidatePromoMutation} from "@/features/promos/promos.api";
 import type {PromoValidation} from "@/types/promos";
 import type {Office} from "@/types/offices";
-import type {FittingServiceOption, PublicFixedEvent, PublicScheduleAvailabilityBlock} from "@/types/schedule";
+import type {FittingServiceOption, PublicTrainingCalendarSession, PublicScheduleAvailabilityBlock} from "@/types/schedule";
 import type {PublicService} from "@/types/services";
 import type {MembershipOffer, MembershipPurchase} from "@/types/memberships";
 import {useActivateLoyaltyVoucherMutation, useGetLoyaltyVouchersQuery} from "@/features/loyalty/loyalty.api";
@@ -52,7 +49,7 @@ import type {PublicTrainingSession} from "@/types/training";
 const savedFiltersKey = "ataraksia.publicScheduleFilters";
 type PendingBooking =
     | {type: "individual"; service: PublicService; slot: PublicScheduleAvailabilityBlock; fitting: FittingServiceOption}
-    | {type: "event"; event: PublicFixedEvent};
+    | {type: "event"; event: PublicTrainingCalendarSession & {trainingTypeId?: number}};
 type ChoiceSectionKey = "service" | "office" | "specialist";
 type PaymentPrompt = {
     externalPaymentUrl: string | null;
@@ -77,7 +74,7 @@ export default function PublicSchedulePage() {
     const [selectedMembershipPurchaseId, setSelectedMembershipPurchaseId] = useState<number | "">("");
     const [selectedLoyaltyVoucherId, setSelectedLoyaltyVoucherId] = useState<number | "">("");
     const [promoCode, setPromoCode] = useState("");
-    const [selectedEventDetails, setSelectedEventDetails] = useState<PublicFixedEvent | null>(null);
+    const [selectedEventDetails, setSelectedEventDetails] = useState<PublicTrainingCalendarSession | null>(null);
     const [slotForServiceChoice, setSlotForServiceChoice] = useState<PublicScheduleAvailabilityBlock | null>(null);
     const modalTriggerRef = useRef<HTMLElement | null>(null);
     const [paymentPrompt, setPaymentPrompt] = useState<PaymentPrompt | null>(null);
@@ -95,14 +92,6 @@ export default function PublicSchedulePage() {
         serviceId: selectedServiceId,
         specialistId: filters.specialistId
     });
-    const {data: guidedEventsData = [], refetch: refetchEvents} = useListPublicEventsQuery({
-        from: guidedRange.from,
-        to: guidedRange.to,
-        officeId: filters.officeId,
-        serviceId: selectedServiceId,
-        specialistId: filters.specialistId,
-        lang: locale
-    });
     const {data: trainingSessionsData = [], refetch: refetchTrainingSessions} = useListPublicTrainingSessionsQuery({from: guidedRange.from, to: guidedRange.to, officeId: filters.officeId, trainerId: filters.specialistId, lang: locale});
     const {data: specialistOptionSlotsData = []} = useListPublicAvailabilityQuery({
         from: guidedRange.from,
@@ -111,33 +100,23 @@ export default function PublicSchedulePage() {
         serviceId: "",
         specialistId: ""
     });
-    const {data: specialistOptionEventsData = []} = useListPublicEventsQuery({
-        from: guidedRange.from,
-        to: guidedRange.to,
-        officeId: filters.officeId,
-        serviceId: "",
-        specialistId: "",
-        lang: locale
-    });
+    const {data: specialistOptionTrainingSessions = []} = useListPublicTrainingSessionsQuery({from: guidedRange.from, to: guidedRange.to, officeId: filters.officeId, trainerId: "", lang: locale});
     const [createBooking, {isLoading: bookingLoading}] = useCreateBookingMutation();
-    const [enrollEvent, {isLoading: enrollmentLoading}] = useEnrollFixedEventMutation();
-    const [cancelEventEnrollment, {isLoading: cancelEnrollmentLoading}] = useCancelFixedEventEnrollmentMutation();
     const [enrollTrainingSession, {isLoading: trainingEnrollmentLoading}] = useEnrollTrainingSessionMutation();
     const [cancelTrainingSession, {isLoading: trainingCancellationLoading}] = useCancelTrainingSessionMutation();
 
     const offices = officesData?.content ?? [];
     const services = useMemo(() => servicesData?.content ?? [], [servicesData]);
     const myMemberships = myMembershipsData?.content ?? [];
-    const individualServices = services.filter((service) => service.bookingMode === "INDIVIDUAL_APPOINTMENT");
+    const individualServices = services;
     const guidedSlots = useMemo(() => (
         filters.mode === "events" || filters.status === "unavailable" || filters.status === "events" || filters.status === "mine" ? [] : guidedSlotsData
     ), [filters.mode, filters.status, guidedSlotsData]);
-    const trainingServiceIds = useMemo(() => new Set([...services.filter(service => service.businessDirection === "TRAINING").map(service => service.id), ...trainingSessionsData.map(session => session.compatibilityServiceId)]), [services, trainingSessionsData]);
-    const guidedEvents = useMemo(() => filterScheduleEvents([...guidedEventsData.filter(event => !trainingServiceIds.has(event.serviceId)), ...trainingSessionsData.map(trainingSessionAsEvent)], filters), [guidedEventsData, filters, trainingSessionsData, trainingServiceIds]);
+    const guidedEvents = useMemo(() => filterScheduleEvents(trainingSessionsData.map(trainingSessionAsEvent), filters), [filters, trainingSessionsData]);
     const specialistOptionSlots = filters.mode === "events" || filters.status === "unavailable" || filters.status === "events" || filters.status === "mine" ? [] : specialistOptionSlotsData;
-    const specialistOptionEvents = filterScheduleEvents(specialistOptionEventsData, {...filters, specialistId: ""});
+    const specialistOptionEvents = filterScheduleEvents(specialistOptionTrainingSessions.map(trainingSessionAsEvent), {...filters, specialistId: ""});
     const guidedSpecialists = uniqueSpecialists([...specialistOptionSlots, ...specialistOptionEvents]);
-    const isSaving = bookingLoading || enrollmentLoading || cancelEnrollmentLoading || trainingEnrollmentLoading || trainingCancellationLoading;
+    const isSaving = bookingLoading || trainingEnrollmentLoading || trainingCancellationLoading;
     const selectedDateKey = dateKey(currentDate);
     const availableDays = useMemo(() => buildAvailableDays(guidedSlots, guidedEvents, locale, copy), [copy, guidedEvents, guidedSlots, locale]);
     const selectedDaySlots = guidedSlots.filter((slot) => dateKey(new Date(slot.startsAt)) === selectedDateKey);
@@ -171,7 +150,7 @@ export default function PublicSchedulePage() {
         setCurrentDate(new Date());
     }
 
-    function chooseEvent(event: PublicFixedEvent) {
+    function chooseEvent(event: PublicTrainingCalendarSession) {
         rememberModalTrigger();
         setSelectedEventDetails(event);
     }
@@ -201,31 +180,19 @@ export default function PublicSchedulePage() {
                     reminderOptIn,
                     membershipPurchaseId: selectedMembershipPurchaseId === "" ? null : selectedMembershipPurchaseId,
                     loyaltyVoucherId: selectedLoyaltyVoucherId === "" ? null : selectedLoyaltyVoucherId,
-                    promoCode: promoCode || null
+                    promoCode: promoCode || null,
+                    cancellationPolicyAccepted: true
                 }).unwrap();
                 toast.success(booking.paidWithMembership ? copy.bookingCreatedWithMembership : booking.paidWithLoyaltyVoucher ? copy.bookingCreatedWithVoucher : booking.externalPaymentUrl ? copy.bookingCreatedWithPayment : copy.bookingCreated);
                 setPaymentPrompt(booking);
                 void refetchSlots();
             } else {
                 const sessionId = trainingSessionId(pendingBooking.event);
-                if (sessionId !== null) {
-                    const enrollment = await enrollTrainingSession({id: sessionId, lang: locale, reminderOptIn, membershipPurchaseId: selectedMembershipPurchaseId === "" ? null : selectedMembershipPurchaseId, loyaltyVoucherId: selectedLoyaltyVoucherId === "" ? null : selectedLoyaltyVoucherId, promoCode: promoCode || null}).unwrap();
-                    toast.success(enrollment.paidWithMembership ? copy.eventEnrolledWithMembership : enrollment.paidWithLoyaltyVoucher ? copy.eventEnrolledWithVoucher : copy.eventEnrolled);
-                    setPaymentPrompt({externalPaymentUrl: enrollment.externalPaymentUrl, paidWithMembership: enrollment.paidWithMembership, paidWithLoyaltyVoucher: enrollment.paidWithLoyaltyVoucher, title: pendingBooking.event.title, startsAt: pendingBooking.event.startsAt});
-                    void refetchTrainingSessions();
-                } else {
-                    const event = await enrollEvent({
-                    id: pendingBooking.event.id,
-                    lang: locale,
-                    reminderOptIn,
-                    membershipPurchaseId: selectedMembershipPurchaseId === "" ? null : selectedMembershipPurchaseId,
-                    loyaltyVoucherId: selectedLoyaltyVoucherId === "" ? null : selectedLoyaltyVoucherId,
-                    promoCode: promoCode || null
-                    }).unwrap();
-                    toast.success(event.paidWithMembership ? copy.eventEnrolledWithMembership : event.paidWithLoyaltyVoucher ? copy.eventEnrolledWithVoucher : copy.eventEnrolled);
-                    setPaymentPrompt({externalPaymentUrl: event.externalPaymentUrl, paidWithMembership: event.paidWithMembership, paidWithLoyaltyVoucher: event.paidWithLoyaltyVoucher, title: pendingBooking.event.title, startsAt: pendingBooking.event.startsAt});
-                    void refetchEvents();
-                }
+                if (sessionId === null) throw new Error("Training session identity is missing");
+                const enrollment = await enrollTrainingSession({id: sessionId, lang: locale, reminderOptIn, membershipPurchaseId: selectedMembershipPurchaseId === "" ? null : selectedMembershipPurchaseId, loyaltyVoucherId: selectedLoyaltyVoucherId === "" ? null : selectedLoyaltyVoucherId, promoCode: promoCode || null, cancellationPolicyAccepted: true}).unwrap();
+                toast.success(enrollment.paidWithMembership ? copy.eventEnrolledWithMembership : enrollment.paidWithLoyaltyVoucher ? copy.eventEnrolledWithVoucher : copy.eventEnrolled);
+                setPaymentPrompt({externalPaymentUrl: enrollment.externalPaymentUrl, paidWithMembership: enrollment.paidWithMembership, paidWithLoyaltyVoucher: enrollment.paidWithLoyaltyVoucher, title: pendingBooking.event.title, startsAt: pendingBooking.event.startsAt});
+                void refetchTrainingSessions();
             }
             void refetchMemberships();
             void refetchLoyaltyVouchers();
@@ -238,23 +205,22 @@ export default function PublicSchedulePage() {
         } catch (error) {
             toast.error(apiMessage(error) ?? copy.bookingError);
             void refetchSlots();
-            void refetchEvents();
+            void refetchTrainingSessions();
         }
     }
 
-    async function cancelSelectedEventEnrollment(event: PublicFixedEvent, reason: string) {
+    async function cancelSelectedEventEnrollment(event: PublicTrainingCalendarSession, reason: string) {
         try {
             const sessionId = trainingSessionId(event);
-            if (sessionId !== null) await cancelTrainingSession({id: sessionId, lang: locale, reason}).unwrap();
-            else await cancelEventEnrollment({id: event.id, lang: locale, reason}).unwrap();
+            if (sessionId === null) throw new Error("Training session identity is missing");
+            await cancelTrainingSession({id: sessionId, lang: locale, reason}).unwrap();
             toast.success(copy.eventCancelled);
             setSelectedEventDetails(null);
             setFilters((current) => ({...current, mode: "events", status: "events"}));
-            void refetchEvents();
             void refetchTrainingSessions();
         } catch {
             toast.error(copy.cancelEventError);
-            void refetchEvents();
+            void refetchTrainingSessions();
         }
     }
 
@@ -464,15 +430,15 @@ function GuidedBookingFlow({
     availableDays: AvailableDay[];
     copy: Copy;
     currentDate: Date;
-    events: PublicFixedEvent[];
+    events: PublicTrainingCalendarSession[];
     filters: FilterState;
     locale: string;
     offices: Office[];
     services: PublicService[];
     selectedServiceId: number | "";
     onChooseDate: (date: Date) => void;
-    onChooseEvent: (event: PublicFixedEvent) => void;
-    onEnrollEvent: (event: PublicFixedEvent) => void;
+    onChooseEvent: (event: PublicTrainingCalendarSession) => void;
+    onEnrollEvent: (event: PublicTrainingCalendarSession) => void;
     onChooseEventMode: () => void;
     onChooseIndividualMode: () => void;
     onChooseOffice: (officeId: number | "") => void;
@@ -555,7 +521,7 @@ function GuidedBookingFlow({
                             onClick={onChooseEventMode}
                             type="button"
                         >
-                            <span className="block text-sm font-semibold">{copy.fixedEvent}</span>
+                            <span className="block text-sm font-semibold">{copy.trainingSession}</span>
                             <span className={filters.mode === "events" ? "mt-1 block text-xs leading-5 text-stone-200" : "mt-1 block text-xs leading-5 text-stone-500"}>{copy.chooseEventMode}</span>
                         </button>
                     </div>
@@ -827,7 +793,7 @@ function CompactOpenSlotRow({copy, locale, onChoose, slot}: {copy: Copy; locale:
     );
 }
 
-function CompactEventRow({copy, event, locale, onDetails, onEnroll}: {copy: Copy; event: PublicFixedEvent; locale: string; onDetails: () => void; onEnroll: () => void}) {
+function CompactEventRow({copy, event, locale, onDetails, onEnroll}: {copy: Copy; event: PublicTrainingCalendarSession; locale: string; onDetails: () => void; onEnroll: () => void}) {
     const canEnroll = !event.enrolled && !event.full && new Date(event.startsAt).getTime() > Date.now();
     return (
         <article className="ataraksia-booking-enter w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 p-3 transition-[border-color,box-shadow,transform] duration-200 hover:border-stone-300 hover:shadow-sm motion-reduce:transition-none">
@@ -883,12 +849,9 @@ function OfficeDetailsInline({copy, details}: {copy: Copy; details: OfficeDetail
     );
 }
 
-function OfficeDetailsModal({copy, details, onClose, returnFocusTo}: {copy: Copy; details: OfficeDetailsSource; onClose: () => void; returnFocusTo: HTMLElement | null}) {
-    const dialogRef = useModalFocus(onClose, returnFocusTo);
-
-    return createPortal(
-        <div aria-labelledby="office-details-title" aria-modal="true" className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 px-3 py-3 backdrop-blur-[2px] sm:items-center sm:px-4 sm:py-6" onMouseDown={(event) => {if (event.target === event.currentTarget) onClose()}} ref={dialogRef} role="dialog" tabIndex={-1}>
-            <div className="ataraksia-booking-enter max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-4 shadow-2xl sm:rounded-2xl sm:p-5">
+function OfficeDetailsModal({copy, details, onClose}: {copy: Copy; details: OfficeDetailsSource; onClose: () => void; returnFocusTo: HTMLElement | null}) {
+    return (
+        <ModalSurface className="max-w-lg p-4 sm:p-5" label={copy.officeDetails} onClose={onClose}>
                 <div className="flex items-start justify-between gap-4 border-b border-stone-100 pb-3">
                     <div className="min-w-0">
                         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">Ataraksia</p>
@@ -897,25 +860,21 @@ function OfficeDetailsModal({copy, details, onClose, returnFocusTo}: {copy: Copy
                     <button className="shrink-0 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 outline-none transition-colors hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2" onClick={onClose} type="button">{copy.close}</button>
                 </div>
                 <OfficeDetailsBlock compact copy={copy} details={details} />
-            </div>
-        </div>,
-        document.body
+        </ModalSurface>
     );
 }
 
-function EventDetailsModal({copy, event, isSaving, locale, onCancelEnrollment, onClose, onEnroll, returnFocusTo}: {copy: Copy; event: PublicFixedEvent; isSaving: boolean; locale: string; onCancelEnrollment: (event: PublicFixedEvent, reason: string) => void; onClose: () => void; onEnroll: (event: PublicFixedEvent) => void; returnFocusTo: HTMLElement | null}) {
+function EventDetailsModal({copy, event, isSaving, locale, onCancelEnrollment, onClose, onEnroll}: {copy: Copy; event: PublicTrainingCalendarSession; isSaving: boolean; locale: string; onCancelEnrollment: (event: PublicTrainingCalendarSession, reason: string) => void; onClose: () => void; onEnroll: (event: PublicTrainingCalendarSession) => void; returnFocusTo: HTMLElement | null}) {
     const [confirmingCancel, setConfirmingCancel] = useState(false);
     const [cancelReason, setCancelReason] = useState("");
-    const dialogRef = useModalFocus(onClose, returnFocusTo);
     const canCancel = event.enrolled && new Date(event.startsAt).getTime() >= Date.now() + 2 * 60 * 60 * 1000;
     const canEnroll = !event.enrolled && !event.full && new Date(event.startsAt).getTime() > Date.now();
 
     return (
-        <div aria-labelledby="event-details-title" aria-modal="true" className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6" onMouseDown={(event) => {if (event.target === event.currentTarget) onClose()}} ref={dialogRef} role="dialog" tabIndex={-1}>
-            <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5">
+        <ModalSurface className="max-w-lg p-4 sm:p-5" label={event.title} onClose={onClose}>
                 <div className="flex min-w-0 flex-wrap items-start justify-between gap-3 sm:gap-4">
                     <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{copy.fixedEvent}</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{copy.trainingSession}</p>
                         <h2 className="mt-1 break-words text-xl font-semibold text-stone-950" id="event-details-title">{event.title}</h2>
                     </div>
                     <span className={event.enrolled ? "rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800" : event.full ? "rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700" : "rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-semibold text-stone-700"}>
@@ -953,13 +912,11 @@ function EventDetailsModal({copy, event, isSaving, locale, onCancelEnrollment, o
                     ) : null}
                     {canEnroll ? <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={isSaving} onClick={() => onEnroll(event)} type="button">{copy.bookEvent}</button> : null}
                 </div>
-            </div>
-        </div>
+        </ModalSurface>
     );
 }
 
 function PaymentResultModal({copy, locale, onClose, prompt}: {copy: Copy; locale: Locale; onClose: () => void; prompt: PaymentPrompt}) {
-    const dialogRef = useModalFocus(onClose, null);
     const covered = prompt.paidWithMembership || prompt.paidWithLoyaltyVoucher;
     const title = prompt.paidWithMembership ? copy.membershipPaymentTitle : prompt.paidWithLoyaltyVoucher ? copy.voucherPaymentTitle : copy.paymentTitle;
     const body = prompt.paidWithMembership
@@ -968,11 +925,8 @@ function PaymentResultModal({copy, locale, onClose, prompt}: {copy: Copy; locale
         ? copy.voucherPaymentBody(paymentPromptTitle(prompt, locale), formatDateTime(prompt.startsAt, locale))
         : copy.paymentBody(paymentPromptTitle(prompt, locale), formatDateTime(prompt.startsAt, locale));
 
-    return createPortal(
-        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-stone-950/45 p-0 backdrop-blur-[2px] sm:items-center sm:p-5" onMouseDown={(event) => {
-            if (event.target === event.currentTarget) onClose();
-        }}>
-            <section aria-labelledby="booking-result-title" aria-modal="true" className="w-full rounded-t-2xl border border-stone-200 bg-white p-4 shadow-2xl sm:max-w-lg sm:rounded-2xl sm:p-6" ref={dialogRef} role="dialog" tabIndex={-1}>
+    return (
+        <ModalSurface className="max-w-lg p-4 sm:p-6" label={title} onClose={onClose}>
                 <div className="flex items-start justify-between gap-4 border-b border-stone-100 pb-4">
                     <div className="min-w-0">
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">Ataraksia</p>
@@ -987,9 +941,7 @@ function PaymentResultModal({copy, locale, onClose, prompt}: {copy: Copy; locale
                     <a className="inline-flex min-h-11 items-center justify-center rounded-lg border border-stone-300 bg-white px-4 py-2 text-center text-sm font-semibold text-stone-800 outline-none transition-colors hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2" href={withLocale("/account/bookings", locale)}>{copy.accountAction}</a>
                     <button className="min-h-11 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 outline-none transition-colors hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 sm:col-span-2" onClick={onClose} type="button">{copy.dismissPayment}</button>
                 </div>
-            </section>
-        </div>,
-        document.body
+        </ModalSurface>
     );
 }
 
@@ -1003,7 +955,6 @@ function ConfirmationModal({
     onConfirm,
     pending,
     reminderOptIn,
-    returnFocusTo,
     selectedMembershipPurchaseId,
     setSelectedMembershipPurchaseId,
     selectedLoyaltyVoucherId,
@@ -1037,7 +988,6 @@ function ConfirmationModal({
     const [codeSuccess, setCodeSuccess] = useState<string | null>(null);
     const [validatePromo, {isLoading: validatingPromo}] = useValidatePromoMutation();
     const [activateVoucher, {isLoading: activatingVoucher}] = useActivateLoyaltyVoucherMutation();
-    const dialogRef = useModalFocus(onClose, returnFocusTo);
     const title = pending.type === "individual" ? pending.service.title : pending.event.title;
     const specialist = pending.type === "individual" ? pending.slot.specialistName : pending.event.specialistName;
     const office = pending.type === "individual" ? pending.slot.officeName : pending.event.officeName;
@@ -1097,8 +1047,7 @@ function ConfirmationModal({
     }
 
     return (
-        <div aria-labelledby="booking-confirmation-title" aria-modal="true" className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6" onMouseDown={(event) => {if (event.target === event.currentTarget) onClose()}} ref={dialogRef} role="dialog" tabIndex={-1}>
-            <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5">
+        <ModalSurface className="max-w-lg p-4 sm:p-5" label={pending.type === "individual" ? copy.confirmAppointment : copy.confirmEvent} onClose={onClose}>
                 <h2 className="break-words text-xl font-semibold text-stone-950" id="booking-confirmation-title">{pending.type === "individual" ? copy.confirmAppointment : copy.confirmEvent}</h2>
                 <dl className="mt-5 space-y-3 text-sm">
                     <InfoRow label={copy.service} value={title} />
@@ -1152,16 +1101,15 @@ function ConfirmationModal({
                     <input checked={reminderOptIn} className="mt-0.5 h-4 w-4 accent-stone-900" onChange={(event) => setReminderOptIn(event.target.checked)} type="checkbox" />
                     <span className="min-w-0"><strong className="block break-words font-medium text-stone-900">{copy.reminder}</strong><span className="mt-0.5 block break-words text-xs leading-5 text-stone-500">{copy.reminderHint}</span></span>
                 </label>
-                <label className="mt-3 flex min-w-0 gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-700">
+                <label className={`mt-3 flex min-w-0 gap-3 rounded-xl border px-4 py-3 text-sm transition-colors ${acknowledged ? "border-emerald-300 bg-emerald-50 text-emerald-950" : "border-red-300 bg-red-50 text-red-950"}`}>
                     <input checked={acknowledged} className="mt-0.5 h-4 w-4 accent-stone-900" onChange={(event) => setAcknowledged(event.target.checked)} type="checkbox" />
-                    <span className="min-w-0"><strong className="block break-words font-medium text-stone-900">{copy.confirmUnderstand}</strong><span className="mt-0.5 block break-words text-xs leading-5 text-stone-500">{selectedMembership ? copy.confirmUnderstandMembershipHint : selectedVoucher ? copy.confirmUnderstandVoucherHint : copy.confirmUnderstandPaymentHint}</span></span>
+                    <span className="min-w-0"><strong className="block break-words font-semibold">{copy.confirmUnderstand}</strong><span className="mt-0.5 block break-words text-xs leading-5">{pending.type === "individual" ? copy.cancellationMassage : copy.cancellationTraining}</span></span>
                 </label>
                 <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <button className={secondaryButtonClass} disabled={isSaving} onClick={onClose} type="button">{copy.cancel}</button>
                     <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={isSaving || !acknowledged} onClick={onConfirm} type="button">{isSaving ? copy.saving : pending.type === "individual" ? copy.confirmAppointment : copy.confirmParticipation}</button>
                 </div>
-            </div>
-        </div>
+        </ModalSurface>
     );
 }
 
@@ -1193,12 +1141,14 @@ function eligibleMembershipsForPending(pending: PendingBooking, purchases: Membe
 
 function eligibleVouchersForPending(pending: PendingBooking, vouchers: LoyaltyVoucher[]) {
     const serviceId = pending.type === "individual" ? pending.service.id : pending.event.serviceId;
-    const eventId = pending.type === "event" ? pending.event.id : null;
+    const variantId = pending.type === "individual" ? pending.fitting.variantId : null;
+    const trainingTypeId = pending.type === "event" ? pending.event.trainingTypeId ?? null : null;
     const now = Date.now();
     return vouchers.filter((voucher) => {
         if (voucher.status !== "ACTIVE" || !voucher.ownedByCurrentUser || (voucher.expiresAt && new Date(voucher.expiresAt).getTime() <= now)) return false;
         if (voucher.eligibleServiceIds.length > 0 && !voucher.eligibleServiceIds.includes(serviceId)) return false;
-        if (voucher.eligibleEventIds.length > 0 && (eventId === null || !voucher.eligibleEventIds.includes(eventId))) return false;
+        if (voucher.eligibleServiceVariantIds.length > 0 && (variantId === null || !voucher.eligibleServiceVariantIds.includes(variantId))) return false;
+        if (voucher.eligibleTrainingTypeIds.length > 0 && (trainingTypeId === null || !voucher.eligibleTrainingTypeIds.includes(trainingTypeId))) return false;
         return true;
     });
 }
@@ -1207,11 +1157,12 @@ function localeTitle(titleUa: string, titleEn: string, locale: string) {
     return locale === "en" ? titleEn || titleUa : titleUa || titleEn;
 }
 
-function trainingSessionAsEvent(session: PublicTrainingSession): PublicFixedEvent & {trainingSessionId: number} {
+function trainingSessionAsEvent(session: PublicTrainingSession): PublicTrainingCalendarSession & {trainingSessionId: number; trainingTypeId: number} {
     return {
         id: -session.id,
         trainingSessionId: session.id,
-        serviceId: session.compatibilityServiceId,
+        trainingTypeId: session.trainingTypeId,
+        serviceId: session.trainingTypeId,
         title: session.title,
         description: null,
         specialistId: session.trainerId,
@@ -1236,7 +1187,11 @@ function trainingSessionAsEvent(session: PublicTrainingSession): PublicFixedEven
         remainingPlaces: session.remainingPlaces,
         full: session.full,
         enrolled: session.enrolled,
-        enrollmentStatus: session.enrollmentStatus,
+        enrollmentStatus: session.enrollmentStatus == null
+            ? null
+            : session.enrollmentStatus === "CANCELLED" || session.enrollmentStatus === "EXPIRED"
+                ? "CANCELLED"
+                : "ACTIVE",
         price: session.price,
         externalPaymentUrl: session.externalPaymentUrl,
         paymentConfirmed: false,
@@ -1248,11 +1203,11 @@ function trainingSessionAsEvent(session: PublicTrainingSession): PublicFixedEven
     };
 }
 
-function trainingSessionId(event: PublicFixedEvent) {
+function trainingSessionId(event: PublicTrainingCalendarSession) {
     return "trainingSessionId" in event && typeof event.trainingSessionId === "number" ? event.trainingSessionId : null;
 }
 
-function ServiceChoiceModal({copy, locale, onClose, onSelect, returnFocusTo, selectedServiceId, services, slot}: {copy: Copy; locale: Locale; onClose: () => void; onSelect: (service: PublicService, fitting: FittingServiceOption) => void; returnFocusTo: HTMLElement | null; selectedServiceId: number | ""; services: PublicService[]; slot: PublicScheduleAvailabilityBlock}) {
+function ServiceChoiceModal({copy, locale, onClose, onSelect, selectedServiceId, services, slot}: {copy: Copy; locale: Locale; onClose: () => void; onSelect: (service: PublicService, fitting: FittingServiceOption) => void; returnFocusTo: HTMLElement | null; selectedServiceId: number | ""; services: PublicService[]; slot: PublicScheduleAvailabilityBlock}) {
     const {data: fittingOptions = [], isError, isFetching} = useListFittingOptionsQuery({
         startsAt: slot.startsAt,
         endsAt: slot.endsAt,
@@ -1263,11 +1218,8 @@ function ServiceChoiceModal({copy, locale, onClose, onSelect, returnFocusTo, sel
         lang: locale
     }, {skip: slot.officeId === null});
     const serviceById = new Map(services.map((service) => [service.id, service]));
-    const dialogRef = useModalFocus(onClose, returnFocusTo);
-
     return (
-        <div aria-labelledby="service-choice-title" aria-modal="true" className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 py-4 sm:items-center sm:px-4 sm:py-6" onMouseDown={(event) => {if (event.target === event.currentTarget) onClose()}} ref={dialogRef} role="dialog" tabIndex={-1}>
-            <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5">
+        <ModalSurface className="max-w-lg p-4 sm:p-5" label={copy.chooseServiceForTime} onClose={onClose}>
                 <h2 className="break-words text-xl font-semibold text-stone-950" id="service-choice-title">{copy.chooseServiceForTime}</h2>
                 <p className="mt-2 break-words text-sm leading-6 text-stone-500">{formatDateTimeRange(slot.startsAt, slot.endsAt, locale)} · {slot.specialistName} · {slot.officeName ?? copy.withoutOffice}</p>
                 {isFetching ? <p className="mt-4 text-sm text-stone-500">{copy.loading}</p> : null}
@@ -1288,75 +1240,15 @@ function ServiceChoiceModal({copy, locale, onClose, onSelect, returnFocusTo, sel
                 <div className="mt-6 flex justify-end">
                     <button className={secondaryButtonClass} onClick={onClose} type="button">{copy.cancel}</button>
                 </div>
-            </div>
-        </div>
+        </ModalSurface>
     );
-}
-
-function useModalFocus(onClose: () => void, returnFocusTo: HTMLElement | null) {
-    const dialogRef = useRef<HTMLDivElement>(null);
-    const onCloseRef = useRef(onClose);
-    const returnFocusRef = useRef(returnFocusTo);
-    onCloseRef.current = onClose;
-    returnFocusRef.current = returnFocusTo;
-
-    useEffect(() => {
-        const dialog = dialogRef.current;
-
-        if (!dialog) return;
-
-        const previousOverflow = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
-
-        const focusableElements = () => Array.from(dialog.querySelectorAll<HTMLElement>(
-            "button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex='-1'])"
-        )).filter((element) => !element.hasAttribute("hidden"));
-        const initialFocus = focusableElements()[0] ?? dialog;
-        initialFocus.focus();
-
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Escape") {
-                event.preventDefault();
-                onCloseRef.current();
-                return;
-            }
-
-            if (event.key !== "Tab") return;
-
-            const elements = focusableElements();
-            if (elements.length === 0) {
-                event.preventDefault();
-                dialog.focus();
-                return;
-            }
-
-            const first = elements[0];
-            const last = elements[elements.length - 1];
-            if (event.shiftKey && document.activeElement === first) {
-                event.preventDefault();
-                last.focus();
-            } else if (!event.shiftKey && document.activeElement === last) {
-                event.preventDefault();
-                first.focus();
-            }
-        };
-
-        dialog.addEventListener("keydown", handleKeyDown);
-        return () => {
-            document.body.style.overflow = previousOverflow;
-            dialog.removeEventListener("keydown", handleKeyDown);
-            if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus();
-        };
-    }, []);
-
-    return dialogRef;
 }
 
 function InfoRow({label, value}: {label: string; value: string}) {
     return <div className="grid min-w-0 grid-cols-1 gap-1 sm:grid-cols-[110px_minmax(0,1fr)] sm:gap-3"><dt className="break-words text-stone-500">{label}</dt><dd className="break-words font-medium text-stone-900">{value}</dd></div>;
 }
 
-type OfficeDetailsSource = Pick<PublicScheduleAvailabilityBlock | PublicFixedEvent, "officeAddress" | "officeDirections" | "officeGoogleMapsUrl" | "officePhotoMediaUrl" | "officeVideoMediaUrl">;
+type OfficeDetailsSource = Pick<PublicScheduleAvailabilityBlock | PublicTrainingCalendarSession, "officeAddress" | "officeDirections" | "officeGoogleMapsUrl" | "officePhotoMediaUrl" | "officeVideoMediaUrl">;
 
 function OfficeDetailsBlock({compact = false, copy, details}: {compact?: boolean; copy: Copy; details: OfficeDetailsSource}) {
     const rows = [
@@ -1434,12 +1326,12 @@ function guidedSelectionChips({
     specialists: SpecialistOption[];
 }) {
     const office = filters.officeId === "" ? copy.allOffices : offices.find((item) => item.id === filters.officeId)?.name ?? copy.allOffices;
-    const mode = filters.mode === "events" ? copy.fixedEvent : filters.mode === "individual" ? copy.individual : copy.all;
+    const mode = filters.mode === "events" ? copy.trainingSession : filters.mode === "individual" ? copy.individual : copy.all;
     const specialist = filters.specialistId === "" ? copy.allSpecialists : specialists.find((item) => item.id === filters.specialistId)?.name ?? copy.allSpecialists;
     return [office, mode, specialist, formatDate(currentDate.toISOString(), locale)];
 }
 
-function buildAvailableDays(slots: PublicScheduleAvailabilityBlock[], events: PublicFixedEvent[], locale: string, copy: Copy): AvailableDay[] {
+function buildAvailableDays(slots: PublicScheduleAvailabilityBlock[], events: PublicTrainingCalendarSession[], locale: string, copy: Copy): AvailableDay[] {
     const days = new Map<string, {date: Date; eventsCount: number; slotsCount: number}>();
 
     for (const slot of slots) {
@@ -1577,7 +1469,7 @@ function labels(t: T) {
         chooseDescription: t("chooseDescription"),
         loading: t("public.loading"),
         individual: t("public.individual"),
-        fixedEvent: t("public.fixedEvent"),
+        trainingSession: t("public.trainingSession"),
         chooseTime: t("public.chooseTime"),
         bookEvent: t("public.bookEvent"),
         noDescription: t("public.noDescription"),
@@ -1625,8 +1517,8 @@ function labels(t: T) {
         allSpecialistsHint: t("public.allSpecialistsHint"),
         specialistAvailabilityHint: t("public.specialistAvailabilityHint"),
         noSpecialistsForFilters: t("public.noSpecialistsForFilters"),
-        fixedEventServicesTitle: t("public.fixedEventServicesTitle"),
-        fixedEventServicesHint: t("public.fixedEventServicesHint"),
+        trainingSessionTypesTitle: t("public.trainingSessionTypesTitle"),
+        trainingSessionTypesHint: t("public.trainingSessionTypesHint"),
         allEvents: t("public.allEvents"),
         allEventsHint: t("public.allEventsHint"),
         noEventServices: t("public.noEventServices"),
@@ -1685,6 +1577,8 @@ function labels(t: T) {
         confirmUnderstandPaymentHint: t("public.confirmUnderstandPaymentHint"),
         confirmUnderstandMembershipHint: t("public.confirmUnderstandMembershipHint"),
         confirmUnderstandVoucherHint: t("public.confirmUnderstandVoucherHint"),
+        cancellationMassage: t("public.cancellationMassage"),
+        cancellationTraining: t("public.cancellationTraining"),
         time: t("public.time"),
         price: t("summary.price"),
         places: t("public.places"),

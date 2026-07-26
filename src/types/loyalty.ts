@@ -14,7 +14,8 @@ export interface LoyaltyReward {
     transferable: boolean;
     active: boolean;
     eligibleServiceIds: number[];
-    eligibleEventIds: number[];
+    eligibleServiceVariantIds: number[];
+    eligibleTrainingTypeIds: number[];
     createdAt: string;
     updatedAt: string;
 }
@@ -25,7 +26,7 @@ export interface LoyaltyLedgerEntry {
     amount: number;
     reason: string;
     bookingId: number | null;
-    eventEnrollmentId: number | null;
+    trainingParticipantId: number | null;
     voucherId: number | null;
     createdAt: string;
 }
@@ -41,7 +42,8 @@ export interface LoyaltyVoucher {
     createdByCurrentUser: boolean;
     ownedByCurrentUser: boolean;
     eligibleServiceIds: number[];
-    eligibleEventIds: number[];
+    eligibleServiceVariantIds: number[];
+    eligibleTrainingTypeIds: number[];
     expiresAt: string | null;
     activatedAt: string | null;
     usedAt: string | null;

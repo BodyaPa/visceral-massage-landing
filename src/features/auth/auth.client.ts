@@ -49,6 +49,21 @@ export type PasswordChangeRequest = {
     newPassword: string;
 };
 
+export type AuthProvider = "GOOGLE" | "APPLE" | "TELEGRAM";
+
+export type ProviderAvailability = {
+    provider: AuthProvider;
+    enabled: boolean;
+};
+
+export type LinkedProviderIdentity = {
+    provider: AuthProvider;
+    email: string | null;
+    emailVerified: boolean;
+    displayName: string | null;
+    linkedAt: string;
+};
+
 type RegisterConfirmRequest = {
     email?: string;
     phone?: string;
@@ -175,12 +190,86 @@ export function login(request: LoginRequest) {
     return postAuth<AuthenticatedUser>("login", request);
 }
 
+export async function getProviderAvailability(): Promise<ProviderAvailability[]> {
+    const response = await fetch(`${API_URL}/api/auth/providers`, {
+        credentials: "include",
+        cache: "no-store"
+    });
+    if (!response.ok) throw new AuthRequestError(null);
+    return response.json() as Promise<ProviderAvailability[]>;
+}
+
+export async function beginProviderAuth(
+    provider: AuthProvider,
+    action: "LOGIN" | "LINK",
+    returnPath: string
+) {
+    const result = await postAuth<{authorizationUrl: string; state: string; nonce: string}>(
+        `providers/${provider}/start`,
+        {action, returnPath}
+    );
+    sessionStorage.setItem(`ataraksia-provider-nonce:${result.state}`, result.nonce);
+    window.location.assign(result.authorizationUrl);
+}
+
+export async function completeProviderAuth(
+    provider: AuthProvider,
+    state: string,
+    code: string,
+    telegram?: Record<string, string>
+) {
+    const nonceKey = `ataraksia-provider-nonce:${state}`;
+    const nonce = sessionStorage.getItem(nonceKey);
+    if (!nonce) throw new AuthRequestError(null);
+    try {
+        return await postAuth<AuthenticatedUser>(`providers/${provider}/callback`, {
+            state,
+            nonce,
+            code,
+            telegram
+        });
+    } finally {
+        sessionStorage.removeItem(nonceKey);
+    }
+}
+
+export async function getLinkedProviders(): Promise<LinkedProviderIdentity[]> {
+    const response = await fetch(`${API_URL}/api/auth/me/providers`, {
+        credentials: "include",
+        cache: "no-store"
+    });
+    if (!response.ok) throw new AuthRequestError(null);
+    return response.json() as Promise<LinkedProviderIdentity[]>;
+}
+
+export async function unlinkProvider(provider: AuthProvider) {
+    const request = async () => fetch(`${API_URL}/api/auth/me/providers/${provider}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: {[CSRF_HEADER_NAME]: await getCsrfToken()}
+    });
+    let response = await request();
+    if (response.status === 403) {
+        clearCsrfToken();
+        response = await request();
+    }
+    if (!response.ok) {
+        let serverMessage: string | null = null;
+        try {
+            serverMessage = ((await response.json()) as {message?: string}).message ?? null;
+        } catch {
+            // Keep the public error generic.
+        }
+        throw new AuthRequestError(serverMessage);
+    }
+}
+
 export function requestRegistration(request: RegisterRequest) {
     return postAuth<void>("register", request);
 }
 
 export function confirmRegistration(request: RegisterConfirmRequest) {
-    return postAuth<AuthenticatedUser>("register/confirm", request);
+    return postAuth<AuthenticatedUser | undefined>("register/confirm", request);
 }
 
 export function requestPasswordRecovery(request: PasswordRecoveryRequest) {

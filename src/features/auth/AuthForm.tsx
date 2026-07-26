@@ -12,6 +12,7 @@ import Button from "@/components/ui/button/Button";
 import Field from "@/components/ui/form/Field";
 import Input from "@/components/ui/form/Input";
 import Alert from "@/components/ui/state/Alert";
+import ProviderAuthActions from "./ProviderAuthActions";
 
 type Mode = "login" | "register" | "recovery";
 
@@ -30,7 +31,8 @@ export default function AuthForm({initialMode = "login"}: Props) {
     const [password, setPassword] = useState("");
     const [recoveryContact, setRecoveryContact] = useState("");
     const [recoveryRequested, setRecoveryRequested] = useState(false);
-    const [registrationContact, setRegistrationContact] = useState("");
+    const [registrationContacts, setRegistrationContacts] = useState<string[]>([]);
+    const [registrationContactIndex, setRegistrationContactIndex] = useState(0);
     const [registrationRequested, setRegistrationRequested] = useState(false);
 
     function selectMode(nextMode: Mode) {
@@ -38,7 +40,8 @@ export default function AuthForm({initialMode = "login"}: Props) {
         setError(null);
         setPassword("");
         setRecoveryRequested(false);
-        setRegistrationContact("");
+        setRegistrationContacts([]);
+        setRegistrationContactIndex(0);
         setRegistrationRequested(false);
         router.replace(withLocale(`/auth?mode=${nextMode}`, locale), {scroll: false});
     }
@@ -97,7 +100,8 @@ export default function AuthForm({initialMode = "login"}: Props) {
                     dateOfBirth: String(formData.get("dateOfBirth") ?? "") || undefined,
                     password
             });
-            setRegistrationContact(email || phone);
+            setRegistrationContacts([email, phone].filter(Boolean));
+            setRegistrationContactIndex(0);
             setRegistrationRequested(true);
             toast.success(t("register.requestSuccess"));
         } catch (requestError) {
@@ -121,7 +125,13 @@ export default function AuthForm({initialMode = "login"}: Props) {
         setSubmitting(true);
 
         try {
-            await confirmRegistration({...recoveryPayload(registrationContact), code});
+            const contact = registrationContacts[registrationContactIndex];
+            const user = await confirmRegistration({...recoveryPayload(contact), code});
+            if (!user && registrationContactIndex + 1 < registrationContacts.length) {
+                setRegistrationContactIndex((current) => current + 1);
+                toast.success(t("register.contactConfirmed"));
+                return;
+            }
             toast.success(t("register.success"));
             router.replace(withLocale("/", locale));
             router.refresh();
@@ -281,7 +291,11 @@ export default function AuthForm({initialMode = "login"}: Props) {
                     </div>
                     {registrationRequested ? (
                         <label className="block space-y-2 text-sm font-medium text-stone-800">
-                            <span>{t("fields.registrationCode")}</span>
+                            <span>
+                                {t("fields.registrationCodeFor", {
+                                    contact: registrationContacts[registrationContactIndex] ?? ""
+                                })}
+                            </span>
                             <Input required name="code" type="text" inputMode="numeric" maxLength={16} autoComplete="one-time-code" />
                         </label>
                     ) : null}
@@ -308,6 +322,8 @@ export default function AuthForm({initialMode = "login"}: Props) {
             {mode === "register" && !registrationRequested ? <PasswordChecklist passwordChecks={passwordChecks} t={t} /> : null}
 
             {error ? <Alert tone="error">{error}</Alert> : null}
+
+            {mode === "login" ? <ProviderAuthActions action="LOGIN" /> : null}
 
             <Button
                 type="submit"

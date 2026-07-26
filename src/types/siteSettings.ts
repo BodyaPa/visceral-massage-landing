@@ -9,7 +9,6 @@ export interface SiteSettings {
     aboutBodyEn: string | null;
     contactBodyUa: string | null;
     contactBodyEn: string | null;
-    heroMediaUrls: string | null;
     updatedByUserId: number | null;
     createdAt: string | null;
     updatedAt: string | null;
@@ -27,5 +26,4 @@ export type SiteSettingsInput = Pick<
     | "aboutBodyEn"
     | "contactBodyUa"
     | "contactBodyEn"
-    | "heroMediaUrls"
 >;

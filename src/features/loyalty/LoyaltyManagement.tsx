@@ -1,10 +1,10 @@
 "use client";
 
-import {FormEvent, useEffect, useMemo, useState} from "react";
+import {FormEvent, useState} from "react";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
-import {useListAdminServicesQuery} from "@/features/services/services.api";
-import {useListPublicEventsQuery} from "@/features/schedule/schedule.api";
+import {useListAdminServicesQuery, useListAllServiceVariantsQuery} from "@/features/services/services.api";
+import {useListTrainingTypesQuery} from "@/features/training/training.api";
 import AdminUserPicker from "@/features/users/AdminUserPicker";
 import type {Locale} from "@/i18n";
 import type {AdminUser} from "@/types/users";
@@ -15,7 +15,7 @@ import {
     useUpdateAdminLoyaltyRewardMutation
 } from "@/features/loyalty/loyalty.api";
 import type {LoyaltyReward} from "@/types/loyalty";
-import OverlayPortal from "@/components/ui/overlay/OverlayPortal";
+import ModalSurface from "@/components/ui/overlay/ModalSurface";
 
 type RewardBody = Omit<LoyaltyReward, "id" | "createdAt" | "updatedAt">;
 
@@ -24,8 +24,8 @@ export default function LoyaltyManagement({locale}: {locale: Locale}) {
     const toast = useToast();
     const {data: rewards = [], isLoading, isError} = useGetAdminLoyaltyRewardsQuery();
     const {data: servicesData} = useListAdminServicesQuery({size: 200});
-    const eventRange = useMemo(upcomingEventRange, []);
-    const {data: events = [], isFetching: eventsFetching} = useListPublicEventsQuery({...eventRange, lang: locale});
+    const {data: variants = []} = useListAllServiceVariantsQuery();
+    const {data: trainingTypes = []} = useListTrainingTypesQuery();
     const [createReward, {isLoading: creating}] = useCreateAdminLoyaltyRewardMutation();
     const [updateReward, {isLoading: updating}] = useUpdateAdminLoyaltyRewardMutation();
     const [adjust, {isLoading: adjusting}] = useCreateLoyaltyAdjustmentMutation();
@@ -48,7 +48,8 @@ export default function LoyaltyManagement({locale}: {locale: Locale}) {
             transferable: form.get("transferable") === "on",
             active: form.get("active") === "on",
             eligibleServiceIds: form.getAll("serviceIds").map(Number),
-            eligibleEventIds: form.getAll("eventIds").map(Number)
+            eligibleServiceVariantIds: form.getAll("serviceVariantIds").map(Number),
+            eligibleTrainingTypeIds: form.getAll("trainingTypeIds").map(Number)
         };
         try {
             if (editing) await updateReward({id: editing.id, body}).unwrap();
@@ -77,23 +78,6 @@ export default function LoyaltyManagement({locale}: {locale: Locale}) {
         }
     }
 
-    useEffect(() => {
-        if (!editorOpen) return;
-        const previousOverflow = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
-        const closeOnEscape = (event: KeyboardEvent) => {
-            if (event.key === "Escape") {
-                setEditing(null);
-                setEditorOpen(false);
-            }
-        };
-        document.addEventListener("keydown", closeOnEscape);
-        return () => {
-            document.removeEventListener("keydown", closeOnEscape);
-            document.body.style.overflow = previousOverflow;
-        };
-    }, [editorOpen]);
-
     return (
         <main className="space-y-6">
             <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -104,10 +88,8 @@ export default function LoyaltyManagement({locale}: {locale: Locale}) {
                 <button className={`${primaryButton} w-full sm:w-auto`} onClick={() => {setEditing(null);setEditorOpen(true)}} type="button">{t("newReward")}</button>
             </header>
 
-            {editorOpen ? <OverlayPortal><div className="fixed inset-0 z-[70] flex items-stretch justify-center bg-stone-950/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-5" onMouseDown={(event) => {
-                if (event.target === event.currentTarget) {setEditing(null);setEditorOpen(false)}
-            }}>
-            <form aria-labelledby="loyalty-editor-title" aria-modal="true" className="h-full w-full space-y-4 overflow-y-auto bg-white p-4 shadow-2xl sm:h-auto sm:max-h-[94dvh] sm:max-w-4xl sm:rounded-2xl sm:border sm:border-stone-200 sm:p-5" key={editing?.id ?? "new"} onSubmit={submitReward} role="dialog">
+            {editorOpen ? <ModalSurface className="max-w-4xl" label={editing ? t("editReward") : t("newReward")} onClose={() => {setEditing(null);setEditorOpen(false)}}>
+            <form className="space-y-4 p-4 sm:p-5" key={editing?.id ?? "new"} onSubmit={submitReward}>
                 <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-stone-100 bg-white pb-3"><div><h2 className="font-semibold text-stone-950" id="loyalty-editor-title">{editing ? t("editReward") : t("newReward")}</h2><p className="mt-1 text-xs text-stone-500">{t("rewardHint")}</p></div><button aria-label={t("cancelEdit")} className={secondaryButton} onClick={() => {setEditing(null);setEditorOpen(false)}} type="button">×</button></div>
                 <div className="grid gap-3 md:grid-cols-2">
                     <Field label={t("titleUa")}><input className={inputClass} defaultValue={editing?.titleUa} name="titleUa" required /></Field>
@@ -129,16 +111,21 @@ export default function LoyaltyManagement({locale}: {locale: Locale}) {
                     {services.length === 0 ? <p className="text-sm text-stone-500">{t("noServices")}</p> : null}
                 </fieldset>
                 <fieldset className="rounded-xl border border-stone-200 bg-stone-50 p-3">
-                    <legend className="px-1 text-sm font-semibold text-stone-800">{t("eligibleEvents")}</legend>
-                    <p className="mb-2 text-xs leading-5 text-stone-500">{t("eligibleEventsHint")}</p>
-                    {eventsFetching ? <p className="text-sm text-stone-500">{t("eventsLoading")}</p> : null}
-                    <div className="grid gap-2 sm:grid-cols-2">
-                        {events.map((event) => <Check defaultChecked={editing?.eligibleEventIds.includes(event.id) ?? false} key={event.id} label={eventLabel(event, locale)} name="eventIds" value={event.id} />)}
+                    <legend className="px-1 text-sm font-semibold text-stone-800">{t("eligibleVariants")}</legend>
+                    <p className="mb-2 text-xs leading-5 text-stone-500">{t("eligibleVariantsHint")}</p>
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                        {variants.map((variant) => <Check defaultChecked={editing?.eligibleServiceVariantIds.includes(variant.id) ?? false} key={variant.id} label={locale === "en" ? variant.nameEn || variant.nameUa : variant.nameUa} name="serviceVariantIds" value={variant.id} />)}
                     </div>
-                    {!eventsFetching && events.length === 0 ? <p className="text-sm text-stone-500">{t("noEvents")}</p> : null}
+                </fieldset>
+                <fieldset className="rounded-xl border border-stone-200 bg-stone-50 p-3">
+                    <legend className="px-1 text-sm font-semibold text-stone-800">{t("eligibleTrainingTypes")}</legend>
+                    <p className="mb-2 text-xs leading-5 text-stone-500">{t("eligibleTrainingTypesHint")}</p>
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                        {trainingTypes.map((type) => <Check defaultChecked={editing?.eligibleTrainingTypeIds.includes(type.id) ?? false} key={type.id} label={locale === "en" ? type.titleEn || type.titleUa : type.titleUa} name="trainingTypeIds" value={type.id} />)}
+                    </div>
                 </fieldset>
                 <div className="flex justify-end"><button className={primaryButton} disabled={creating || updating}>{creating || updating ? t("saving") : t("save")}</button></div>
-            </form></div></OverlayPortal> : null}
+            </form></ModalSurface> : null}
 
             <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex items-center justify-between gap-3"><h2 className="font-semibold text-stone-950">{t("catalog")}</h2><button className={secondaryButton} onClick={() => {setEditing(null);setEditorOpen(true)}} type="button">{t("newReward")}</button></div>
@@ -170,15 +157,3 @@ function Field({label, children}: {label: string; children: React.ReactNode}) { 
 function Check({defaultChecked, label, name, value}: {defaultChecked: boolean; label: string; name: string; value?: number}) { return <label className="flex min-w-0 items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-700"><input defaultChecked={defaultChecked} name={name} type="checkbox" value={value} /><span className="min-w-0 break-words">{label}</span></label>; }
 function textOrNull(value: FormDataEntryValue | null) { const text = String(value ?? "").trim(); return text || null; }
 function optionalPositiveNumber(value: FormDataEntryValue | null) { const text = String(value ?? "").trim(); return text ? Number(text) : null; }
-function upcomingEventRange() {
-    const from = new Date();
-    from.setHours(0, 0, 0, 0);
-    const to = new Date(from);
-    to.setDate(to.getDate() + 90);
-    to.setHours(23, 59, 59, 999);
-    return {from: from.toISOString(), to: to.toISOString()};
-}
-
-function eventLabel(event: {title: string; specialistName: string; startsAt: string}, locale: Locale) {
-    return `${event.title} · ${event.specialistName} · ${new Intl.DateTimeFormat(locale === "ua" ? "uk-UA" : "en-GB", {dateStyle: "medium", timeStyle: "short"}).format(new Date(event.startsAt))}`;
-}

@@ -179,15 +179,10 @@ function OfferCard({disabled, locale, offer, onBuy, onDetails, onPayPending, pen
 
 function OfferDetails({locale, offer, onBuy, onClose, pending, services, t}: {locale: Locale; offer: MembershipOffer; onBuy: (offer: MembershipOffer) => void; onClose: () => void; pending: boolean; services: Array<{id: number; title: string}>; t: T}) {
     return (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/40 px-3 py-3 sm:items-center sm:justify-center" role="presentation">
-            <section aria-labelledby="membership-details-title" className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-stone-200 bg-white p-5 shadow-2xl" role="dialog" aria-modal="true">
-                <div className="flex min-w-0 items-start justify-between gap-4">
-                    <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">{kindLabel(offer, t)}</p>
-                        <h2 className="mt-2 break-words text-2xl font-semibold text-stone-950" id="membership-details-title">{localizedTitle(offer, locale)}</h2>
-                    </div>
-                    <button className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100" onClick={onClose} type="button">{t("close")}</button>
-                </div>
+        <Dialog closeLabel={t("close")} eyebrow={kindLabel(offer, t)} footer={<>
+            <Button onClick={onClose} variant="secondary">{t("close")}</Button>
+            <Button disabled={pending} onClick={() => onBuy(offer)}>{pending ? t("pending") : t("buy")}</Button>
+        </>} onClose={onClose} open size="lg" title={localizedTitle(offer, locale)}>
                 <p className="mt-4 break-words text-sm leading-6 text-stone-600">{localizedDescription(offer, locale)}</p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
                     <InfoCard label={t("price")} value={formatAmount(offer.price, locale)} />
@@ -207,12 +202,7 @@ function OfferDetails({locale, offer, onBuy, onClose, pending, services, t}: {lo
                         {services.every((service) => !offer.eligibleServiceIds.includes(service.id)) ? <p className="text-sm text-stone-500">{t("eligibleServicesEmpty")}</p> : null}
                     </div>
                 </section>
-                <div className="mt-5 flex flex-wrap justify-end gap-2">
-                    <button className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-100" onClick={onClose} type="button">{t("close")}</button>
-                    <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={pending} onClick={() => onBuy(offer)} type="button">{pending ? t("pending") : t("buy")}</button>
-                </div>
-            </section>
-        </div>
+        </Dialog>
     );
 }
 
@@ -245,20 +235,13 @@ function PaymentConfirmationDialog({isLoading, locale, offer, onClose, onConfirm
 
 function ManualPaymentDialog({locale, offer, onClose, t}: {locale: Locale; offer: MembershipOffer; onClose: () => void; t: T}) {
     return (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/40 px-3 py-3 sm:items-center sm:justify-center" role="presentation">
-            <section aria-labelledby="membership-payment-title" aria-modal="true" className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl border border-stone-200 bg-white p-5 shadow-2xl" role="dialog">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">{t("manualPaymentEyebrow")}</p>
-                <h2 className="mt-2 break-words text-2xl font-semibold text-stone-950" id="membership-payment-title">{t("manualPaymentTitle")}</h2>
+        <Dialog closeLabel={t("manualPaymentClose")} eyebrow={t("manualPaymentEyebrow")} footer={<Button onClick={onClose}>{t("manualPaymentClose")}</Button>} onClose={onClose} open title={t("manualPaymentTitle")}>
                 <p className="mt-3 break-words text-sm leading-6 text-stone-600">{t("manualPaymentBody", {offer: localizedTitle(offer, locale), price: formatAmount(offer.price, locale)})}</p>
                 <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
                     <p className="font-semibold">{t("manualPaymentNextTitle")}</p>
                     <p className="mt-1">{t("manualPaymentNextBody")}</p>
                 </div>
-                <button className="mt-5 w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 sm:w-fit" onClick={onClose} type="button">
-                    {t("manualPaymentClose")}
-                </button>
-            </section>
-        </div>
+        </Dialog>
     );
 }
 

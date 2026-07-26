@@ -43,7 +43,7 @@ export default async function AdminLayout({children, params}: Props) {
                         <AuthSessionPanel loading={false} tone="light" user={user} variant="management" />
                     </div>
                 </div>
-                <div className="management-layout grid w-full flex-1 grid-cols-1 content-start items-start gap-4 p-3 print:block print:p-0 sm:p-6 lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-6 xl:grid-cols-[220px_minmax(0,1fr)] xl:px-8 xl:py-7">
+                <div className="management-layout grid w-full flex-1 grid-cols-1 content-start items-start gap-4 p-3 print:block print:p-0 sm:p-5 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-6 xl:grid-cols-[250px_minmax(0,1fr)] xl:px-6 xl:py-6">
                     <ManagementNavigation
                         locale={locale}
                         showNews={hasRole(user, "SMM")}
@@ -54,6 +54,11 @@ export default async function AdminLayout({children, params}: Props) {
                         showSpecialist={hasRole(user, "ADMIN") || hasRole(user, "SPECIALIST")}
                         showWorkSchedule={hasRole(user, "ADMIN")}
                         showFinance={hasRole(user, "FINANCE_MANAGER")}
+                        showAnalytics={hasRole(user, "FINANCE_MANAGER")}
+                        showReviews={hasRole(user, "ADMIN")}
+                        showRecords={hasRole(user, "ADMIN")}
+                        showClients={hasRole(user, "ADMIN")}
+                        showSiteSettings={hasRole(user, "ADMIN")}
                     />
                     <AnimatedManagementContent>
                         {children}

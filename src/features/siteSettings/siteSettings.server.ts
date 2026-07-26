@@ -1,5 +1,4 @@
 import {API_URL} from "@/shared/constants/env";
-import type {MediaAsset} from "@/types/news";
 import type {SiteSettings} from "@/types/siteSettings";
 
 export async function getPublicSiteSettings() {
@@ -24,25 +23,4 @@ export function localizedSetting(settings: SiteSettings | null, locale: "ua" | "
         : settings[`${field}En`];
 
     return value?.trim() || null;
-}
-
-export function heroMediaUrls(settings: SiteSettings | null) {
-    return settings?.heroMediaUrls
-        ?.split("\n")
-        .map((url) => url.trim())
-        .filter(Boolean) ?? [];
-}
-
-export async function getPublicSiteSettingsMedia() {
-    try {
-        const response = await fetch(`${API_URL}/api/site-settings/media`, {
-            next: {revalidate: 60}
-        });
-
-        if (!response.ok) return [];
-
-        return await response.json() as MediaAsset[];
-    } catch {
-        return [];
-    }
 }

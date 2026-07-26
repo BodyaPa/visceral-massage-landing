@@ -37,14 +37,22 @@ export default async function HomePage({params}: Props) {
     const body = localizedSetting(settings, locale, "homeBody");
 
     return (
-        <main className="container mx-auto px-4 py-10" id="public-page-content">
-            <section className="max-w-3xl space-y-4">
-                <h1 className="text-3xl font-bold">{t("title")}</h1>
-                <p className="whitespace-pre-line text-base text-muted-foreground">
-                    {intro}
-                </p>
+        <main className="flex-1 bg-stone-50" id="public-page-content">
+            <section className="border-b border-stone-200 bg-white">
+                <div className="mx-auto w-full max-w-[1440px] px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+                    <div className="max-w-3xl space-y-5">
+                        <h1 className="text-balance text-4xl font-semibold tracking-tight text-stone-950 sm:text-5xl">
+                            {t("title")}
+                        </h1>
+                        <p className="whitespace-pre-line text-base leading-7 text-stone-600 sm:text-lg">
+                            {intro}
+                        </p>
+                    </div>
+                </div>
             </section>
-            <PublicCmsPageContent body={body} />
+            <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+                <PublicCmsPageContent body={body} />
+            </div>
         </main>
     );
 }

@@ -6,7 +6,7 @@ import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {useCreateOfficeMutation, useCreateOfficeResourceMutation, useListOfficeResourcesQuery, useListOfficesQuery, useUpdateOfficeMutation, useUpdateOfficeResourceMutation, useUploadOfficeMediaMutation} from "@/features/offices/offices.api";
 import {createAdminMediaUrl} from "@/features/news/newsMedia";
-import type {BusinessDirection, Office, OfficeInput, OfficeResource, OfficeResourceInput, OfficeResourceType} from "@/types/offices";
+import type {Office, OfficeInput, OfficeResource, OfficeResourceInput} from "@/types/offices";
 
 const emptyOffices: Office[] = [];
 const emptyForm: OfficeInput = {
@@ -126,7 +126,7 @@ export default function OfficesManagement() {
     }
 
     return (
-        <section className="grid w-full min-w-0 max-w-full items-start gap-5 xl:grid-cols-[minmax(360px,520px)_minmax(0,640px)]">
+        <section className="grid w-full min-w-0 max-w-none items-start gap-5 xl:grid-cols-[minmax(360px,0.8fr)_minmax(0,1.35fr)]">
             <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
                 <div className="mb-4 flex flex-col gap-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -312,7 +312,7 @@ export default function OfficesManagement() {
                     >
                         {saving ? t("saving") : t("save")}
                     </button>
-                    {selectedOffice ? <OfficeResourcesEditor direction={form.businessDirection} officeId={selectedOffice.id} /> : (
+                    {selectedOffice ? <OfficeResourcesEditor officeId={selectedOffice.id} /> : (
                         <p className="rounded-lg bg-stone-50 px-3 py-2 text-sm text-stone-600">{t("resourcesSaveOfficeFirst")}</p>
                     )}
                 </div>
@@ -321,13 +321,12 @@ export default function OfficesManagement() {
     );
 }
 
-function OfficeResourcesEditor({direction, officeId}: {direction: BusinessDirection; officeId: number}) {
+function OfficeResourcesEditor({officeId}: {officeId: number}) {
     const t = useTranslations("admin.offices");
     const toast = useToast();
     const {data: resources = [], isFetching} = useListOfficeResourcesQuery(officeId);
     const [selectedId, setSelectedId] = useState<number | null>(null);
-    const expectedType: OfficeResourceType = direction === "TRAINING" ? "TRAINING_HALL" : "MASSAGE_ROOM";
-    const emptyResource: OfficeResourceInput = {name: "", resourceType: expectedType, capacity: direction === "TRAINING" ? 12 : 1, active: true};
+    const emptyResource: OfficeResourceInput = {name: "", active: true};
     const [resourceForm, setResourceForm] = useState<OfficeResourceInput>(emptyResource);
     const [createResource, {isLoading: isCreating}] = useCreateOfficeResourceMutation();
     const [updateResource, {isLoading: isUpdating}] = useUpdateOfficeResourceMutation();
@@ -337,21 +336,21 @@ function OfficeResourcesEditor({direction, officeId}: {direction: BusinessDirect
         setResourceForm(emptyResource);
         // Reset the draft when the selected office or its direction changes.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [officeId, direction]);
+    }, [officeId]);
 
     function selectResource(resource: OfficeResource) {
         setSelectedId(resource.id);
-        setResourceForm({name: resource.name, resourceType: resource.resourceType, capacity: resource.capacity, active: resource.active});
+        setResourceForm({name: resource.name, active: resource.active});
     }
 
     async function saveResource() {
         try {
-            const body = {...resourceForm, name: resourceForm.name.trim(), resourceType: expectedType};
+            const body = {...resourceForm, name: resourceForm.name.trim()};
             const saved = selectedId === null
                 ? await createResource({officeId, body}).unwrap()
                 : await updateResource({officeId, resourceId: selectedId, body}).unwrap();
             setSelectedId(saved.id);
-            setResourceForm({name: saved.name, resourceType: saved.resourceType, capacity: saved.capacity, active: saved.active});
+            setResourceForm({name: saved.name, active: saved.active});
             toast.success(t(selectedId === null ? "resourceCreated" : "resourceUpdated"));
         } catch (error) {
             toast.error(apiErrorMessage(error) ?? t("resourceSaveError"));
@@ -365,15 +364,14 @@ function OfficeResourcesEditor({direction, officeId}: {direction: BusinessDirect
                 <button className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium hover:bg-stone-50" onClick={() => {setSelectedId(null); setResourceForm(emptyResource)}} type="button">{t("newResource")}</button>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-                {resources.map((resource) => <button aria-pressed={selectedId === resource.id} className={`rounded-lg border px-3 py-2 text-left text-sm ${selectedId === resource.id ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white hover:border-stone-400"}`} key={resource.id} onClick={() => selectResource(resource)} type="button"><span className="font-medium">{resource.name}</span><span className="ml-2 opacity-70">{t("capacityShort", {count: resource.capacity})}</span></button>)}
+                {resources.map((resource) => <button aria-pressed={selectedId === resource.id} className={`rounded-lg border px-3 py-2 text-left text-sm ${selectedId === resource.id ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white hover:border-stone-400"}`} key={resource.id} onClick={() => selectResource(resource)} type="button"><span className="font-medium">{resource.name}</span></button>)}
                 {!isFetching && resources.length === 0 ? <p className="text-sm text-stone-500">{t("resourcesEmpty")}</p> : null}
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="mt-4">
                 <Field label={t("resourceName")}><input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" onChange={(event) => setResourceForm((current) => ({...current, name: event.target.value}))} value={resourceForm.name} /></Field>
-                <Field label={t("capacity")}><input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" min="1" max="500" onChange={(event) => setResourceForm((current) => ({...current, capacity: Number(event.target.value)}))} type="number" value={resourceForm.capacity} /></Field>
             </div>
             <label className="mt-3 flex items-center gap-2 text-sm text-stone-700"><input checked={resourceForm.active} onChange={(event) => setResourceForm((current) => ({...current, active: event.target.checked}))} type="checkbox" />{t("resourceActive")}</label>
-            <button className="mt-3 rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700 disabled:bg-stone-400" disabled={!resourceForm.name.trim() || resourceForm.capacity < 1 || isCreating || isUpdating} onClick={saveResource} type="button">{isCreating || isUpdating ? t("saving") : t("saveResource")}</button>
+            <button className="mt-3 rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700 disabled:bg-stone-400" disabled={!resourceForm.name.trim() || isCreating || isUpdating} onClick={saveResource} type="button">{isCreating || isUpdating ? t("saving") : t("saveResource")}</button>
         </div>
     );
 }

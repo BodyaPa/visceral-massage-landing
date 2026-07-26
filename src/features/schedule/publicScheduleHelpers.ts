@@ -1,4 +1,4 @@
-import type {PublicFixedEvent, PublicScheduleAvailabilityBlock} from "@/types/schedule";
+import type {PublicTrainingCalendarSession, PublicScheduleAvailabilityBlock} from "@/types/schedule";
 import type {PublicService} from "@/types/services";
 
 export type BookingModeFilter = "all" | "individual" | "events";
@@ -14,7 +14,7 @@ export type FilterState = {
 
 export type SelectedDayItem =
     | {type: "slot"; startsAt: string; slot: PublicScheduleAvailabilityBlock}
-    | {type: "event"; startsAt: string; event: PublicFixedEvent};
+    | {type: "event"; startsAt: string; event: PublicTrainingCalendarSession};
 
 export type SpecialistOption = {id: number; name: string; avatarMediaUrl: string | null};
 
@@ -75,7 +75,7 @@ export function buildMonthPickerDays(date: Date): MonthPickerDay[] {
     return days;
 }
 
-export function filterScheduleEvents(events: PublicFixedEvent[], filters: FilterState) {
+export function filterScheduleEvents(events: PublicTrainingCalendarSession[], filters: FilterState) {
     if (filters.mode === "individual" || filters.status === "available" || filters.status === "unavailable") return [];
     if (filters.status === "mine") return events.filter((event) => event.enrolled);
     if (filters.status === "events") return events.filter((event) => !event.full);
@@ -106,7 +106,7 @@ export function serviceDurationSlot(slot: PublicScheduleAvailabilityBlock, servi
     return {...slot, endsAt: endsAt.toISOString()};
 }
 
-export function buildSelectedDayItems(slots: PublicScheduleAvailabilityBlock[], events: PublicFixedEvent[]): SelectedDayItem[] {
+export function buildSelectedDayItems(slots: PublicScheduleAvailabilityBlock[], events: PublicTrainingCalendarSession[]): SelectedDayItem[] {
     return [
         ...slots.map((slot) => ({type: "slot" as const, startsAt: slot.startsAt, slot})),
         ...events.map((event) => ({type: "event" as const, startsAt: event.startsAt, event}))

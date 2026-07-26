@@ -33,7 +33,6 @@ export interface MediaAsset {
     newsId: NewsId | null;
     officeId: number | null;
     siteSettingsId: number | null;
-    siteSliderSortOrder: number | null;
     createdAt: string;
 }
 

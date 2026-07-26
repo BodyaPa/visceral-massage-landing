@@ -2,28 +2,32 @@
 
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import type {ReactNode} from "react";
-import {createPortal} from "react-dom";
 import {useLocale, useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
-import {useCreateManualBookingMutation, useListSpecialistBookingsQuery} from "@/features/bookings/bookings.api";
+import ModalSurface from "@/components/ui/overlay/ModalSurface";
+import {useCreateManualBookingMutation, useLazyGetSpecialistBookingQuery, useListSpecialistBookingsQuery, usePreviewManualBookingMutation} from "@/features/bookings/bookings.api";
+import Dialog from "@/components/ui/overlay/Dialog";
 import {bookingServiceTitle} from "@/features/bookings/bookingTitles";
 import {useListPublicOfficesQuery} from "@/features/offices/offices.api";
-import {useListServicesQuery} from "@/features/services/services.api";
+import {useListServiceVariantsQuery, useListServicesQuery} from "@/features/services/services.api";
 import {useListUsersQuery} from "@/features/users/users.api";
 import {useListWorkScheduleQuery} from "@/features/workSchedule/workSchedule.api";
+import {
+    useCreateTrainingSessionMutation,
+    useListCalendarTrainingParticipantsQuery,
+    useListTrainingSessionsQuery,
+    useListTrainingTypesQuery,
+    useUpdateTrainingSessionMutation
+} from "@/features/training/training.api";
 import type {WorkScheduleEntry} from "@/types/workSchedule";
 import {
     useCreateAvailabilityMutation,
     useCopyDayPlanMutation,
-    useCreateSpecialistEventMutation,
-    useDeleteSpecialistEventMutation,
     useGetScheduleConfigQuery,
     useListAvailabilityQuery,
-    useListSpecialistEventEnrollmentsQuery,
-    useListSpecialistEventsQuery,
     useListScheduleOfficeResourcesQuery,
-    useUpdateAvailabilityMutation,
-    useUpdateSpecialistEventMutation
+    usePreviewDayPlanMutation,
+    useUpdateAvailabilityMutation
 } from "@/features/schedule/schedule.api";
 import {
     buildManualBookingSlots,
@@ -38,13 +42,15 @@ import {
 import AtaraksiaCalendar, {
     toCalendarView,
     type AtaraksiaCalendarEvent,
+    type AtaraksiaCalendarResource,
     type AtaraksiaCalendarMessages
 } from "@/features/schedule/AtaraksiaCalendar";
-import type {DayPlanCopyConflict, DayPlanCopyInput, DayPlanCopyResponse, ScheduleBlockStatus, ScheduleBlockType, SpecialistAvailabilityBlock, SpecialistFixedEvent, SpecialistFixedEventEnrollment, SpecialistFixedEventInput} from "@/types/schedule";
+import type {DayPlanCopyConflict, DayPlanCopyInput, DayPlanCopyResponse, ScheduleBlockStatus, ScheduleBlockType, SpecialistAvailabilityBlock, SpecialistTrainingCalendarSession, SpecialistTrainingCalendarInput} from "@/types/schedule";
 import type {SpecialistBooking} from "@/types/bookings";
 import type {PublicService} from "@/types/services";
 import type {AdminUser} from "@/types/users";
 import type {Locale} from "@/i18n";
+import type {CalendarTrainingParticipant, TrainingSession, TrainingSessionInput, TrainingType} from "@/types/training";
 import {formatCurrencyAmount as formatAmount} from "@/shared/lib/i18n/formatNumbers";
 import {toLanguageTag} from "@/shared/lib/i18n/toLanguageTag";
 
@@ -52,10 +58,14 @@ const personalViews = ["day", "week", "list"] as const;
 const teamViews = ["day", "list"] as const;
 const emptyBlocks: SpecialistAvailabilityBlock[] = [];
 const defaultAppointmentBufferMinutes = 30;
+// Retained until RBC resource Day reaches browser parity and owner review.
+const useLegacyTeamResourceDayForParity = false;
 type CalendarView = typeof personalViews[number];
 type PlannerMode = "plan" | "bookings" | "all";
 type PlannerScope = "mine" | "team";
 type PlannerTool = "availability" | "event" | "copy" | "bookings";
+type TrainingEventOption = Pick<TrainingType, "id" | "durationMinutes"> & {title: string};
+type TrainingCalendarEvent = SpecialistTrainingCalendarSession & {trainingTypeId: number};
 
 type Props = {
     canEditSchedule: boolean;
@@ -75,6 +85,7 @@ type AvailabilityForm = {
     notes: string;
 };
 type CalendarDetail = {
+    bookingId?: number;
     title: string;
     tone: "available" | "blocked" | "booking" | "event" | "buffer" | "past" | "cancelled";
     rows: Array<{label: string; value: string}>;
@@ -94,6 +105,10 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
         ...range,
         specialistId: selectedSpecialistId
     }), [range, selectedSpecialistId]);
+    const trainingSessionQuery = useMemo(() => ({
+        ...range,
+        trainerId: selectedSpecialistId === "" ? undefined : selectedSpecialistId
+    }), [range, selectedSpecialistId]);
     const hasBackendCalendarFilters = calendarFilters.officeId !== "" || calendarFilters.serviceId !== "" || (calendarFilters.status !== "all" && calendarFilters.status !== "PAST");
     const calendarBackendStatus: CalendarFilterState["status"] | "" = calendarFilters.status === "all" || calendarFilters.status === "PAST" ? "" : calendarFilters.status;
     const calendarScheduleQuery = useMemo(() => ({
@@ -107,15 +122,27 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
         pollingInterval: 30_000,
         skipPollingIfUnfocused: true
     });
-    const {data: events = [], isFetching: eventsFetching, isError: eventsError, refetch: refetchEvents} = useListSpecialistEventsQuery(scheduleQuery);
-    const {data: eventEnrollments = [], isFetching: eventEnrollmentsFetching, isError: eventEnrollmentsError} = useListSpecialistEventEnrollmentsQuery(scheduleQuery);
+    const {data: trainingSessions = [], isFetching: eventsFetching, isError: eventsError, refetch: refetchEvents} = useListTrainingSessionsQuery(trainingSessionQuery);
+    const events = useMemo(() => trainingSessions.map(trainingSessionAsSpecialistEvent), [trainingSessions]);
+    const {data: trainingParticipants = [], isFetching: trainingParticipantsFetching, isError: trainingParticipantsError} = useListCalendarTrainingParticipantsQuery(trainingSessionQuery, {skip: !canEditSchedule});
     const {data: bookings = [], isFetching: bookingsFetching, isError: bookingsError} = useListSpecialistBookingsQuery(scheduleQuery);
     const {data: calendarData, isFetching: calendarAvailabilityFetching} = useListAvailabilityQuery(calendarScheduleQuery, {
         skip: !hasBackendCalendarFilters,
         pollingInterval: 30_000,
         skipPollingIfUnfocused: true
     });
-    const {data: calendarEventsData = [], isFetching: calendarEventsFetching} = useListSpecialistEventsQuery(calendarScheduleQuery, {skip: !hasBackendCalendarFilters});
+    const calendarTrainingSessionQuery = useMemo(() => ({
+        ...range,
+        trainerId: selectedSpecialistId === "" ? undefined : selectedSpecialistId,
+        officeId: calendarFilters.officeId === "" ? undefined : calendarFilters.officeId,
+        status: calendarBackendStatus === "ACTIVE_EVENT"
+            ? "PUBLISHED" as const
+            : calendarBackendStatus === "INACTIVE_EVENT"
+                ? "CANCELLED" as const
+                : undefined
+    }), [calendarBackendStatus, calendarFilters.officeId, range, selectedSpecialistId]);
+    const {data: calendarTrainingSessions = [], isFetching: calendarEventsFetching} = useListTrainingSessionsQuery(calendarTrainingSessionQuery, {skip: !hasBackendCalendarFilters});
+    const calendarEventsData = useMemo(() => calendarTrainingSessions.map(trainingSessionAsSpecialistEvent), [calendarTrainingSessions]);
     const {data: calendarBookingsData = [], isFetching: calendarBookingsFetching} = useListSpecialistBookingsQuery(calendarScheduleQuery, {skip: !hasBackendCalendarFilters});
     const {data: specialistsData, isFetching: specialistsFetching, isError: specialistsError} = useListUsersQuery(
         {role: "SPECIALIST", enabled: true, size: 100},
@@ -123,6 +150,7 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
     );
     const {data: officesData, isFetching: officesFetching, isError: officesError} = useListPublicOfficesQuery({size: 100});
     const {data: servicesData, isFetching: servicesFetching, isError: servicesError} = useListServicesQuery({lang: locale as Locale, size: 100});
+    const {data: trainingTypes = [], isFetching: trainingTypesFetching} = useListTrainingTypesQuery(undefined, {skip: !canEditSchedule});
     const {data: scheduleConfig} = useGetScheduleConfigQuery();
     const blocks = data ?? emptyBlocks;
     const offices = officesData?.content ?? [];
@@ -138,26 +166,24 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
     });
     const [createAvailability, {isLoading: isCreating}] = useCreateAvailabilityMutation();
     const [copyDayPlan, {isLoading: isCopyingDayPlan}] = useCopyDayPlanMutation();
-    const [createSpecialistEvent, {isLoading: isCreatingEvent}] = useCreateSpecialistEventMutation();
-    const [updateSpecialistEvent, {isLoading: isUpdatingEvent}] = useUpdateSpecialistEventMutation();
-    const [deleteSpecialistEvent] = useDeleteSpecialistEventMutation();
+    const [previewDayPlan, {isLoading: isPreviewingDayPlan}] = usePreviewDayPlanMutation();
+    const [loadSpecialistBooking] = useLazyGetSpecialistBookingQuery();
+    const [createTrainingSession, {isLoading: isCreatingEvent}] = useCreateTrainingSessionMutation();
+    const [updateTrainingSession, {isLoading: isUpdatingEvent}] = useUpdateTrainingSessionMutation();
     const [updateAvailability, {isLoading: isUpdatingAvailability}] = useUpdateAvailabilityMutation();
     const [selectedView, setSelectedView] = useState<CalendarView>("week");
     const [plannerMode, setPlannerMode] = useState<PlannerMode>("all");
     const [toolsOpen, setToolsOpen] = useState(false);
-    const [toolsVisible, setToolsVisible] = useState(false);
     const [activeTool, setActiveTool] = useState<PlannerTool>("availability");
     const [form, setForm] = useState<AvailabilityForm>(() => buildDefaultForm());
     const {data: availabilityResources = [], isFetching: availabilityResourcesFetching} = useListScheduleOfficeResourcesQuery(Number(form.officeId), {skip: !form.officeId});
     const [editingBlock, setEditingBlock] = useState<SpecialistAvailabilityBlock | null>(null);
-    const [editingEvent, setEditingEvent] = useState<SpecialistFixedEvent | null>(null);
+    const [editingEvent, setEditingEvent] = useState<TrainingCalendarEvent | null>(null);
     const [selectedCalendarDetail, setSelectedCalendarDetail] = useState<CalendarDetail | null>(null);
     const calendarDetailTriggerRef = useRef<HTMLElement | null>(null);
-    const toolsPanelRef = useRef<HTMLElement | null>(null);
-    const toolsTriggerRef = useRef<HTMLElement | null>(null);
     const availableCount = blocks.filter((block) => block.status === "AVAILABLE" && !block.booked).length;
-    const eventServices = services.filter((service) => service.bookingMode === "FIXED_EVENT");
-    const individualServices = services.filter((service) => service.bookingMode === "INDIVIDUAL_APPOINTMENT");
+    const eventServices = trainingTypes.map(trainingTypeAsEventOption);
+    const individualServices = services;
     const appointmentBufferMinutes = scheduleConfig?.appointmentBufferMinutes ?? defaultAppointmentBufferMinutes;
     const calendarBlocksSource = hasBackendCalendarFilters ? calendarData ?? emptyBlocks : blocks;
     const calendarEventsSource = hasBackendCalendarFilters ? calendarEventsData : events;
@@ -175,8 +201,7 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
         [appointmentBufferMinutes, blocks, bookings, editingBlock?.id, events, form, locale]
     );
     const closeTools = useCallback(() => {
-        setToolsVisible(false);
-        window.setTimeout(() => setToolsOpen(false), 180);
+        setToolsOpen(false);
     }, []);
 
     useEffect(() => {
@@ -188,32 +213,6 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
         }
     }, []);
 
-    useEffect(() => {
-        if (!toolsOpen) return;
-        const frame = window.requestAnimationFrame(() => setToolsVisible(true));
-        if (document.activeElement instanceof HTMLElement && !toolsPanelRef.current?.contains(document.activeElement)) {
-            toolsTriggerRef.current = document.activeElement;
-        }
-        const previousOverflow = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
-        const closeOnEscape = (event: KeyboardEvent) => {
-            if (event.key === "Escape") {
-                event.preventDefault();
-                closeTools();
-            } else if (event.key === "Tab" && toolsPanelRef.current) {
-                trapDialogTab(event, toolsPanelRef.current);
-            }
-        };
-        document.addEventListener("keydown", closeOnEscape);
-        toolsPanelRef.current?.focus();
-        return () => {
-            document.removeEventListener("keydown", closeOnEscape);
-            window.cancelAnimationFrame(frame);
-            document.body.style.overflow = previousOverflow;
-            if (toolsTriggerRef.current?.isConnected) toolsTriggerRef.current.focus();
-        };
-    }, [closeTools, toolsOpen]);
-
     function updateForm<K extends keyof AvailabilityForm>(field: K, value: AvailabilityForm[K]) {
         setForm((current) => ({...current, [field]: value}));
     }
@@ -222,11 +221,23 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
         setCalendarFilters((current) => ({...current, [field]: value}));
     }
 
-    function openCalendarDetail(detail: CalendarDetail) {
+    async function openCalendarDetail(detail: CalendarDetail) {
         if (document.activeElement instanceof HTMLElement) {
             calendarDetailTriggerRef.current = document.activeElement;
         }
         setSelectedCalendarDetail(detail);
+        if (detail.bookingId) {
+            try {
+                const booking = await loadSpecialistBooking(detail.bookingId).unwrap();
+                setSelectedCalendarDetail((current) =>
+                    current?.bookingId === detail.bookingId
+                        ? bookingCalendarDetail(booking, copy, locale, t)
+                        : current
+                );
+            } catch {
+                toast.error(t("calendar.loadError"));
+            }
+        }
     }
 
     async function saveAvailability() {
@@ -277,7 +288,7 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
         }
     }
 
-    function editEvent(event: SpecialistFixedEvent) {
+    function editEvent(event: TrainingCalendarEvent) {
         setPlannerMode("plan");
         setEditingEvent(event);
         openTool("event");
@@ -448,9 +459,7 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
                 {selectedCalendarDetail ? <CalendarDetailPanel closeLabel={copy.closeDetails} detail={selectedCalendarDetail} onClose={() => setSelectedCalendarDetail(null)} returnFocusTo={calendarDetailTriggerRef.current} /> : null}
             </div>
 
-            {canEditSchedule && toolsOpen ? <OverlayPortal>
-            <button aria-label={copy.closeDetails} className={`fixed inset-0 z-40 bg-stone-950/20 transition-opacity duration-180 motion-reduce:transition-none ${toolsVisible ? "opacity-100" : "opacity-0"}`} onClick={closeTools} type="button" />
-            <aside aria-label={copy.toolsTitle} aria-modal="true" className={`fixed inset-0 z-50 flex max-h-[100dvh] min-w-0 flex-col overflow-hidden border border-stone-200 bg-stone-50 shadow-2xl outline-none transition-[opacity,transform] duration-180 ease-out focus-visible:ring-2 focus-visible:ring-stone-500 motion-reduce:transition-none sm:inset-x-5 sm:bottom-auto sm:top-1/2 sm:mx-auto sm:h-[min(760px,92dvh)] sm:w-[min(1180px,calc(100vw-2.5rem))] sm:-translate-y-1/2 sm:rounded-2xl ${toolsVisible ? "translate-y-0 opacity-100 sm:-translate-y-1/2" : "translate-y-4 opacity-0 sm:-translate-y-[48%]"}`} ref={toolsPanelRef} role="dialog" tabIndex={-1}>
+            {canEditSchedule && toolsOpen ? <ModalSurface className="flex h-[calc(100dvh-1.5rem)] max-w-[1180px] flex-col overflow-hidden bg-stone-50 sm:h-[min(760px,92dvh)]" label={copy.toolsTitle} onClose={closeTools}>
                 <div className="flex shrink-0 items-center justify-between gap-3 border-b border-stone-200 bg-white px-4 py-3 sm:px-5">
                     <h2 className="text-base font-semibold text-stone-950">{copy.toolsTitle}</h2>
                     <button aria-label={copy.closeDetails} className={controlButtonClass} onClick={closeTools} type="button">×</button>
@@ -515,10 +524,9 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
                                 <Field label={copy.resource}>
                                     <select className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" disabled={!form.officeId || !form.serviceId || availabilityResourcesFetching} onChange={(event) => updateForm("resourceId", event.target.value)} value={form.resourceId}>
                                         <option value="">{form.officeId ? copy.selectResource : copy.selectOfficeFirst}</option>
-                                        {availabilityResources.filter((resource) => {
-                                            const service = individualServices.find((item) => item.id === Number(form.serviceId));
-                                            return resource.active && (!service || resource.resourceType === service.requiredResourceType);
-                                        }).map((resource) => <option key={resource.id} value={resource.id}>{resource.name}</option>)}
+                                        {availabilityResources
+                                            .filter((resource) => resource.active)
+                                            .map((resource) => <option key={resource.id} value={resource.id}>{resource.name}</option>)}
                                     </select>
                                 </Field>
                             </>
@@ -582,7 +590,7 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
                     </div>
                 ) : null}
                 {activeTool === "event" ? <div className="grid gap-4 lg:grid-cols-2">
-                <FixedEventForm
+                <TrainingSessionForm
                     copy={copy}
                     editingEvent={editingEvent}
                     isLoading={isCreatingEvent || isUpdatingEvent}
@@ -595,11 +603,20 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
                         }
 
                         try {
+                            const existingStatus = editingEvent
+                                ? trainingSessions.find((session) => session.id === editingEvent.id)?.status
+                                : undefined;
+                            const status = body.active
+                                ? "PUBLISHED"
+                                : existingStatus === "DRAFT" || !editingEvent
+                                    ? "DRAFT"
+                                    : "CANCELLED";
+                            const sessionBody = eventInputAsTrainingSession(body, status);
                             if (editingEvent) {
-                                await updateSpecialistEvent({id: editingEvent.id, body}).unwrap();
+                                await updateTrainingSession({id: editingEvent.id, body: sessionBody}).unwrap();
                                 toast.success(copy.eventUpdated);
                             } else {
-                                await createSpecialistEvent(body).unwrap();
+                                await createTrainingSession(sessionBody).unwrap();
                                 toast.success(copy.eventCreated);
                             }
                             setEditingEvent(null);
@@ -611,7 +628,7 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
                     onCancelEdit={() => setEditingEvent(null)}
                     selectedSpecialistId={selectedSpecialistId}
                     services={eventServices}
-                    servicesFetching={servicesFetching}
+                    servicesFetching={trainingTypesFetching}
                 />
                 <EventsPanel
                     copy={copy}
@@ -621,20 +638,14 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
                     locale={locale}
                     onDeactivate={async (event) => {
                         try {
-                            await updateSpecialistEvent({id: event.id, body: eventToInput(event, false)}).unwrap();
+                            await updateTrainingSession({
+                                id: event.id,
+                                body: eventInputAsTrainingSession(eventToInput(event, false), "CANCELLED")
+                            }).unwrap();
                             void refetchEvents();
                             toast.success(copy.eventUpdated);
                         } catch {
                             toast.error(copy.eventError);
-                        }
-                    }}
-                    onDelete={async (event) => {
-                        try {
-                            await deleteSpecialistEvent(event.id).unwrap();
-                            void refetchEvents();
-                            toast.success(copy.eventDeleted);
-                        } catch (error) {
-                            toast.error(apiErrorMessage(error) ?? copy.eventDeleteError);
                         }
                     }}
                     onEdit={editEvent}
@@ -644,6 +655,7 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
                     conflictsLabel={copy.copyConflicts}
                     copy={copy}
                     isLoading={isCopyingDayPlan}
+                    isPreviewing={isPreviewingDayPlan}
                     locale={locale}
                     onCopy={async (body) => {
                         const response = await copyDayPlan({
@@ -654,6 +666,10 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
                         void refetchEvents();
                         return response;
                     }}
+                    onPreview={(body) => previewDayPlan({
+                        ...body,
+                        specialistId: selectedSpecialistId === "" ? null : selectedSpecialistId
+                    }).unwrap()}
                 /> : null}
                 {activeTool === "bookings" ? <div className="grid gap-4 lg:grid-cols-2">
                         <ManualBookingForm
@@ -671,11 +687,11 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
                             t={t}
                         />
                         <div className="space-y-4">
-                        <EventEnrollmentsPanel
+                        <TrainingParticipantsPanel
                             copy={copy}
-                            enrollments={eventEnrollments}
-                            isError={eventEnrollmentsError}
-                            isFetching={eventEnrollmentsFetching}
+                            enrollments={trainingParticipants}
+                            isError={trainingParticipantsError}
+                            isFetching={trainingParticipantsFetching}
                             locale={locale}
                         />
                         <BookingsPanel bookings={bookings} copy={copy} isError={bookingsError} isFetching={bookingsFetching} locale={locale} t={t} />
@@ -683,8 +699,7 @@ export default function SpecialistScheduleWorkspace({canEditSchedule, canManageA
                 </div> : null}
                 </div>
                 </div>
-            </aside>
-            </OverlayPortal> : null}
+            </ModalSurface> : null}
         </section>
     );
 }
@@ -725,7 +740,7 @@ function CalendarSurface({
     buffers: CalendarBuffer[];
     copy: ReturnType<typeof scheduleCopy>;
     currentDate: Date;
-    events: SpecialistFixedEvent[];
+    events: SpecialistTrainingCalendarSession[];
     locale: string;
     onNavigate: (date: Date) => void;
     onSelectDetail: (detail: CalendarDetail) => void;
@@ -743,23 +758,8 @@ function CalendarSurface({
     const visibleEvents = plannerMode === "bookings" ? [] : events;
     const visibleBuffers = plannerMode === "all" ? buffers.slice(0, 80) : buffers.slice(0, 40);
 
-    if (teamScope && selectedView === "day") {
-        return (
-            <TeamResourceDay
-                bookings={visibleBookings}
-                blocks={visibleBlocks}
-                buffers={visibleBuffers}
-                copy={copy}
-                currentDate={currentDate}
-                events={visibleEvents}
-                locale={locale}
-                onSelectDetail={onSelectDetail}
-                onCreateAt={onCreateAt}
-                specialists={specialists}
-                t={t}
-                workScheduleEntries={workScheduleEntries}
-            />
-        );
+    if (useLegacyTeamResourceDayForParity && teamScope && selectedView === "day") {
+        return <TeamResourceDay bookings={visibleBookings} blocks={visibleBlocks} buffers={visibleBuffers} copy={copy} currentDate={currentDate} events={visibleEvents} locale={locale} onCreateAt={onCreateAt} onSelectDetail={onSelectDetail} specialists={specialists} t={t} workScheduleEntries={workScheduleEntries} />;
     }
 
     if (selectedView === "list") {
@@ -777,6 +777,11 @@ function CalendarSurface({
         );
     }
 
+    const specialistIdByName = new Map(specialists.map((specialist) => [userDisplayName(specialist), specialist.id]));
+    const resourceDay = teamScope && selectedView === "day";
+    const calendarResources: AtaraksiaCalendarResource[] | undefined = resourceDay
+        ? specialists.map((specialist) => ({id: specialist.id, title: userDisplayName(specialist)}))
+        : undefined;
     const calendarEvents: AtaraksiaCalendarEvent[] = [
         ...visibleBlocks.map((block) => {
             const id = `block-${block.id}`;
@@ -786,6 +791,7 @@ function CalendarSurface({
                 badge: formatTimeRange(block.startsAt, block.endsAt, locale),
                 title: compactBlockCalendarLabel(block, copy, locale, t),
                 meta: [block.specialistName, block.officeName].filter(Boolean).join(" · "),
+                resourceId: resourceDay ? block.specialistId : undefined,
                 start: new Date(block.startsAt),
                 end: new Date(block.endsAt),
                 tone: calendarToneForBlock(block)
@@ -799,6 +805,7 @@ function CalendarSurface({
                 badge: formatTimeRange(booking.startsAt, booking.endsAt, locale),
                 title: bookingServiceTitle(booking, locale),
                 meta: [bookingStatusLabel(booking, copy, t), booking.clientName, booking.officeName].filter(Boolean).join(" · "),
+                resourceId: resourceDay ? booking.specialistId : undefined,
                 start: new Date(booking.startsAt),
                 end: new Date(booking.endsAt),
                 tone: calendarToneForBooking(booking)
@@ -812,6 +819,7 @@ function CalendarSurface({
                 badge: formatTimeRange(buffer.startsAt, buffer.endsAt, locale),
                 title: copy.buffer,
                 meta: [buffer.specialistName, buffer.officeName].filter(Boolean).join(" · "),
+                resourceId: resourceDay ? specialistIdByName.get(buffer.specialistName) : undefined,
                 start: new Date(buffer.startsAt),
                 end: new Date(buffer.endsAt),
                 tone: "buffer" as const
@@ -825,15 +833,29 @@ function CalendarSurface({
                 badge: formatTimeRange(event.startsAt, event.endsAt, locale),
                 title: event.serviceTitle,
                 meta: [eventStatusLabel(event, copy), `${event.enrolledCount}/${event.capacity}`, event.officeName ?? copy.noOffice].join(" · "),
+                resourceId: resourceDay ? event.specialistId : undefined,
                 start: new Date(event.startsAt),
                 end: new Date(event.endsAt),
                 tone: calendarToneForEvent(event)
             };
         })
     ];
+    const backgroundEvents: AtaraksiaCalendarEvent[] = resourceDay
+        ? workScheduleEntries
+            .filter((entry) => entry.entryType === "WORKING")
+            .map((entry) => ({
+                id: `work-${entry.id}`,
+                start: new Date(entry.startsAt),
+                end: new Date(entry.endsAt),
+                resourceId: entry.specialistId,
+                title: copy.workScheduleBackground,
+                tone: "available" as const
+            }))
+        : [];
 
     return (
         <AtaraksiaCalendar
+            backgroundEvents={backgroundEvents}
             culture={toLanguageTag(locale)}
             date={currentDate}
             events={calendarEvents}
@@ -845,6 +867,11 @@ function CalendarSurface({
                 const detail = detailByEventId.get(event.id);
                 if (detail) onSelectDetail(detail);
             }}
+            onSelectSlot={resourceDay ? (slot) => {
+                const specialistId = Number(slot.resourceId);
+                if (Number.isFinite(specialistId)) onCreateAt(specialistId, slot.start);
+            } : undefined}
+            resources={calendarResources}
             variant="planner"
             view={toCalendarView(selectedView)}
         />
@@ -857,7 +884,7 @@ function TeamResourceDay({bookings, blocks, buffers, copy, currentDate, events, 
     buffers: CalendarBuffer[];
     copy: ReturnType<typeof scheduleCopy>;
     currentDate: Date;
-    events: SpecialistFixedEvent[];
+    events: SpecialistTrainingCalendarSession[];
     locale: string;
     onSelectDetail: (detail: CalendarDetail) => void;
     onCreateAt: (specialistId: number, startsAt: Date) => void;
@@ -1043,7 +1070,7 @@ function PlannerAgendaList({
     blocks: SpecialistAvailabilityBlock[];
     buffers: CalendarBuffer[];
     copy: ReturnType<typeof scheduleCopy>;
-    events: SpecialistFixedEvent[];
+    events: SpecialistTrainingCalendarSession[];
     locale: string;
     onSelectDetail: (detail: CalendarDetail) => void;
     t: T;
@@ -1137,7 +1164,7 @@ function CalendarFilters({
                         <option value="all">{copy.allItems}</option>
                         <option value="APPOINTMENT_SLOT">{copy.appointmentSlot}</option>
                         <option value="OPEN_RANGE">{copy.openRange}</option>
-                        <option value="FIXED_EVENT">{copy.eventsTitle}</option>
+                        <option value="TRAINING_SESSION">{copy.eventsTitle}</option>
                         <option value="BOOKING">{copy.bookingsTitle}</option>
                     </select>
                 </CompactSelect>
@@ -1196,7 +1223,7 @@ function calendarItemFilterLabel(value: CalendarFilterState["itemType"], copy: R
     if (value === "APPOINTMENT_SLOT") return copy.appointmentSlot;
     if (value === "OPEN_RANGE") return copy.openRange;
     if (value === "BLOCK") return copy.blocksTitle;
-    if (value === "FIXED_EVENT") return copy.eventsTitle;
+    if (value === "TRAINING_SESSION") return copy.eventsTitle;
     if (value === "BOOKING") return copy.bookingsTitle;
     if (value === "BUFFER") return copy.buffer;
     return copy.allItems;
@@ -1223,12 +1250,7 @@ function CompactSelect({children, label}: {children: ReactNode; label: string}) 
     );
 }
 
-function CalendarDetailPanel({closeLabel, detail, onClose, returnFocusTo}: {closeLabel: string; detail: CalendarDetail; onClose: () => void; returnFocusTo: HTMLElement | null}) {
-    const panelRef = useRef<HTMLElement>(null);
-    const onCloseRef = useRef(onClose);
-    const returnFocusRef = useRef(returnFocusTo);
-    onCloseRef.current = onClose;
-    returnFocusRef.current = returnFocusTo;
+function CalendarDetailPanel({closeLabel, detail, onClose}: {closeLabel: string; detail: CalendarDetail; onClose: () => void; returnFocusTo: HTMLElement | null}) {
     const toneClass = detail.tone === "available"
         ? "border-emerald-200 bg-emerald-50 text-emerald-800"
         : detail.tone === "blocked"
@@ -1243,34 +1265,8 @@ function CalendarDetailPanel({closeLabel, detail, onClose, returnFocusTo}: {clos
         ? "border-red-200 bg-red-50 text-red-800"
         : "border-stone-300 bg-stone-800 text-white";
 
-    useEffect(() => {
-        const panel = panelRef.current;
-        if (!panel) return;
-
-        const previousOverflow = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
-        panel.focus();
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Escape") {
-                event.preventDefault();
-                onCloseRef.current();
-            } else if (event.key === "Tab") {
-                trapDialogTab(event, panel);
-            }
-        };
-        panel.addEventListener("keydown", handleKeyDown);
-        return () => {
-            panel.removeEventListener("keydown", handleKeyDown);
-            document.body.style.overflow = previousOverflow;
-            if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus();
-        };
-    }, []);
-
     return (
-        <OverlayPortal>
-        <div className="fixed inset-0 z-[70] flex items-end justify-center p-0 sm:items-center sm:p-5" role="presentation">
-        <button aria-label={closeLabel} className="absolute inset-0 bg-stone-950/40" onClick={onClose} type="button" />
-        <section aria-labelledby="planner-detail-title" aria-modal="true" className="relative z-10 max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl border border-stone-200 bg-white p-4 shadow-2xl outline-none motion-safe:animate-[content-enter_200ms_ease-out_both] motion-reduce:animate-none focus-visible:ring-2 focus-visible:ring-stone-400 sm:max-w-2xl sm:rounded-2xl sm:p-5" ref={panelRef} role="dialog" tabIndex={-1}>
+        <ModalSurface className="max-w-2xl p-4 sm:p-5" label={detail.title} onClose={onClose}>
             <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                     <h2 className={`inline-flex max-w-full rounded-full border px-2.5 py-1 text-xs font-semibold ${toneClass}`} id="planner-detail-title">{detail.title}</h2>
@@ -1287,34 +1283,8 @@ function CalendarDetailPanel({closeLabel, detail, onClose, returnFocusTo}: {clos
                     </div>
                 ))}
             </dl>
-        </section>
-        </div>
-        </OverlayPortal>
+        </ModalSurface>
     );
-}
-
-function OverlayPortal({children}: {children: ReactNode}) {
-    return createPortal(children, document.body);
-}
-
-function trapDialogTab(event: KeyboardEvent, container: HTMLElement) {
-    const focusable = Array.from(container.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-    )).filter((element) => !element.hasAttribute("hidden") && element.getAttribute("aria-hidden") !== "true");
-    if (focusable.length === 0) {
-        event.preventDefault();
-        container.focus();
-        return;
-    }
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && (document.activeElement === first || document.activeElement === container)) {
-        event.preventDefault();
-        last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-    }
 }
 
 function scheduleBlockLabel(block: SpecialistAvailabilityBlock, copy: ReturnType<typeof scheduleCopy>, t: T) {
@@ -1344,7 +1314,7 @@ function AvailabilityDraftPreview({blocks, bookings, conflict, copy, currentDate
     conflict: string | null;
     copy: ReturnType<typeof scheduleCopy>;
     currentDate: Date;
-    events: SpecialistFixedEvent[];
+    events: SpecialistTrainingCalendarSession[];
     form: AvailabilityForm;
     locale: string;
     onNavigate: (date: Date) => void;
@@ -1415,7 +1385,7 @@ function AvailabilityDraftPreview({blocks, bookings, conflict, copy, currentDate
     );
 }
 
-function FixedEventForm({
+function TrainingSessionForm({
     copy,
     editingEvent,
     isLoading,
@@ -1428,14 +1398,14 @@ function FixedEventForm({
     servicesFetching
 }: {
     copy: ReturnType<typeof scheduleCopy>;
-    editingEvent: SpecialistFixedEvent | null;
+    editingEvent: TrainingCalendarEvent | null;
     isLoading: boolean;
     offices: Array<{id: number; name: string}>;
     officesFetching: boolean;
     onCancelEdit: () => void;
-    onCreate: (body: SpecialistFixedEventInput) => Promise<void>;
+    onCreate: (body: SpecialistTrainingCalendarInput) => Promise<void>;
     selectedSpecialistId: number | "";
-    services: PublicService[];
+    services: TrainingEventOption[];
     servicesFetching: boolean;
 }) {
     const [serviceId, setServiceId] = useState("");
@@ -1449,8 +1419,15 @@ function FixedEventForm({
     const [active, setActive] = useState(true);
 
     useEffect(() => {
+        const durationMinutes = services.find((service) => service.id === Number(serviceId))?.durationMinutes;
+        const start = new Date(startsAt);
+        if (!durationMinutes || Number.isNaN(start.getTime())) return;
+        setEndsAt(toDateTimeLocalValue(new Date(start.getTime() + durationMinutes * 60_000)));
+    }, [serviceId, services, startsAt]);
+
+    useEffect(() => {
         if (!editingEvent) return;
-        setServiceId(String(editingEvent.serviceId));
+        setServiceId(String(editingEvent.trainingTypeId));
         setOfficeId(editingEvent.officeId === null ? "" : String(editingEvent.officeId));
         setResourceId(editingEvent.resourceId === null ? "" : String(editingEvent.resourceId));
         setStartsAt(toDateTimeLocalValue(new Date(editingEvent.startsAt)));
@@ -1501,10 +1478,9 @@ function FixedEventForm({
                 <Field label={copy.resource}>
                     <select className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" disabled={!officeId || resourcesFetching} onChange={(event) => setResourceId(event.target.value)} value={resourceId}>
                         <option value="">{officeId ? copy.selectResource : copy.selectOfficeFirst}</option>
-                        {officeResources.filter((resource) => {
-                            const service = services.find((item) => item.id === Number(serviceId));
-                            return resource.active && (!service || resource.resourceType === service.requiredResourceType);
-                        }).map((resource) => <option key={resource.id} value={resource.id}>{resource.name} · {resource.capacity}</option>)}
+                        {officeResources
+                            .filter((resource) => resource.active)
+                            .map((resource) => <option key={resource.id} value={resource.id}>{resource.name}</option>)}
                     </select>
                 </Field>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -1512,7 +1488,7 @@ function FixedEventForm({
                         <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => setStartsAt(event.target.value)} type="datetime-local" value={startsAt} />
                     </Field>
                     <Field label={copy.endsAt}>
-                        <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => setEndsAt(event.target.value)} type="datetime-local" value={endsAt} />
+                        <input className="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-600" readOnly type="datetime-local" value={endsAt} />
                     </Field>
                 </div>
                 <Field label={copy.capacity}>
@@ -1537,42 +1513,56 @@ function DayPlanCopyForm({
     conflictsLabel,
     copy,
     isLoading,
+    isPreviewing,
     locale,
-    onCopy
+    onCopy,
+    onPreview
 }: {
     conflictsLabel: string;
     copy: ReturnType<typeof scheduleCopy>;
     isLoading: boolean;
+    isPreviewing: boolean;
     locale: string;
     onCopy: (body: DayPlanCopyInput) => Promise<DayPlanCopyResponse>;
+    onPreview: (body: DayPlanCopyInput) => Promise<DayPlanCopyResponse>;
 }) {
     const toast = useToast();
     const [sourceDate, setSourceDate] = useState(() => toDateInputValue(new Date()));
-    const [targetDatesText, setTargetDatesText] = useState("");
+    const [targetDate, setTargetDate] = useState("");
     const [includeAvailability, setIncludeAvailability] = useState(true);
-    const [includeFixedEvents, setIncludeFixedEvents] = useState(true);
+    const [includeTrainingSessions, setIncludeTrainingSessions] = useState(true);
     const [conflicts, setConflicts] = useState<DayPlanCopyConflict[]>([]);
+    const [preview, setPreview] = useState<DayPlanCopyResponse | null>(null);
+
+    function request(): DayPlanCopyInput | null {
+        if (!sourceDate || !targetDate || sourceDate === targetDate) {
+            toast.error(copy.copyInvalid);
+            return null;
+        }
+        return {sourceDate, targetDate, includeAvailability, includeTrainingSessions};
+    }
+
+    async function previewCopy() {
+        const body = request();
+        if (!body) return;
+        try {
+            const response = await onPreview(body);
+            setPreview(response);
+            setConflicts(response.conflicts);
+        } catch {
+            toast.error(copy.copyError);
+        }
+    }
 
     async function submit() {
-        const targetDates = parseDateList(targetDatesText);
-        if (!sourceDate || targetDates.length === 0) {
-            toast.error(copy.copyInvalid);
-            return;
-        }
+        const body = request();
+        if (!body || !preview) return;
         try {
-            const response = await onCopy({
-                sourceDate,
-                targetDates,
-                includeAvailability,
-                includeFixedEvents
-            });
+            const response = await onCopy(body);
             setConflicts(response.conflicts);
-            if (response.conflicts.length > 0) {
-                toast.error(copy.copyHasConflicts);
-                return;
-            }
-            setTargetDatesText("");
-            toast.success(copy.copySuccess(response.copiedAvailabilityCount, response.copiedEventCount));
+            setPreview(null);
+            setTargetDate("");
+            toast.success(copy.copySuccess(response.copiedAvailabilityCount, response.copiedTrainingSessionCount));
         } catch {
             toast.error(copy.copyError);
         }
@@ -1584,29 +1574,32 @@ function DayPlanCopyForm({
             <p className="mt-2 break-words text-xs leading-5 text-stone-500">{copy.copyBody}</p>
             <div className="mt-4 space-y-3">
                 <Field label={copy.copySourceDate}>
-                    <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => setSourceDate(event.target.value)} type="date" value={sourceDate} />
+                    <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => { setSourceDate(event.target.value); setPreview(null); }} type="date" value={sourceDate} />
                 </Field>
                 <Field label={copy.copyTargetDates}>
                     <input
                         className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                        onChange={(event) => setTargetDatesText(event.target.value)}
+                        onChange={(event) => { setTargetDate(event.target.value); setPreview(null); }}
                         type="date"
-                        value={targetDatesText}
+                        value={targetDate}
                     />
                 </Field>
                 <div className="grid gap-2">
                     <label className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-700">
                         <span>{copy.copyAvailability}</span>
-                        <input checked={includeAvailability} onChange={(event) => setIncludeAvailability(event.target.checked)} type="checkbox" />
+                        <input checked={includeAvailability} onChange={(event) => { setIncludeAvailability(event.target.checked); setPreview(null); }} type="checkbox" />
                     </label>
                     <label className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-700">
                         <span>{copy.copyEvents}</span>
-                        <input checked={includeFixedEvents} onChange={(event) => setIncludeFixedEvents(event.target.checked)} type="checkbox" />
+                        <input checked={includeTrainingSessions} onChange={(event) => { setIncludeTrainingSessions(event.target.checked); setPreview(null); }} type="checkbox" />
                     </label>
                 </div>
-                <button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={isLoading} onClick={submit} type="button">
-                    {isLoading ? copy.saving : copy.copyAction}
+                <button className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 transition-colors hover:bg-stone-50 disabled:cursor-not-allowed disabled:text-stone-400" disabled={isLoading || isPreviewing} onClick={previewCopy} type="button">
+                    {isPreviewing ? copy.saving : copy.copyPreviewAction}
                 </button>
+                {preview ? <button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={isLoading || isPreviewing} onClick={submit} type="button">
+                    {isLoading ? copy.saving : copy.copyAction}
+                </button> : null}
             </div>
             {conflicts.length > 0 ? (
                 <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3">
@@ -1624,7 +1617,7 @@ function DayPlanCopyForm({
     );
 }
 
-function EventsPanel({copy, events, isError, isFetching, locale, onDeactivate, onDelete, onEdit}: {copy: ReturnType<typeof scheduleCopy>; events: SpecialistFixedEvent[]; isError: boolean; isFetching: boolean; locale: string; onDeactivate: (event: SpecialistFixedEvent) => void; onDelete: (event: SpecialistFixedEvent) => void; onEdit: (event: SpecialistFixedEvent) => void}) {
+function EventsPanel({copy, events, isError, isFetching, locale, onDeactivate, onEdit}: {copy: ReturnType<typeof scheduleCopy>; events: TrainingCalendarEvent[]; isError: boolean; isFetching: boolean; locale: string; onDeactivate: (event: TrainingCalendarEvent) => void; onEdit: (event: TrainingCalendarEvent) => void}) {
     const [pendingDeactivateId, setPendingDeactivateId] = useState<number | null>(null);
 
     return (
@@ -1649,7 +1642,6 @@ function EventsPanel({copy, events, isError, isFetching, locale, onDeactivate, o
                         <p className="mt-2 text-xs font-medium text-stone-700">{formatDateTime(event.startsAt, locale)} - {formatDateTime(event.endsAt, locale)}</p>
                         <div className="mt-3 flex flex-wrap gap-2">
                             <button className="rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-100" onClick={() => onEdit(event)} type="button">{copy.editEvent}</button>
-                            {event.enrolledCount === 0 ? <button className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50" onClick={() => {if (window.confirm(copy.eventDeleteConfirm)) onDelete(event)}} type="button">{copy.deleteEvent}</button> : null}
                             {event.active ? (
                                 pendingDeactivateId === event.id ? (
                                     <>
@@ -1670,16 +1662,16 @@ function EventsPanel({copy, events, isError, isFetching, locale, onDeactivate, o
     );
 }
 
-function EventEnrollmentsPanel({copy, enrollments, isError, isFetching, locale}: {copy: ReturnType<typeof scheduleCopy>; enrollments: SpecialistFixedEventEnrollment[]; isError: boolean; isFetching: boolean; locale: string}) {
+function TrainingParticipantsPanel({copy, enrollments, isError, isFetching, locale}: {copy: ReturnType<typeof scheduleCopy>; enrollments: CalendarTrainingParticipant[]; isError: boolean; isFetching: boolean; locale: string}) {
     return (
         <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
             <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-                <h2 className="min-w-0 break-words text-sm font-semibold uppercase tracking-wide text-stone-500">{copy.eventEnrollmentsTitle}</h2>
+                <h2 className="min-w-0 break-words text-sm font-semibold uppercase tracking-wide text-stone-500">{copy.trainingParticipantsTitle}</h2>
                 <span className="rounded-full bg-stone-100 px-2 py-1 text-xs text-stone-500">{enrollments.length}</span>
             </div>
-            <p className="mt-2 break-words text-xs leading-5 text-stone-500">{copy.eventEnrollmentsBody}</p>
+            <p className="mt-2 break-words text-xs leading-5 text-stone-500">{copy.trainingParticipantsBody}</p>
             {isFetching ? <p className="mt-3 text-sm text-stone-500">{copy.loading}</p> : null}
-            {isError ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{copy.eventEnrollmentsError}</p> : null}
+            {isError ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{copy.trainingParticipantsError}</p> : null}
             <div className="mt-3 space-y-2">
                 {enrollments.slice(0, 8).map((enrollment) => (
                     <article className="rounded-lg border border-stone-200 bg-stone-50 p-3" key={enrollment.id}>
@@ -1688,19 +1680,23 @@ function EventEnrollmentsPanel({copy, enrollments, isError, isFetching, locale}:
                                 <p className="break-words text-sm font-semibold text-stone-900">{enrollment.clientName}</p>
                                 <p className="mt-0.5 break-words text-xs text-stone-500">{enrollment.clientContact || copy.noClientContact}</p>
                             </div>
-                            <span className={enrollment.status === "ACTIVE" ? "shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-800" : "shrink-0 rounded-full border border-stone-200 bg-white px-2 py-1 text-[10px] font-semibold text-stone-500"}>
-                                {enrollment.status === "ACTIVE" ? copy.enrollmentActive : copy.enrollmentCancelled}
+                            <span className={isOccupyingTrainingParticipant(enrollment.status) ? "shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-800" : "shrink-0 rounded-full border border-stone-200 bg-white px-2 py-1 text-[10px] font-semibold text-stone-500"}>
+                                {isOccupyingTrainingParticipant(enrollment.status) ? copy.enrollmentActive : copy.enrollmentCancelled}
                             </span>
                         </div>
-                        <p className="mt-2 break-words text-xs font-medium text-stone-700">{enrollment.eventTitle}</p>
-                        <p className="mt-1 break-words text-xs text-stone-500">{formatDateTime(enrollment.eventStartsAt, locale)} - {formatTime(enrollment.eventEndsAt, locale)}</p>
+                        <p className="mt-2 break-words text-xs font-medium text-stone-700">{enrollment.sessionTitle}</p>
+                        <p className="mt-1 break-words text-xs text-stone-500">{formatDateTime(enrollment.sessionStartsAt, locale)} - {formatTime(enrollment.sessionEndsAt, locale)}</p>
                         {enrollment.reminderOptIn ? <p className="mt-2 text-xs text-stone-500">{copy.reminderRequested}</p> : null}
                     </article>
                 ))}
-                {!isFetching && enrollments.length === 0 ? <p className="rounded-lg border border-dashed border-stone-200 bg-stone-50 px-3 py-4 text-center text-sm text-stone-500">{copy.eventEnrollmentsEmpty}</p> : null}
+                {!isFetching && enrollments.length === 0 ? <p className="rounded-lg border border-dashed border-stone-200 bg-stone-50 px-3 py-4 text-center text-sm text-stone-500">{copy.trainingParticipantsEmpty}</p> : null}
             </div>
         </section>
     );
+}
+
+function isOccupyingTrainingParticipant(status: CalendarTrainingParticipant["status"]) {
+    return status !== "CANCELLED" && status !== "EXPIRED";
 }
 
 function ManualBookingForm({
@@ -1721,7 +1717,7 @@ function ManualBookingForm({
     blocks: SpecialistAvailabilityBlock[];
     bookings: SpecialistBooking[];
     copy: ReturnType<typeof scheduleCopy>;
-    events: SpecialistFixedEvent[];
+    events: SpecialistTrainingCalendarSession[];
     locale: string;
     onCreated: () => void;
     selectedSpecialistId: number | "";
@@ -1732,29 +1728,59 @@ function ManualBookingForm({
 }) {
     const toast = useToast();
     const [createManualBooking, {isLoading}] = useCreateManualBookingMutation();
+    const [previewManualBooking, {isLoading: isPreviewing}] = usePreviewManualBookingMutation();
     const [clientIdentifier, setClientIdentifier] = useState("");
     const [selectedSlotKey, setSelectedSlotKey] = useState("");
     const [serviceId, setServiceId] = useState("");
+    const [variantId, setVariantId] = useState("");
     const [reminderOptIn, setReminderOptIn] = useState(false);
+    const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
+    const [overrideReason, setOverrideReason] = useState("");
     const selectedService = services.find((service) => String(service.id) === serviceId);
-    const manualSlots = useMemo(() => buildManualBookingSlots(blocks, bookings, events, appointmentBufferMinutes, selectedService), [blocks, bookings, events, appointmentBufferMinutes, selectedService]);
+    const {data: serviceVariants = [], isFetching: variantsFetching, isError: variantsError} = useListServiceVariantsQuery(Number(serviceId), {skip: !serviceId});
+    const selectedVariant = serviceVariants.find((variant) => String(variant.id) === variantId);
+    const manualSlots = useMemo(() => buildManualBookingSlots(blocks, bookings, events, appointmentBufferMinutes, selectedVariant), [blocks, bookings, events, appointmentBufferMinutes, selectedVariant]);
     const selectedSlot = manualSlots.find((slot) => slot.key === selectedSlotKey);
 
-    async function submit() {
+    function request(overrideClientBuffer = false) {
+        if (!selectedSlot || !selectedVariant) return null;
+        return {
+            clientIdentifier: clientIdentifier.trim(),
+            specialistId: selectedSpecialistId === "" ? null : selectedSpecialistId,
+            availabilityBlockId: selectedSlot.block.id,
+            resourceId: selectedSlot.block.resourceId,
+            serviceId: Number(serviceId),
+            serviceVariantId: selectedVariant.id,
+            startsAt: selectedSlot.startsAt,
+            reminderOptIn,
+            overrideClientBuffer,
+            clientBufferOverrideReason: overrideClientBuffer ? overrideReason.trim() : null
+        };
+    }
+
+    async function submit(forceClientOverride = false) {
         if (!selectedSlot) return;
         try {
-            await createManualBooking({
-                clientIdentifier: clientIdentifier.trim(),
-                specialistId: selectedSpecialistId === "" ? null : selectedSpecialistId,
-                availabilityBlockId: selectedSlot.block.id,
-                resourceId: selectedSlot.block.resourceId,
-                serviceId: Number(serviceId),
-                startsAt: selectedSlot.startsAt,
-                reminderOptIn
-            }).unwrap();
+            const body = request(forceClientOverride);
+            if (!body) return;
+            if (!forceClientOverride) {
+                const preview = await previewManualBooking(body).unwrap();
+                if (preview.specialistConflict || preview.resourceConflict) {
+                    toast.error(t("manualBooking.hardConflict"));
+                    return;
+                }
+                if (preview.clientBufferConflict) {
+                    setOverrideDialogOpen(true);
+                    return;
+                }
+            }
+            await createManualBooking(body).unwrap();
             setClientIdentifier("");
             setSelectedSlotKey("");
+            setVariantId("");
             setReminderOptIn(false);
+            setOverrideReason("");
+            setOverrideDialogOpen(false);
             onCreated();
             toast.success(t("manualBooking.created"));
         } catch {
@@ -1762,9 +1788,10 @@ function ManualBookingForm({
         }
     }
 
-    const disabled = isLoading || !clientIdentifier.trim() || !selectedSlot || !serviceId;
+    const disabled = isLoading || isPreviewing || !clientIdentifier.trim() || !selectedSlot || !selectedService || !selectedVariant;
 
     return (
+        <>
         <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
             <h2 className="break-words text-sm font-semibold uppercase tracking-wide text-stone-500">{t("manualBooking.title")}</h2>
             <p className="mt-2 break-words text-xs leading-5 text-stone-500">{t("manualBooking.body")}</p>
@@ -1779,6 +1806,7 @@ function ManualBookingForm({
                         disabled={servicesFetching}
                         onChange={(event) => {
                             setServiceId(event.target.value);
+                            setVariantId("");
                             setSelectedSlotKey("");
                         }}
                         value={serviceId}
@@ -1788,8 +1816,27 @@ function ManualBookingForm({
                     </select>
                     {servicesError ? <span className="mt-1 block text-xs text-red-700">{t("manualBooking.servicesError")}</span> : null}
                 </Field>
+                <Field label={t("manualBooking.variant")}>
+                    <select
+                        className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
+                        disabled={!selectedService || variantsFetching}
+                        onChange={(event) => {
+                            setVariantId(event.target.value);
+                            setSelectedSlotKey("");
+                        }}
+                        value={variantId}
+                    >
+                        <option value="">{variantsFetching ? t("manualBooking.loadingVariants") : t("manualBooking.selectVariant")}</option>
+                        {serviceVariants.filter((variant) => variant.active).map((variant) => (
+                            <option key={variant.id} value={variant.id}>
+                                {variant.nameUa} · {variant.durationMinutes} min · {formatAmount(variant.price, locale)}
+                            </option>
+                        ))}
+                    </select>
+                    {variantsError ? <span className="mt-1 block text-xs text-red-700">{t("manualBooking.variantsError")}</span> : null}
+                </Field>
                 <Field label={t("manualBooking.slot")}>
-                    <select className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" disabled={!selectedService} onChange={(event) => setSelectedSlotKey(event.target.value)} value={selectedSlotKey}>
+                    <select className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" disabled={!selectedVariant} onChange={(event) => setSelectedSlotKey(event.target.value)} value={selectedSlotKey}>
                         <option value="">{t("manualBooking.selectSlot")}</option>
                         {manualSlots.map((slot) => <option key={slot.key} value={slot.key}>{formatDateTime(slot.startsAt, locale)} - {formatTime(slot.endsAt, locale)} · {slot.block.officeName ?? t("form.noOffice")}</option>)}
                     </select>
@@ -1798,11 +1845,30 @@ function ManualBookingForm({
                     <input checked={reminderOptIn} className="mt-0.5" onChange={(event) => setReminderOptIn(event.target.checked)} type="checkbox" />
                     <span className="min-w-0"><strong className="block break-words font-medium text-stone-900">{t("manualBooking.reminder")}</strong><span className="mt-1 block break-words text-xs leading-5 text-stone-500">{t("manualBooking.reminderHint")}</span></span>
                 </label>
-                <button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={disabled} onClick={submit} type="button">
+                <button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={disabled} onClick={() => void submit()} type="button">
                     {isLoading ? t("manualBooking.saving") : t("manualBooking.action")}
                 </button>
             </div>
         </section>
+        <Dialog
+            closeLabel={t("manualBooking.overrideCancel")}
+            description={t("manualBooking.overrideBody")}
+            footer={
+                <>
+                    <button className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-semibold" onClick={() => setOverrideDialogOpen(false)} type="button">{t("manualBooking.overrideCancel")}</button>
+                    <button className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40" disabled={!overrideReason.trim() || isLoading} onClick={() => void submit(true)} type="button">{t("manualBooking.overrideConfirm")}</button>
+                </>
+            }
+            onClose={() => setOverrideDialogOpen(false)}
+            open={overrideDialogOpen}
+            title={t("manualBooking.overrideTitle")}
+        >
+            <label className="block text-sm font-semibold text-stone-900">
+                {t("manualBooking.overrideReason")}
+                <textarea className="mt-2 min-h-28 w-full rounded-xl border border-stone-300 p-3 text-sm" maxLength={500} onChange={(event) => setOverrideReason(event.target.value)} value={overrideReason} />
+            </label>
+        </Dialog>
+        </>
     );
 }
 
@@ -1874,10 +1940,10 @@ function agendaToneDot(tone: CalendarDetail["tone"]) {
     return "bg-stone-800";
 }
 
-function eventToInput(event: SpecialistFixedEvent, active: boolean): SpecialistFixedEventInput {
+function eventToInput(event: TrainingCalendarEvent, active: boolean): SpecialistTrainingCalendarInput {
     return {
         specialistId: event.specialistId,
-        serviceId: event.serviceId,
+        serviceId: event.trainingTypeId,
         officeId: event.officeId,
         resourceId: event.resourceId,
         startsAt: event.startsAt,
@@ -1885,6 +1951,57 @@ function eventToInput(event: SpecialistFixedEvent, active: boolean): SpecialistF
         capacity: event.capacity,
         note: event.note,
         active
+    };
+}
+
+function eventInputAsTrainingSession(
+    event: SpecialistTrainingCalendarInput,
+    status: TrainingSessionInput["status"]
+): TrainingSessionInput {
+    if (!event.specialistId || !event.officeId || !event.resourceId) {
+        throw new Error("Training session requires trainer, office and resource");
+    }
+    return {
+        trainingTypeId: event.serviceId,
+        trainerId: event.specialistId,
+        officeId: event.officeId,
+        resourceId: event.resourceId,
+        startsAt: event.startsAt,
+        capacity: event.capacity,
+        status,
+        note: event.note ?? null
+    };
+}
+
+function trainingSessionAsSpecialistEvent(session: TrainingSession): TrainingCalendarEvent {
+    return {
+        id: session.id,
+        specialistId: session.trainerId,
+        specialistName: session.trainerName,
+        serviceId: session.trainingTypeId,
+        trainingTypeId: session.trainingTypeId,
+        serviceTitle: session.titleUa,
+        officeId: session.officeId,
+        officeName: session.officeName,
+        resourceId: session.resourceId,
+        resourceName: session.resourceName,
+        startsAt: session.startsAt,
+        endsAt: session.endsAt,
+        capacity: session.capacity,
+        enrolledCount: session.enrolledCount,
+        price: session.price,
+        note: session.note,
+        active: session.status === "PUBLISHED",
+        createdAt: session.startsAt,
+        updatedAt: session.startsAt
+    };
+}
+
+function trainingTypeAsEventOption(type: TrainingType): TrainingEventOption {
+    return {
+        id: type.id,
+        durationMinutes: type.durationMinutes,
+        title: type.titleUa
     };
 }
 
@@ -1900,7 +2017,7 @@ function calendarToneForBooking(booking: SpecialistBooking): CalendarDetail["ton
     return "booking";
 }
 
-function calendarToneForEvent(event: SpecialistFixedEvent): CalendarDetail["tone"] {
+function calendarToneForEvent(event: SpecialistTrainingCalendarSession): CalendarDetail["tone"] {
     if (isPastRange(event.endsAt)) return "past";
     return event.active ? "event" : "blocked";
 }
@@ -1917,7 +2034,7 @@ function bookingStatusLabel(booking: SpecialistBooking, copy: ReturnType<typeof 
     return t(`bookings.statuses.${booking.status}`);
 }
 
-function eventStatusLabel(event: SpecialistFixedEvent, copy: ReturnType<typeof scheduleCopy>) {
+function eventStatusLabel(event: SpecialistTrainingCalendarSession, copy: ReturnType<typeof scheduleCopy>) {
     if (isPastRange(event.endsAt)) return copy.statusPast;
     return event.active ? copy.statusActiveEvent : copy.statusInactiveEvent;
 }
@@ -1954,6 +2071,7 @@ function blockCalendarDetail(block: SpecialistAvailabilityBlock, copy: ReturnTyp
 
 function bookingCalendarDetail(booking: SpecialistBooking, copy: ReturnType<typeof scheduleCopy>, locale: string, t: T): CalendarDetail {
     return {
+        bookingId: booking.id,
         title: `${bookingServiceTitle(booking, locale)} · ${booking.clientName}`,
         tone: calendarToneForBooking(booking),
         rows: [
@@ -2018,7 +2136,7 @@ function teamBookingCalendarDetail(booking: SpecialistBooking, copy: ReturnType<
     };
 }
 
-function eventCalendarDetail(event: SpecialistFixedEvent, copy: ReturnType<typeof scheduleCopy>, locale: string): CalendarDetail {
+function eventCalendarDetail(event: SpecialistTrainingCalendarSession, copy: ReturnType<typeof scheduleCopy>, locale: string): CalendarDetail {
     return {
         title: event.serviceTitle,
         tone: calendarToneForEvent(event),
@@ -2076,20 +2194,11 @@ function toDateInputValue(date: Date) {
     return localDate.toISOString().slice(0, 10);
 }
 
-function parseDateList(value: string) {
-    return Array.from(new Set(
-        value
-            .split(/[\s,;]+/)
-            .map((item) => item.trim())
-            .filter((item) => /^\d{4}-\d{2}-\d{2}$/.test(item))
-    ));
-}
-
 function findDraftScheduleConflict(
     form: AvailabilityForm,
     blocks: SpecialistAvailabilityBlock[],
     bookings: SpecialistBooking[],
-    events: SpecialistFixedEvent[],
+    events: SpecialistTrainingCalendarSession[],
     appointmentBufferMinutes: number,
     locale: string,
     editingBlockId?: number
@@ -2228,10 +2337,10 @@ function scheduleCopy(t: T) {
         eventError: t("schedule.eventError"),
         eventsError: t("schedule.eventsError"),
         eventsEmpty: t("schedule.eventsEmpty"),
-        eventEnrollmentsTitle: t("schedule.eventEnrollmentsTitle"),
-        eventEnrollmentsBody: t("schedule.eventEnrollmentsBody"),
-        eventEnrollmentsError: t("schedule.eventEnrollmentsError"),
-        eventEnrollmentsEmpty: t("schedule.eventEnrollmentsEmpty"),
+        trainingParticipantsTitle: t("schedule.trainingParticipantsTitle"),
+        trainingParticipantsBody: t("schedule.trainingParticipantsBody"),
+        trainingParticipantsError: t("schedule.trainingParticipantsError"),
+        trainingParticipantsEmpty: t("schedule.trainingParticipantsEmpty"),
         showLess: t("schedule.showLess"),
         showMore: t("schedule.showMore"),
         showingItems: (visible: number, total: number) => t("schedule.showingItems", {total, visible}),
@@ -2257,6 +2366,7 @@ function scheduleCopy(t: T) {
         copyAvailability: t("schedule.copyAvailability"),
         copyEvents: t("schedule.copyEvents"),
         copyAction: t("schedule.copyAction"),
+        copyPreviewAction: t("schedule.copyPreviewAction"),
         templateTitle: t("schedule.templateTitle"),
         templateBody: t("schedule.templateBody"),
         templateAction: t("schedule.templateAction"),

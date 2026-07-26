@@ -1,8 +1,7 @@
 "use client";
 
-import {useEffect, useMemo, useState} from "react";
+import {useMemo, useState} from "react";
 import {useTranslations} from "next-intl";
-import OverlayPortal from "@/components/ui/overlay/OverlayPortal";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {
     buildAccountRange,
@@ -14,13 +13,16 @@ import {
 } from "@/features/account/accountBookings";
 import {useCancelBookingMutation, useListMyBookingsQuery} from "@/features/bookings/bookings.api";
 import {bookingServiceTitle} from "@/features/bookings/bookingTitles";
-import {useCancelFixedEventEnrollmentMutation, useListMyFixedEventEnrollmentsQuery} from "@/features/schedule/schedule.api";
+import {useCancelTrainingSessionMutation, useListMyTrainingParticipationsQuery} from "@/features/training/training.api";
 import type {Locale} from "@/i18n";
 import {toLanguageTag} from "@/shared/lib/i18n/toLanguageTag";
 import {withLocale} from "@/shared/lib/locale/withLocale";
 import {resolveApiMediaUrl} from "@/shared/lib/media/resolveApiMediaUrl";
 import type {Booking} from "@/types/bookings";
-import type {PublicFixedEvent} from "@/types/schedule";
+import type {AccountTrainingParticipation} from "@/types/training";
+import Dialog from "@/components/ui/overlay/Dialog";
+import Button from "@/components/ui/button/Button";
+import {useCreateReviewMutation, useGetReviewEligibilityQuery} from "@/features/reviews/reviews.api";
 
 const INITIAL_VISIBLE_ITEMS = 6;
 
@@ -33,10 +35,15 @@ export default function AccountBookingsPanel({locale}: {locale: Locale}) {
     const [bookingsPage, setBookingsPage] = useState(0);
     const [eventsPage, setEventsPage] = useState(0);
     const [pendingCancel, setPendingCancel] = useState<{id: number; title: string; type: "booking" | "event"} | null>(null);
+    const [pendingReview, setPendingReview] = useState<{id: number; title: string; targetType: "BOOKING" | "TRAINING_PARTICIPANT"} | null>(null);
     const {data: bookingsData, isFetching: bookingsFetching, isError: bookingsError} = useListMyBookingsQuery({page: bookingsPage, size: 20});
-    const {data: eventsData, isFetching: eventsFetching, isError: eventsError} = useListMyFixedEventEnrollmentsQuery({...range, lang: locale, page: eventsPage, size: 20});
+    const {data: eventsData, isFetching: eventsFetching, isError: eventsError} = useListMyTrainingParticipationsQuery({...range, lang: locale, page: eventsPage, size: 20});
     const [cancelBooking, {isLoading: cancellingBooking}] = useCancelBookingMutation();
-    const [cancelEnrollment, {isLoading: cancellingEnrollment}] = useCancelFixedEventEnrollmentMutation();
+    const [cancelEnrollment, {isLoading: cancellingEnrollment}] = useCancelTrainingSessionMutation();
+    const [createReview, {isLoading: reviewSaving}] = useCreateReviewMutation();
+    const {data: reviewEligibility} = useGetReviewEligibilityQuery();
+    const reviewableBookingIds = useMemo(() => new Set(reviewEligibility?.reviewableBookingIds ?? []), [reviewEligibility]);
+    const reviewableTrainingParticipantIds = useMemo(() => new Set(reviewEligibility?.reviewableTrainingParticipantIds ?? []), [reviewEligibility]);
     const bookings = useMemo(() => bookingsData?.content ?? [], [bookingsData?.content]);
     const events = useMemo(() => eventsData?.content ?? [], [eventsData?.content]);
     const filteredBookings = useMemo(() => filterBookings(bookings, filter), [bookings, filter]);
@@ -85,8 +92,8 @@ export default function AccountBookingsPanel({locale}: {locale: Locale}) {
             </div>
 
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                <BookingList bookings={filteredBookings} cancelling={cancellingBooking} copy={copy} isError={bookingsError} locale={locale} onCancel={(booking) => setPendingCancel({id: booking.id, title: bookingServiceTitle(booking, locale), type: "booking"})} />
-                <EventList cancelling={cancellingEnrollment} copy={copy} events={filteredEvents} isError={eventsError} locale={locale} onCancel={(event) => setPendingCancel({id: event.id, title: event.title, type: "event"})} />
+                <BookingList bookings={filteredBookings} cancelling={cancellingBooking} copy={copy} isError={bookingsError} locale={locale} onCancel={(booking) => setPendingCancel({id: booking.id, title: bookingServiceTitle(booking, locale), type: "booking"})} onReview={(booking) => setPendingReview({id: booking.id, title: bookingServiceTitle(booking, locale), targetType: "BOOKING"})} reviewableIds={reviewableBookingIds} />
+                <EventList cancelling={cancellingEnrollment} copy={copy} events={filteredEvents} isError={eventsError} locale={locale} onCancel={(event) => setPendingCancel({id: event.sessionId, title: event.title, type: "event"})} onReview={(event) => setPendingReview({id: event.participantId, title: event.title, targetType: "TRAINING_PARTICIPANT"})} reviewableIds={reviewableTrainingParticipantIds} />
             </div>
             {bookingsData && bookingsData.totalPages > 1 ? <div className="mt-4 flex justify-end gap-2"><button className={pagerButtonClass} disabled={bookingsPage === 0} onClick={() => setBookingsPage((page) => page - 1)} type="button">{copy.previous}</button><button className={pagerButtonClass} disabled={bookingsPage + 1 >= bookingsData.totalPages} onClick={() => setBookingsPage((page) => page + 1)} type="button">{copy.next}</button></div> : null}
             {eventsData && eventsData.totalPages > 1 ? <div className="mt-2 flex justify-end gap-2"><button className={pagerButtonClass} disabled={eventsPage === 0} onClick={() => setEventsPage((page) => page - 1)} type="button">{copy.previous}</button><button className={pagerButtonClass} disabled={eventsPage + 1 >= eventsData.totalPages} onClick={() => setEventsPage((page) => page + 1)} type="button">{copy.next}</button></div> : null}
@@ -107,6 +114,16 @@ export default function AccountBookingsPanel({locale}: {locale: Locale}) {
                     title={pendingCancel.title}
                 />
             ) : null}
+            <ReviewDialog copy={copy} disabled={reviewSaving} onClose={() => setPendingReview(null)} onSubmit={async (rating, text) => {
+                if (!pendingReview) return;
+                try {
+                    await createReview({targetType: pendingReview.targetType, targetId: pendingReview.id, rating, text: text.trim() || null, lang: locale}).unwrap();
+                    toast.success(copy.reviewCreated);
+                    setPendingReview(null);
+                } catch {
+                    toast.error(copy.reviewError);
+                }
+            }} open={pendingReview !== null} title={pendingReview?.title ?? ""} />
         </section>
     );
 }
@@ -115,7 +132,7 @@ const filterClass = "flex min-w-0 items-center justify-center gap-2 rounded-lg p
 const activeFilterClass = "flex min-w-0 items-center justify-center gap-2 rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white shadow-sm";
 const pagerButtonClass = "rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-40";
 
-function BookingList({bookings, cancelling, copy, isError, locale, onCancel}: {bookings: Booking[]; cancelling: boolean; copy: Copy; isError: boolean; locale: Locale; onCancel: (booking: Booking) => void}) {
+function BookingList({bookings, cancelling, copy, isError, locale, onCancel, onReview, reviewableIds}: {bookings: Booking[]; cancelling: boolean; copy: Copy; isError: boolean; locale: Locale; onCancel: (booking: Booking) => void; onReview: (booking: Booking) => void; reviewableIds: Set<number>}) {
     const [expanded, setExpanded] = useState(false);
     const visibleBookings = expanded ? bookings : bookings.slice(0, INITIAL_VISIBLE_ITEMS);
     const hiddenCount = Math.max(0, bookings.length - visibleBookings.length);
@@ -128,7 +145,7 @@ function BookingList({bookings, cancelling, copy, isError, locale, onCancel}: {b
             </div>
             {isError ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{copy.loadError}</p> : null}
             <div className="mt-3 space-y-2">
-                {visibleBookings.map((booking) => <BookingCard booking={booking} cancelling={cancelling} copy={copy} key={booking.id} locale={locale} onCancel={onCancel} />)}
+                {visibleBookings.map((booking) => <BookingCard booking={booking} cancelling={cancelling} copy={copy} key={booking.id} locale={locale} onCancel={onCancel} onReview={onReview} reviewable={reviewableIds.has(booking.id)} />)}
                 {bookings.length === 0 && !isError ? <AccountEmptyAction body={copy.noAppointments} href={withLocale("/calendar", locale)} label={copy.bookAppointment} /> : null}
                 {bookings.length > INITIAL_VISIBLE_ITEMS ? (
                     <button className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-50" onClick={() => setExpanded((current) => !current)} type="button">
@@ -140,7 +157,7 @@ function BookingList({bookings, cancelling, copy, isError, locale, onCancel}: {b
     );
 }
 
-function EventList({cancelling, copy, events, isError, locale, onCancel}: {cancelling: boolean; copy: Copy; events: PublicFixedEvent[]; isError: boolean; locale: Locale; onCancel: (event: PublicFixedEvent) => void}) {
+function EventList({cancelling, copy, events, isError, locale, onCancel, onReview, reviewableIds}: {cancelling: boolean; copy: Copy; events: AccountTrainingParticipation[]; isError: boolean; locale: Locale; onCancel: (event: AccountTrainingParticipation) => void; onReview: (event: AccountTrainingParticipation) => void; reviewableIds: Set<number>}) {
     const [expanded, setExpanded] = useState(false);
     const visibleEvents = expanded ? events : events.slice(0, INITIAL_VISIBLE_ITEMS);
     const hiddenCount = Math.max(0, events.length - visibleEvents.length);
@@ -153,7 +170,7 @@ function EventList({cancelling, copy, events, isError, locale, onCancel}: {cance
             </div>
             {isError ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{copy.loadError}</p> : null}
             <div className="mt-3 space-y-2">
-                {visibleEvents.map((event) => <EventCard cancelling={cancelling} copy={copy} event={event} key={event.id} locale={locale} onCancel={onCancel} />)}
+                {visibleEvents.map((event) => <EventCard cancelling={cancelling} copy={copy} event={event} key={event.participantId} locale={locale} onCancel={onCancel} onReview={onReview} reviewable={reviewableIds.has(event.participantId)} />)}
                 {events.length === 0 && !isError ? <AccountEmptyAction body={copy.noEvents} href={withLocale("/calendar", locale)} label={copy.findEvent} /> : null}
                 {events.length > INITIAL_VISIBLE_ITEMS ? (
                     <button className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-50" onClick={() => setExpanded((current) => !current)} type="button">
@@ -174,7 +191,7 @@ function AccountEmptyAction({body, href, label}: {body: string; href: string; la
     );
 }
 
-function BookingCard({booking, cancelling, copy, locale, onCancel}: {booking: Booking; cancelling: boolean; copy: Copy; locale: Locale; onCancel: (booking: Booking) => void}) {
+function BookingCard({booking, cancelling, copy, locale, onCancel, onReview, reviewable}: {booking: Booking; cancelling: boolean; copy: Copy; locale: Locale; onCancel: (booking: Booking) => void; onReview: (booking: Booking) => void; reviewable: boolean}) {
     const cancellable = booking.status !== "CANCELLED" && new Date(booking.startsAt).getTime() >= Date.now() + 2 * 60 * 60 * 1000;
     const canPay = booking.status === "AWAITING_PAYMENT_CONFIRMATION" && Boolean(booking.externalPaymentUrl);
 
@@ -192,6 +209,7 @@ function BookingCard({booking, cancelling, copy, locale, onCancel}: {booking: Bo
                 <div className="flex flex-wrap justify-end gap-2">
                     {canPay ? <a className="inline-flex min-h-9 items-center rounded-md bg-stone-950 px-3 py-1.5 text-xs font-semibold text-white outline-none transition-[background-color,box-shadow,transform] hover:bg-stone-800 hover:shadow-sm active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2" href={booking.externalPaymentUrl ?? undefined} rel="noreferrer" target="_blank">{copy.pay}</a> : null}
                     {cancellable ? <button className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300" disabled={cancelling} onClick={() => onCancel(booking)} type="button">{copy.cancel}</button> : null}
+                    {reviewable ? <button className={pagerButtonClass} onClick={() => onReview(booking)} type="button">{copy.leaveReview}</button> : null}
                 </div>
             </div>
             <BookingMetaChips booking={booking} copy={copy} />
@@ -207,7 +225,7 @@ function BookingCard({booking, cancelling, copy, locale, onCancel}: {booking: Bo
     );
 }
 
-function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boolean; copy: Copy; event: PublicFixedEvent; locale: Locale; onCancel: (event: PublicFixedEvent) => void}) {
+function EventCard({cancelling, copy, event, locale, onCancel, onReview, reviewable}: {cancelling: boolean; copy: Copy; event: AccountTrainingParticipation; locale: Locale; onCancel: (event: AccountTrainingParticipation) => void; onReview: (event: AccountTrainingParticipation) => void; reviewable: boolean}) {
     const status = eventStatus(event);
     const cancellable = status === "ACTIVE" && new Date(event.startsAt).getTime() >= Date.now() + 2 * 60 * 60 * 1000;
     const canPay = status === "ACTIVE"
@@ -221,7 +239,7 @@ function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boo
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-stone-950">{event.title}</p>
-                    <p className="mt-1 text-xs text-stone-500">{event.specialistName} · {event.officeName ?? copy.noOffice}</p>
+                    <p className="mt-1 text-xs text-stone-500">{event.trainerName} · {event.officeName ?? copy.noOffice}</p>
                 </div>
                 <EventStatusBadge copy={copy} status={status} />
             </div>
@@ -230,6 +248,7 @@ function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boo
                 <div className="flex flex-wrap justify-end gap-2">
                     {canPay ? <a className="inline-flex min-h-9 items-center rounded-md bg-stone-950 px-3 py-1.5 text-xs font-semibold text-white outline-none transition-[background-color,box-shadow,transform] hover:bg-stone-800 hover:shadow-sm active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2" href={event.externalPaymentUrl ?? undefined} rel="noreferrer" target="_blank">{copy.pay}</a> : null}
                     {cancellable ? <button className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300" disabled={cancelling} onClick={() => onCancel(event)} type="button">{copy.cancel}</button> : null}
+                    {reviewable ? <button className={pagerButtonClass} onClick={() => onReview(event)} type="button">{copy.leaveReview}</button> : null}
                 </div>
             </div>
             <EventMetaChips copy={copy} event={event} />
@@ -238,8 +257,8 @@ function EventCard({cancelling, copy, event, locale, onCancel}: {cancelling: boo
                 copy={copy}
                 directions={event.officeDirections}
                 googleMapsUrl={event.officeGoogleMapsUrl}
-                photoUrl={event.officePhotoMediaUrl}
-                videoUrl={event.officeVideoMediaUrl}
+                photoUrl={null}
+                videoUrl={null}
             />
         </article>
     );
@@ -258,9 +277,9 @@ function BookingMetaChips({booking, copy}: {booking: Booking; copy: Copy}) {
     return <div className="mt-3 flex flex-wrap gap-1.5">{chips.map((chip) => <span className="max-w-full break-words rounded-full border border-stone-200 bg-white px-2 py-1 text-[11px] font-medium text-stone-600" key={chip}>{chip}</span>)}</div>;
 }
 
-function EventMetaChips({copy, event}: {copy: Copy; event: PublicFixedEvent}) {
+function EventMetaChips({copy, event}: {copy: Copy; event: AccountTrainingParticipation}) {
     const chips = [
-        event.enrollmentStatus === "ACTIVE" && !event.paymentConfirmed && !event.paidWithMembership && !event.paidWithLoyaltyVoucher ? copy.paymentPendingHint : null,
+        event.status === "PAYMENT_PENDING" && !event.paymentConfirmed && !event.paidWithMembership && !event.paidWithLoyaltyVoucher ? copy.paymentPendingHint : null,
         event.paidWithMembership ? copy.paidWithMembership : null,
         event.paidWithLoyaltyVoucher ? copy.paidWithLoyaltyVoucher : null
     ].filter((chip): chip is string => Boolean(chip));
@@ -333,30 +352,24 @@ function BookingStatusBadge({booking, copy}: {booking: Booking; copy: Copy}) {
     return <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${className}`}>{label}</span>;
 }
 
+function ReviewDialog({copy, disabled, onClose, onSubmit, open, title}: {copy: Copy; disabled: boolean; onClose: () => void; onSubmit: (rating: number, text: string) => void; open: boolean; title: string}) {
+    const [rating, setRating] = useState(0);
+    const [text, setText] = useState("");
+    return <Dialog closeLabel={copy.close} description={copy.reviewBody(title)} footer={<><Button disabled={disabled} onClick={onClose} variant="secondary">{copy.close}</Button><Button disabled={disabled || rating === 0} onClick={() => void onSubmit(rating, text)}>{disabled ? copy.reviewSaving : copy.reviewSubmit}</Button></>} onClose={onClose} open={open} title={copy.reviewTitle}>
+        <fieldset><legend className="text-sm font-semibold text-stone-800">{copy.reviewRating}</legend><div className="mt-3 flex gap-2">{[1,2,3,4,5].map(value => <button aria-label={copy.reviewStar(value)} aria-pressed={rating === value} className={`min-h-11 min-w-11 rounded-lg border text-xl ${value <= rating ? "border-amber-400 bg-amber-50 text-amber-600" : "border-stone-200 bg-white text-stone-300"}`} key={value} onClick={() => setRating(value)} type="button">★</button>)}</div></fieldset>
+        <label className="mt-4 block text-sm font-semibold text-stone-800">{copy.reviewText}<textarea className="mt-2 min-h-28 w-full rounded-xl border border-stone-300 p-3 text-sm outline-none focus:border-stone-950 focus:ring-2 focus:ring-stone-200" maxLength={3000} onChange={event => setText(event.target.value)} value={text} /></label>
+    </Dialog>;
+}
+
 function CancelConfirmationModal({copy, disabled, onClose, onConfirm, title}: {copy: Copy; disabled: boolean; onClose: () => void; onConfirm: (reason: string, details: string) => void; title: string}) {
     const [reason, setReason] = useState("");
     const [details, setDetails] = useState("");
     const valid = Boolean(reason) && (reason !== "OTHER" || Boolean(details.trim()));
-    useEffect(() => {
-        const previousOverflow = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
-        const closeOnEscape = (event: KeyboardEvent) => {
-            if (event.key === "Escape") onClose();
-        };
-        document.addEventListener("keydown", closeOnEscape);
-        return () => {
-            document.body.style.overflow = previousOverflow;
-            document.removeEventListener("keydown", closeOnEscape);
-        };
-    }, [onClose]);
     return (
-        <OverlayPortal><div className="fixed inset-0 z-[80] flex items-center justify-center bg-stone-950/40 p-4" onClick={onClose} role="presentation">
-            <section aria-modal="true" className="w-full max-w-md rounded-xl bg-white p-4 shadow-2xl sm:p-5" onClick={(event) => event.stopPropagation()} role="dialog">
-                <div className="border-b border-stone-200 pb-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-red-700">{copy.cancelConfirmEyebrow}</p>
-                    <h3 className="mt-1 break-words text-lg font-semibold text-stone-950">{copy.cancelConfirmTitle}</h3>
-                    <p className="mt-2 break-words text-sm leading-6 text-stone-600">{copy.cancelConfirmBody(title)}</p>
-                </div>
+        <Dialog closeLabel={copy.keepBooking} description={copy.cancelConfirmBody(title)} eyebrow={copy.cancelConfirmEyebrow} footer={<>
+            <Button disabled={disabled} onClick={onClose} variant="secondary">{copy.keepBooking}</Button>
+            <Button disabled={disabled || !valid} onClick={() => onConfirm(reason, details)} variant="danger">{copy.confirmCancel}</Button>
+        </>} onClose={onClose} open title={copy.cancelConfirmTitle}>
                 <div className="mt-4 space-y-3">
                     <label className="block text-sm font-semibold text-stone-900">{copy.cancelReasonLabel}
                         <select className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 font-normal outline-none focus:border-stone-800" onChange={(event) => setReason(event.target.value)} value={reason}>
@@ -372,12 +385,7 @@ function CancelConfirmationModal({copy, disabled, onClose, onConfirm, title}: {c
                     </label>
                     <p className="text-xs leading-5 text-stone-500">{copy.cancelDeadlineHint}</p>
                 </div>
-                <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                    <button className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-100" onClick={onClose} type="button">{copy.keepBooking}</button>
-                    <button className="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-200" disabled={disabled || !valid} onClick={() => onConfirm(reason, details)} type="button">{copy.confirmCancel}</button>
-                </div>
-            </section>
-        </div></OverlayPortal>
+        </Dialog>
     );
 }
 
@@ -437,6 +445,17 @@ function labels(t: T) {
         cancelReasonPlaceholder: t("cancelReasonPlaceholder"),
         cancelDetailsLabel: t("cancelDetailsLabel"),
         cancelDeadlineHint: t("cancelDeadlineHint"),
+        leaveReview: t("leaveReview"),
+        reviewTitle: t("reviewTitle"),
+        reviewBody: (title: string) => t("reviewBody", {title}),
+        reviewRating: t("reviewRating"),
+        reviewStar: (value: number) => t("reviewStar", {value}),
+        reviewText: t("reviewText"),
+        reviewSubmit: t("reviewSubmit"),
+        reviewSaving: t("reviewSaving"),
+        reviewCreated: t("reviewCreated"),
+        reviewError: t("reviewError"),
+        close: t("close"),
         cancelReasons: {
             plans: t("cancelReasons.plans"),
             health: t("cancelReasons.health"),

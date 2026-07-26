@@ -1,11 +1,11 @@
 import type {SpecialistBooking} from "@/types/bookings";
-import type {ScheduleBlockStatus, ScheduleBlockType, SpecialistAvailabilityBlock, SpecialistFixedEvent} from "@/types/schedule";
-import type {PublicService} from "@/types/services";
+import type {ScheduleBlockStatus, ScheduleBlockType, SpecialistAvailabilityBlock, SpecialistTrainingCalendarSession} from "@/types/schedule";
+import type {ServiceVariant} from "@/types/services";
 
 export type CalendarFilterState = {
     officeId: number | "";
     serviceId: number | "";
-    itemType: "all" | ScheduleBlockType | "BOOKING" | "FIXED_EVENT" | "BUFFER";
+    itemType: "all" | ScheduleBlockType | "BOOKING" | "TRAINING_SESSION" | "BUFFER";
     status: "all" | ScheduleBlockStatus | SpecialistBooking["status"] | "ACTIVE_EVENT" | "INACTIVE_EVENT" | "PAST";
 };
 
@@ -29,18 +29,18 @@ export function filterCalendarBlocks(blocks: SpecialistAvailabilityBlock[], filt
     return blocks.filter((block) => {
         if (filters.officeId !== "" && block.officeId !== filters.officeId) return false;
         if (filters.serviceId !== "" && block.serviceId !== filters.serviceId) return false;
-        if (filters.itemType !== "all" && (filters.itemType === "BOOKING" || filters.itemType === "FIXED_EVENT" || block.itemType !== filters.itemType)) return false;
+        if (filters.itemType !== "all" && (filters.itemType === "BOOKING" || filters.itemType === "TRAINING_SESSION" || block.itemType !== filters.itemType)) return false;
         if (filters.status === "PAST") return isPastRange(block.endsAt);
         if (filters.status !== "all" && (filters.status === "ACTIVE_EVENT" || filters.status === "INACTIVE_EVENT" || !["AVAILABLE", "BLOCKED"].includes(filters.status) || block.status !== filters.status)) return false;
         return true;
     });
 }
 
-export function filterCalendarEvents(events: SpecialistFixedEvent[], filters: CalendarFilterState) {
+export function filterCalendarEvents(events: SpecialistTrainingCalendarSession[], filters: CalendarFilterState) {
     return events.filter((event) => {
         if (filters.officeId !== "" && event.officeId !== filters.officeId) return false;
         if (filters.serviceId !== "" && event.serviceId !== filters.serviceId) return false;
-        if (filters.itemType !== "all" && filters.itemType !== "FIXED_EVENT") return false;
+        if (filters.itemType !== "all" && filters.itemType !== "TRAINING_SESSION") return false;
         if (filters.status === "PAST") return isPastRange(event.endsAt);
         if (filters.status === "ACTIVE_EVENT" && !event.active) return false;
         if (filters.status === "INACTIVE_EVENT" && event.active) return false;
@@ -72,7 +72,7 @@ export function filterCalendarBuffers(buffers: CalendarBuffer[], filters: Calend
     });
 }
 
-export function buildCalendarBuffers(bookings: SpecialistBooking[], events: SpecialistFixedEvent[], appointmentBufferMinutes: number): CalendarBuffer[] {
+export function buildCalendarBuffers(bookings: SpecialistBooking[], events: SpecialistTrainingCalendarSession[], appointmentBufferMinutes: number): CalendarBuffer[] {
     const buffers: CalendarBuffer[] = [];
     for (const booking of bookings.filter((item) => item.status !== "CANCELLED")) {
         buffers.push(...bufferRanges(
@@ -116,7 +116,7 @@ export function hasRestPeriodConflict(
     startsAt: string,
     endsAt: string,
     bookings: SpecialistBooking[],
-    events: SpecialistFixedEvent[],
+    events: SpecialistTrainingCalendarSession[],
     appointmentBufferMinutes: number,
     excludedEventId?: number
 ) {
@@ -137,12 +137,12 @@ export function hasRestPeriodConflict(
 export function buildManualBookingSlots(
     blocks: SpecialistAvailabilityBlock[],
     bookings: SpecialistBooking[],
-    events: SpecialistFixedEvent[],
+    events: SpecialistTrainingCalendarSession[],
     appointmentBufferMinutes: number,
-    service?: PublicService,
+    variant?: ServiceVariant,
     nowMs = Date.now()
 ): ManualBookingSlot[] {
-    if (!service) return [];
+    if (!variant) return [];
 
     const activeBookings = bookings.filter((booking) => booking.status !== "CANCELLED");
     const activeEvents = events.filter((event) => event.active);
@@ -152,7 +152,9 @@ export function buildManualBookingSlots(
     for (const block of blocks) {
         if (block.status !== "AVAILABLE") continue;
         if (block.itemType === "APPOINTMENT_SLOT") {
-            if (block.serviceId !== service.id || block.booked) continue;
+            if (block.serviceId !== variant.serviceId || block.booked) continue;
+            if (!variant.specialistIds.includes(block.specialistId)) continue;
+            if (block.resourceId === null || !variant.resourceIds.includes(block.resourceId)) continue;
             const slotStart = new Date(block.startsAt);
             const slotEnd = new Date(block.endsAt);
             const overlapsBooking = activeBookings.some((booking) => overlapsBuffered(slotStart, slotEnd, booking.startsAt, booking.endsAt, appointmentBufferMinutes));
@@ -176,7 +178,9 @@ export function buildManualBookingSlots(
 
         while (slotStart.getTime() < blockEnd.getTime()) {
             const slotEnd = new Date(slotStart);
-            slotEnd.setMinutes(slotEnd.getMinutes() + service.durationMinutes);
+            if (!variant.specialistIds.includes(block.specialistId)) break;
+            if (block.resourceId === null || !variant.resourceIds.includes(block.resourceId)) break;
+            slotEnd.setMinutes(slotEnd.getMinutes() + variant.durationMinutes);
 
             if (slotEnd.getTime() > blockEnd.getTime()) break;
 
@@ -194,7 +198,7 @@ export function buildManualBookingSlots(
                 });
             }
 
-            slotStart.setMinutes(slotStart.getMinutes() + service.durationMinutes);
+            slotStart.setMinutes(slotStart.getMinutes() + variant.durationMinutes);
         }
     }
 

@@ -121,7 +121,7 @@ export default function AccountLoyaltyPanel({view}: {view: "certificates" | "poi
                         <div className="mt-3 divide-y divide-stone-100 rounded-xl border border-stone-200">
                             {ledger.content.map((entry) => (
                                 <article className="flex items-start justify-between gap-4 p-3 sm:p-4" key={entry.id}>
-                                    <div className="min-w-0"><p className="text-sm font-medium text-stone-950">{t(`entryTypes.${entry.type}`)}</p><p className="mt-1 break-words text-xs text-stone-500">{sourceLabel(entry.bookingId, entry.eventEnrollmentId, entry.reason, t)}</p><p className="mt-1 text-xs text-stone-400">{formatDateTime(entry.createdAt, locale)}</p></div>
+                                    <div className="min-w-0"><p className="text-sm font-medium text-stone-950">{t(`entryTypes.${entry.type}`)}</p><p className="mt-1 break-words text-xs text-stone-500">{sourceLabel(entry.bookingId, null, entry.trainingParticipantId, entry.reason, t)}</p><p className="mt-1 text-xs text-stone-400">{formatDateTime(entry.createdAt, locale)}</p></div>
                                     <strong className={entry.amount > 0 ? "text-emerald-700" : "text-stone-950"}>{entry.amount > 0 ? "+" : ""}{entry.amount}</strong>
                                 </article>
                             ))}
@@ -146,4 +146,4 @@ function localizedRewardTitle(reward: LoyaltyReward, locale: string) { return lo
 function localizedRewardDescription(reward: LoyaltyReward, locale: string) { return locale === "en" && reward.descriptionEn ? reward.descriptionEn : reward.descriptionUa; }
 function formatDate(value: string, locale: string) { return new Intl.DateTimeFormat(toLanguageTag(locale), {dateStyle: "medium"}).format(new Date(value)); }
 function formatDateTime(value: string, locale: string) { return new Intl.DateTimeFormat(toLanguageTag(locale), {dateStyle: "medium", timeStyle: "short"}).format(new Date(value)); }
-function sourceLabel(bookingId: number | null, eventId: number | null, reason: string, t: ReturnType<typeof useTranslations<"accountPage.loyalty">>) { if (bookingId) return t("bookingSource", {id: bookingId}); if (eventId) return t("eventSource", {id: eventId}); return reason; }
+function sourceLabel(bookingId: number | null, eventId: number | null, trainingParticipantId: number | null, reason: string, t: ReturnType<typeof useTranslations<"accountPage.loyalty">>) { if (bookingId) return t("bookingSource", {id: bookingId}); if (trainingParticipantId) return t("trainingSource", {id: trainingParticipantId}); if (eventId) return t("eventSource", {id: eventId}); return reason; }

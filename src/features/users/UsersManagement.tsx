@@ -3,7 +3,7 @@
 import {useEffect, useMemo, useState} from "react";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
-import OverlayPortal from "@/components/ui/overlay/OverlayPortal";
+import ConfirmDialog from "@/components/ui/overlay/ConfirmDialog";
 import type {UserRole} from "@/features/auth/auth.roles";
 import {useListUsersQuery, useUpdateUserEnabledMutation, useUpdateUserRolesMutation} from "@/features/users/users.api";
 import type {AdminUser} from "@/types/users";
@@ -26,21 +26,6 @@ export default function UsersManagement({currentUserId}: {currentUserId: number}
     const [pendingStatusUser, setPendingStatusUser] = useState<AdminUser | null>(null);
     const [updateRoles, {isLoading: isSaving}] = useUpdateUserRolesMutation();
     const [updateEnabled, {isLoading: isStatusSaving}] = useUpdateUserEnabledMutation();
-
-    useEffect(() => {
-        if (!pendingStatusUser) return;
-
-        const previousOverflow = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
-        const closeOnEscape = (event: KeyboardEvent) => {
-            if (event.key === "Escape") setPendingStatusUser(null);
-        };
-        document.addEventListener("keydown", closeOnEscape);
-        return () => {
-            document.body.style.overflow = previousOverflow;
-            document.removeEventListener("keydown", closeOnEscape);
-        };
-    }, [pendingStatusUser]);
 
     useEffect(() => {
         if (users.length === 0) {
@@ -94,7 +79,7 @@ export default function UsersManagement({currentUserId}: {currentUserId: number}
     }
 
     return (
-        <section className="grid w-full min-w-0 max-w-full items-start gap-5 xl:grid-cols-[minmax(420px,580px)_minmax(0,1fr)]">
+        <section className="grid w-full min-w-0 max-w-none items-start gap-5 xl:grid-cols-[minmax(360px,0.8fr)_minmax(0,1.35fr)]">
             <div className="min-w-0 rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
                 <div className="mb-4 flex flex-col gap-3">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -270,37 +255,9 @@ export default function UsersManagement({currentUserId}: {currentUserId: number}
                 )}
             </div>
             {pendingStatusUser ? (
-                <OverlayPortal><div className="fixed inset-0 z-[70] flex items-center justify-center bg-stone-950/40 p-4" onMouseDown={(event) => {
-                    if (event.target === event.currentTarget) setPendingStatusUser(null);
-                }} role="presentation">
-                    <div aria-modal="true" className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-5 shadow-2xl" role="dialog">
-                        <h2 className="text-base font-semibold text-stone-950">
-                            {pendingStatusUser.enabled ? t("disableConfirmTitle") : t("restoreConfirmTitle")}
-                        </h2>
-                        <p className="mt-2 text-sm leading-6 text-stone-600">
-                            {pendingStatusUser.enabled ? t("disableConfirmBody") : t("restoreConfirmBody")}
-                        </p>
-                        <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                            <button
-                                className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-100"
-                                onClick={() => setPendingStatusUser(null)}
-                                type="button"
-                            >
-                                {t("cancel")}
-                            </button>
-                            <button
-                                className={`rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-300 ${
-                                    pendingStatusUser.enabled ? "bg-red-700 hover:bg-red-600" : "bg-stone-900 hover:bg-stone-700"
-                                }`}
-                                disabled={isStatusSaving}
-                                onClick={confirmStatusChange}
-                                type="button"
-                            >
-                                {isStatusSaving ? t("saving") : pendingStatusUser.enabled ? t("confirmDisable") : t("confirmRestore")}
-                            </button>
-                        </div>
-                    </div>
-                </div></OverlayPortal>
+                <ConfirmDialog busy={isStatusSaving} cancelLabel={t("cancel")} closeLabel={t("cancel")} confirmLabel={isStatusSaving ? t("saving") : pendingStatusUser.enabled ? t("confirmDisable") : t("confirmRestore")} destructive={pendingStatusUser.enabled} onClose={() => setPendingStatusUser(null)} onConfirm={confirmStatusChange} open title={pendingStatusUser.enabled ? t("disableConfirmTitle") : t("restoreConfirmTitle")}>
+                    {pendingStatusUser.enabled ? t("disableConfirmBody") : t("restoreConfirmBody")}
+                </ConfirmDialog>
             ) : null}
         </section>
     );

@@ -53,6 +53,7 @@ export const servicesApi = createApi({
             ]
         }),
         listServiceVariants: build.query<ServiceVariant[], number>({query:(serviceId)=>`/admin/services/${serviceId}/variants`,providesTags:["ServiceVariants"]}),
+        listAllServiceVariants: build.query<ServiceVariant[], void>({query:()=>"/admin/service-variants",providesTags:["ServiceVariants"]}),
         createServiceVariant: build.mutation<ServiceVariant,{serviceId:number;body:ServiceVariantInput}>({query:({serviceId,body})=>({url:`/admin/services/${serviceId}/variants`,method:"POST",body}),invalidatesTags:["ServiceVariants"]}),
         updateServiceVariant: build.mutation<ServiceVariant,{serviceId:number;id:number;body:ServiceVariantInput}>({query:({serviceId,id,body})=>({url:`/admin/services/${serviceId}/variants/${id}`,method:"PUT",body}),invalidatesTags:["ServiceVariants"]})
     })
@@ -63,5 +64,5 @@ export const {
     useListAdminServicesQuery,
     useCreateServiceMutation,
     useUpdateServiceMutation
-    ,useListServiceVariantsQuery,useCreateServiceVariantMutation,useUpdateServiceVariantMutation
+    ,useListServiceVariantsQuery,useListAllServiceVariantsQuery,useCreateServiceVariantMutation,useUpdateServiceVariantMutation
 } = servicesApi;

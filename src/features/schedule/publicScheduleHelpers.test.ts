@@ -10,7 +10,7 @@ import {
     toId,
     uniqueSpecialists
 } from "./publicScheduleHelpers";
-import type {PublicFixedEvent, PublicScheduleAvailabilityBlock} from "@/types/schedule";
+import type {PublicTrainingCalendarSession, PublicScheduleAvailabilityBlock} from "@/types/schedule";
 import type {PublicService} from "@/types/services";
 
 function slot(overrides: Partial<PublicScheduleAvailabilityBlock> = {}): PublicScheduleAvailabilityBlock {
@@ -22,6 +22,8 @@ function slot(overrides: Partial<PublicScheduleAvailabilityBlock> = {}): PublicS
         specialistAvatarMediaUrl: null,
         officeId: 20,
         officeName: "Office",
+        resourceId: 30,
+        resourceName: "Room",
         officeAddress: null,
         officeDirections: null,
         officeGoogleMapsUrl: null,
@@ -35,7 +37,7 @@ function slot(overrides: Partial<PublicScheduleAvailabilityBlock> = {}): PublicS
     };
 }
 
-function event(overrides: Partial<PublicFixedEvent> = {}): PublicFixedEvent {
+function event(overrides: Partial<PublicTrainingCalendarSession> = {}): PublicTrainingCalendarSession {
     return {
         id: 1,
         serviceId: 100,
@@ -47,6 +49,8 @@ function event(overrides: Partial<PublicFixedEvent> = {}): PublicFixedEvent {
         specialistAvatarMediaUrl: null,
         officeId: 20,
         officeName: "Office",
+        resourceId: 30,
+        resourceName: "Room",
         officeAddress: null,
         officeDirections: null,
         officeGoogleMapsUrl: null,
@@ -74,7 +78,7 @@ function event(overrides: Partial<PublicFixedEvent> = {}): PublicFixedEvent {
 
 const service: PublicService = {
     basePrice: 1500,
-    bookingMode: "INDIVIDUAL_APPOINTMENT",
+    businessDirection: "MASSAGE",
     description: null,
     durationMinutes: 60,
     id: 100,

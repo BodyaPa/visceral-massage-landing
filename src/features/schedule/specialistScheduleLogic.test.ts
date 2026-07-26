@@ -10,16 +10,22 @@ import {
     overlaps
 } from "./specialistScheduleLogic";
 import type {SpecialistBooking} from "@/types/bookings";
-import type {SpecialistAvailabilityBlock, SpecialistFixedEvent} from "@/types/schedule";
-import type {PublicService} from "@/types/services";
+import type {SpecialistAvailabilityBlock, SpecialistTrainingCalendarSession} from "@/types/schedule";
+import type {ServiceVariant} from "@/types/services";
 
-const service: PublicService = {
-    basePrice: 1000,
-    bookingMode: "INDIVIDUAL_APPOINTMENT",
-    description: null,
+const variant: ServiceVariant = {
+    active: true,
+    bufferAfterMinutes: 30,
+    bufferBeforeMinutes: 0,
+    depositAmount: 250,
     durationMinutes: 60,
-    id: 100,
-    title: "Service"
+    id: 200,
+    nameEn: "Service",
+    nameUa: "Послуга",
+    price: 1000,
+    resourceIds: [30],
+    serviceId: 100,
+    specialistIds: [20]
 };
 
 function block(overrides: Partial<SpecialistAvailabilityBlock> = {}): SpecialistAvailabilityBlock {
@@ -33,6 +39,8 @@ function block(overrides: Partial<SpecialistAvailabilityBlock> = {}): Specialist
         notes: null,
         officeId: 10,
         officeName: "Office",
+        resourceId: 30,
+        resourceName: "Room",
         serviceId: null,
         serviceTitle: null,
         specialistAvatarMediaId: null,
@@ -48,13 +56,29 @@ function block(overrides: Partial<SpecialistAvailabilityBlock> = {}): Specialist
 
 function booking(overrides: Partial<SpecialistBooking> = {}): SpecialistBooking {
     return {
+        availabilityBlockId: 50,
+        bookedPrice: 1000,
+        cancellationDetails: null,
+        cancellationReason: null,
+        cancelledAt: null,
         clientContact: null,
         clientId: 30,
         clientName: "Client",
+        createdAt: "2035-05-01T00:00:00.000Z",
+        discountAmount: null,
+        discountPercent: null,
         endsAt: "2035-05-10T11:00:00.000Z",
         id: 1,
         officeId: 10,
         officeName: "Office",
+        loyaltyVoucherId: null,
+        membershipPurchaseId: null,
+        originalPrice: 1000,
+        paidWithLoyaltyVoucher: false,
+        paidWithMembership: false,
+        promoCode: null,
+        resourceId: 30,
+        resourceName: "Room",
         reminderOptIn: false,
         serviceId: 100,
         serviceTitleEn: "Service",
@@ -63,11 +87,12 @@ function booking(overrides: Partial<SpecialistBooking> = {}): SpecialistBooking 
         specialistName: "Specialist",
         startsAt: "2035-05-10T10:00:00.000Z",
         status: "CONFIRMED",
+        updatedAt: "2035-05-01T00:00:00.000Z",
         ...overrides
     };
 }
 
-function event(overrides: Partial<SpecialistFixedEvent> = {}): SpecialistFixedEvent {
+function event(overrides: Partial<SpecialistTrainingCalendarSession> = {}): SpecialistTrainingCalendarSession {
     return {
         active: true,
         capacity: 8,
@@ -79,6 +104,8 @@ function event(overrides: Partial<SpecialistFixedEvent> = {}): SpecialistFixedEv
         officeId: 10,
         officeName: "Office",
         price: 1000,
+        resourceId: 30,
+        resourceName: "Room",
         serviceId: 100,
         serviceTitle: "Event",
         specialistId: 20,
@@ -100,7 +127,7 @@ describe("specialistScheduleLogic", () => {
         expect(filterCalendarEvents([
             event({id: 1, active: true}),
             event({id: 2, active: false})
-        ], {itemType: "FIXED_EVENT", officeId: "", serviceId: "", status: "ACTIVE_EVENT"}).map((item) => item.id)).toEqual([1]);
+        ], {itemType: "TRAINING_SESSION", officeId: "", serviceId: "", status: "ACTIVE_EVENT"}).map((item) => item.id)).toEqual([1]);
 
         expect(filterCalendarBookings([
             booking({id: 1, status: "CONFIRMED"}),
@@ -145,7 +172,7 @@ describe("specialistScheduleLogic", () => {
             block({id: 2, startsAt: "2035-05-10T13:00:00.000Z", endsAt: "2035-05-10T14:00:00.000Z", status: "BLOCKED"})
         ], [
             booking({startsAt: "2035-05-10T11:00:00.000Z", endsAt: "2035-05-10T12:00:00.000Z"})
-        ], [], 30, service, new Date("2035-05-01T00:00:00.000Z").getTime());
+        ], [], 30, variant, new Date("2035-05-01T00:00:00.000Z").getTime());
 
         expect(slots.map((item) => item.startsAt)).toEqual(["2035-05-10T09:00:00.000Z"]);
     });

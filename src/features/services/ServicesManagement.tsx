@@ -22,11 +22,7 @@ const emptyForm: ServiceInput = {
     durationMinutes: 60,
     basePrice: 0,
     businessDirection: "MASSAGE",
-    requiredResourceType: "MASSAGE_ROOM",
-    bookingMode: "INDIVIDUAL_APPOINTMENT",
-    active: true,
-    externalPaymentUrl: "",
-    loyaltyPointsAward: 0
+    active: true
 };
 const emptyOfferForm: MembershipOfferUpdateInput = {
     titleUa: "",
@@ -96,11 +92,7 @@ export default function ServicesManagement() {
             durationMinutes: selectedService.durationMinutes,
             basePrice: selectedService.basePrice,
             businessDirection: selectedService.businessDirection,
-            requiredResourceType: selectedService.requiredResourceType,
-            bookingMode: selectedService.bookingMode,
-            active: selectedService.active,
-            externalPaymentUrl: selectedService.externalPaymentUrl ?? "",
-            loyaltyPointsAward: selectedService.loyaltyPointsAward
+            active: selectedService.active
         });
     }, [selectedService]);
 
@@ -159,9 +151,7 @@ export default function ServicesManagement() {
             titleEn: form.titleEn?.trim() || null,
             descriptionEn: form.descriptionEn?.trim() || null,
             durationMinutes: Number(form.durationMinutes),
-            basePrice: Number(form.basePrice),
-            loyaltyPointsAward: Number(form.loyaltyPointsAward),
-            externalPaymentUrl: form.externalPaymentUrl?.trim() || null
+            basePrice: Number(form.basePrice)
         };
     }
 
@@ -283,11 +273,7 @@ export default function ServicesManagement() {
                                         </span>
                                         <span className="flex flex-wrap gap-1.5">
                                             <MetaBadge active={selected} label={`${service.durationMinutes} ${t("minutesShort")}`} />
-                                            <MetaBadge active={selected} label={service.bookingMode === "FIXED_EVENT" ? t("fixedEvent") : t("individualAppointment")} />
-                                            <MetaBadge active={selected} label={service.businessDirection === "TRAINING" ? t("directionTraining") : t("directionMassage")} />
                                             <MetaBadge active={selected} label={String(service.basePrice)} />
-                                            {service.externalPaymentUrl ? <MetaBadge active={selected} label={t("externalPaymentUrl")} /> : null}
-                                            {service.loyaltyPointsAward > 0 ? <MetaBadge active={selected} label={t("loyaltyPointsBadge", {count: service.loyaltyPointsAward})} /> : null}
                                         </span>
                                     </span>
                                 </button>
@@ -374,46 +360,7 @@ export default function ServicesManagement() {
                         </div>
                     )}
 
-                    <div className="w-full">
-                        <Field label={t("externalPaymentUrl")} tooltip={t("externalPaymentUrlHint")}>
-                            <input
-                                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                                onChange={(event) => updateField("externalPaymentUrl", event.target.value)}
-                                value={form.externalPaymentUrl ?? ""}
-                            />
-                        </Field>
-                    </div>
                     <div className="grid gap-3 sm:grid-cols-2">
-                        <Field label={t("businessDirection")} tooltip={t("businessDirectionHint")}>
-                            <select
-                                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                                onChange={(event) => {
-                                    const businessDirection = event.target.value as ServiceInput["businessDirection"];
-                                    setForm((current) => ({
-                                        ...current,
-                                        businessDirection,
-                                        requiredResourceType: businessDirection === "TRAINING" ? "TRAINING_HALL" : "MASSAGE_ROOM"
-                                    }));
-                                }}
-                                value={form.businessDirection}
-                            >
-                                <option value="MASSAGE">{t("directionMassage")}</option>
-                                <option value="TRAINING">{t("directionTraining")}</option>
-                            </select>
-                        </Field>
-                        <Field label={t("requiredResourceType")} tooltip={t("requiredResourceTypeHint")}>
-                            <input className="w-full rounded-lg border border-stone-200 bg-stone-100 px-3 py-2 text-sm text-stone-700" readOnly value={form.requiredResourceType === "TRAINING_HALL" ? t("resourceTrainingHall") : t("resourceMassageRoom")} />
-                        </Field>
-                        <Field label={t("bookingMode")} tooltip={t("bookingModeHint")}>
-                            <select
-                                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                                onChange={(event) => updateField("bookingMode", event.target.value as ServiceInput["bookingMode"])}
-                                value={form.bookingMode}
-                            >
-                                <option value="INDIVIDUAL_APPOINTMENT">{t("individualAppointment")}</option>
-                                <option value="FIXED_EVENT">{t("fixedEvent")}</option>
-                            </select>
-                        </Field>
                         <Field label={t("duration")} tooltip={t("durationHint")}>
                             <input
                                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
@@ -433,15 +380,6 @@ export default function ServicesManagement() {
                                 value={form.basePrice}
                             />
                         </Field>
-                        <Field label={t("loyaltyPointsAward")} tooltip={t("loyaltyPointsAwardHint")}>
-                            <input
-                                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700"
-                                min={0}
-                                onChange={(event) => updateField("loyaltyPointsAward", Number(event.target.value))}
-                                type="number"
-                                value={form.loyaltyPointsAward}
-                            />
-                        </Field>
                     </div>
                     <label className={`flex min-w-0 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition-colors ${
                         form.active ? "border-stone-300 bg-stone-100 text-stone-950" : "border-stone-200 bg-stone-50 text-stone-700"
@@ -455,7 +393,7 @@ export default function ServicesManagement() {
                     </label>
                     <div className="mt-auto flex pt-3"><button
                         className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-400"
-                        disabled={saving || !form.titleUa.trim() || form.durationMinutes < 1 || form.basePrice < 0 || form.loyaltyPointsAward < 0}
+                        disabled={saving || !form.titleUa.trim() || form.durationMinutes < 1 || form.basePrice < 0}
                         onClick={saveService}
                         type="button"
                     >
@@ -501,7 +439,7 @@ function ServiceVariantsPanel({service,t}:{service:AdminService;t:ReturnType<typ
     useEffect(()=>{if(selected)setForm({...selected});else setForm({...emptyVariant,durationMinutes:service.durationMinutes,price:service.basePrice,nameUa:service.titleUa,nameEn:service.titleEn});},[selected,service]);
     function field<K extends keyof ServiceVariantInput>(key:K,value:ServiceVariantInput[K]){setForm(current=>({...current,[key]:value}));}
     async function save(){if(selected)await update({serviceId:service.id,id:selected.id,body:form}).unwrap();else{const saved=await create({serviceId:service.id,body:form}).unwrap();setSelectedId(saved.id);}}
-    return <section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{t("variants.eyebrow")}</p><h2 className="mt-1 text-xl font-semibold">{t("variants.title")}</h2><p className="mt-1 text-sm text-stone-500">{t("variants.subtitle")}</p></div><button className="rounded-lg bg-stone-900 px-3 py-2 text-sm font-semibold text-white" onClick={()=>setSelectedId(null)} type="button">{t("variants.new")}</button></div><div className="mt-4 grid gap-4 lg:grid-cols-[250px_1fr]"><div className="space-y-2">{variants.map(item=><button className={`w-full rounded-lg border p-3 text-left text-sm ${item.id===selectedId?"border-stone-900 bg-stone-900 text-white":"border-stone-200 bg-stone-50"}`} key={item.id} onClick={()=>setSelectedId(item.id)} type="button"><span className="font-semibold">{item.nameUa}</span><span className="mt-1 block text-xs opacity-70">{item.durationMinutes} min · {item.price}</span></button>)}</div><div className="grid gap-3 sm:grid-cols-2"><VariantField label={t("variants.nameUa")}><input className={variantInput} onChange={e=>field("nameUa",e.target.value)} value={form.nameUa}/></VariantField><VariantField label={t("variants.nameEn")}><input className={variantInput} onChange={e=>field("nameEn",e.target.value||null)} value={form.nameEn??""}/></VariantField><NumberVariant label={t("variants.duration")} value={form.durationMinutes} onChange={value=>field("durationMinutes",value)}/><NumberVariant label={t("variants.price")} value={form.price} onChange={value=>field("price",value)}/><NumberVariant label={t("variants.bufferBefore")} value={form.bufferBeforeMinutes} onChange={value=>field("bufferBeforeMinutes",value)}/><NumberVariant label={t("variants.bufferAfter")} value={form.bufferAfterMinutes} onChange={value=>field("bufferAfterMinutes",value)}/><NumberVariant label={t("variants.deposit")} value={form.depositAmount} onChange={value=>field("depositAmount",value)}/><VariantField label={t("variants.office")}><select className={variantInput} onChange={e=>setOfficeId(Number(e.target.value))} value={officeId}><option value="">—</option>{(officePage?.content??[]).map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></VariantField><div className="sm:col-span-2"><p className="text-sm font-medium">{t("variants.specialists")}</p><div className="mt-2 flex flex-wrap gap-2">{(users?.content??[]).map(user=><label className="rounded-lg border border-stone-200 px-3 py-2 text-xs" key={user.id}><input checked={form.specialistIds.includes(user.id)} className="mr-2" onChange={e=>field("specialistIds",e.target.checked?[...form.specialistIds,user.id]:form.specialistIds.filter(id=>id!==user.id))} type="checkbox"/>{[user.firstName,user.lastName].filter(Boolean).join(" ")}</label>)}</div></div><div className="sm:col-span-2"><p className="text-sm font-medium">{t("variants.resources")}</p><div className="mt-2 flex flex-wrap gap-2">{resources.map(resource=><label className="rounded-lg border border-stone-200 px-3 py-2 text-xs" key={resource.id}><input checked={form.resourceIds.includes(resource.id)} className="mr-2" onChange={e=>field("resourceIds",e.target.checked?[...form.resourceIds,resource.id]:form.resourceIds.filter(id=>id!==resource.id))} type="checkbox"/>{resource.name}</label>)}</div></div><label className="flex items-center gap-2 text-sm"><input checked={form.active} onChange={e=>field("active",e.target.checked)} type="checkbox"/>{t("active")}</label><button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={creating||updating||!form.nameUa.trim()||form.durationMinutes<1||form.price<0||form.depositAmount>form.price} onClick={save} type="button">{t("save")}</button></div></div></section>;
+    return <section className="w-full rounded-xl border border-stone-200 bg-white p-4 shadow-sm sm:p-5"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{t("variants.eyebrow")}</p><h2 className="mt-1 text-xl font-semibold">{t("variants.title")}</h2><p className="mt-1 text-sm text-stone-500">{t("variants.subtitle")}</p></div><button className="rounded-lg bg-stone-900 px-3 py-2 text-sm font-semibold text-white" onClick={()=>setSelectedId(null)} type="button">{t("variants.new")}</button></div><div className="mt-4 grid gap-4 lg:grid-cols-[minmax(220px,300px)_minmax(0,1fr)]"><div className="space-y-2">{variants.map(item=><button className={`w-full rounded-lg border p-3 text-left text-sm ${item.id===selectedId?"border-stone-900 bg-stone-900 text-white":"border-stone-200 bg-stone-50"}`} key={item.id} onClick={()=>setSelectedId(item.id)} type="button"><span className="font-semibold">{item.nameUa}</span><span className="mt-1 block text-xs opacity-70">{item.durationMinutes} min · {item.price}</span></button>)}</div><div className="grid min-w-0 gap-3 sm:grid-cols-2"><VariantField label={t("variants.nameUa")}><input className={variantInput} onChange={e=>field("nameUa",e.target.value)} value={form.nameUa}/></VariantField><VariantField label={t("variants.nameEn")}><input className={variantInput} onChange={e=>field("nameEn",e.target.value||null)} value={form.nameEn??""}/></VariantField><NumberVariant label={t("variants.duration")} value={form.durationMinutes} onChange={value=>field("durationMinutes",value)}/><NumberVariant label={t("variants.price")} value={form.price} onChange={value=>field("price",value)}/><NumberVariant label={t("variants.bufferBefore")} value={form.bufferBeforeMinutes} onChange={value=>field("bufferBeforeMinutes",value)}/><NumberVariant label={t("variants.bufferAfter")} value={form.bufferAfterMinutes} onChange={value=>field("bufferAfterMinutes",value)}/><NumberVariant label={t("variants.deposit")} value={form.depositAmount} onChange={value=>field("depositAmount",value)}/><VariantField label={t("variants.office")}><select className={variantInput} onChange={e=>setOfficeId(Number(e.target.value))} value={officeId}><option value="">—</option>{(officePage?.content??[]).map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></VariantField><div className="sm:col-span-2"><p className="text-sm font-medium">{t("variants.specialists")}</p><div className="mt-2 flex flex-wrap gap-2">{(users?.content??[]).map(user=><label className="rounded-lg border border-stone-200 px-3 py-2 text-xs" key={user.id}><input checked={form.specialistIds.includes(user.id)} className="mr-2" onChange={e=>field("specialistIds",e.target.checked?[...form.specialistIds,user.id]:form.specialistIds.filter(id=>id!==user.id))} type="checkbox"/>{[user.firstName,user.lastName].filter(Boolean).join(" ")}</label>)}</div></div><div className="sm:col-span-2"><p className="text-sm font-medium">{t("variants.resources")}</p><div className="mt-2 flex flex-wrap gap-2">{resources.map(resource=><label className="rounded-lg border border-stone-200 px-3 py-2 text-xs" key={resource.id}><input checked={form.resourceIds.includes(resource.id)} className="mr-2" onChange={e=>field("resourceIds",e.target.checked?[...form.resourceIds,resource.id]:form.resourceIds.filter(id=>id!==resource.id))} type="checkbox"/>{resource.name}</label>)}</div></div><label className="flex items-center gap-2 text-sm"><input checked={form.active} onChange={e=>field("active",e.target.checked)} type="checkbox"/>{t("active")}</label><button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" disabled={creating||updating||!form.nameUa.trim()||form.durationMinutes<1||form.price<0||form.depositAmount>form.price||form.specialistIds.length===0||form.resourceIds.length===0} onClick={save} type="button">{t("save")}</button></div></div></section>;
 }
 const variantInput="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900";
 function VariantField({label,children}:{label:string;children:ReactNode}){return <label className="block text-sm font-medium text-stone-800">{label}<span className="mt-1 block">{children}</span></label>}
@@ -647,7 +585,6 @@ function MembershipOffersPanel({allServices, creatingKind, form, isError, isFetc
                                             <input checked={form.eligibleServiceIds.includes(service.id)} className="mt-1" onChange={(event) => toggleService(service.id, event.target.checked)} type="checkbox" />
                                             <span className="min-w-0">
                                                 <span className="block break-words font-medium text-stone-900">{service.titleUa}</span>
-                                                <span className="mt-0.5 block break-words text-xs text-stone-500">{service.bookingMode === "FIXED_EVENT" ? t("fixedEvent") : t("individualAppointment")}</span>
                                             </span>
                                         </label>
                                     ))}

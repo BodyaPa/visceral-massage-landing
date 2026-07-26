@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect, useMemo, useState} from "react";
-import {Calendar, dayjsLocalizer, type DateRange, type Event, type EventProps, type Formats, type Messages, type View, Views} from "react-big-calendar";
+import {Calendar, dayjsLocalizer, type DateRange, type Event, type EventProps, type Formats, type Messages, type SlotInfo, type View, Views} from "react-big-calendar";
 import dayjs from "dayjs";
 import "dayjs/locale/uk";
 import "dayjs/locale/en";
@@ -13,25 +13,30 @@ export type AtaraksiaCalendarEvent = Omit<Event, "end" | "start"> & {
     badge?: string;
     end: Date;
     meta?: string;
+    resourceId?: number;
     start: Date;
     tone: "available" | "blocked" | "booking" | "event" | "buffer" | "past" | "cancelled";
 };
+export type AtaraksiaCalendarResource = {id: number; title: string};
 export type AtaraksiaCalendarMessages = Messages<AtaraksiaCalendarEvent>;
 
 type Props = {
     culture: string;
     date: Date;
     events: AtaraksiaCalendarEvent[];
+    backgroundEvents?: AtaraksiaCalendarEvent[];
     max?: Date;
     messages: AtaraksiaCalendarMessages;
     min?: Date;
     onNavigate?: (date: Date) => void;
     onSelectEvent?: (event: AtaraksiaCalendarEvent) => void;
+    onSelectSlot?: (slot: SlotInfo) => void;
+    resources?: AtaraksiaCalendarResource[];
     variant?: "booking" | "planner" | "preview";
     view: View;
 };
 
-export default function AtaraksiaCalendar({culture, date, events, max, messages, min, onNavigate, onSelectEvent, variant = "planner", view}: Props) {
+export default function AtaraksiaCalendar({backgroundEvents = [], culture, date, events, max, messages, min, onNavigate, onSelectEvent, onSelectSlot, resources, variant = "planner", view}: Props) {
     const languageTag = culture === "uk" || culture === "ua" ? "uk-UA" : "en-US";
     const formats = useMemo(() => calendarFormats(languageTag), [languageTag]);
     const components = useMemo(() => ({event: CalendarEventContent}), []);
@@ -65,7 +70,8 @@ export default function AtaraksiaCalendar({culture, date, events, max, messages,
         <>
             <div className={`ataraksia-calendar-scroll ataraksia-calendar-${variant}`}>
                 <div className={`ataraksia-calendar min-w-[720px] md:min-w-0 ${heightClass}`}>
-                <Calendar<AtaraksiaCalendarEvent>
+                <Calendar<AtaraksiaCalendarEvent, AtaraksiaCalendarResource>
+                    backgroundEvents={backgroundEvents}
                     components={components}
                     culture={culture}
                     date={date}
@@ -81,8 +87,14 @@ export default function AtaraksiaCalendar({culture, date, events, max, messages,
                     min={min}
                     onNavigate={onNavigate}
                     onSelectEvent={onSelectEvent}
+                    onSelectSlot={onSelectSlot}
                     onShowMore={(_, day) => setExpandedDate(day)}
                     popup={false}
+                    resourceAccessor="resourceId"
+                    resourceIdAccessor="id"
+                    resources={resources}
+                    resourceTitleAccessor="title"
+                    selectable={Boolean(onSelectSlot)}
                     startAccessor="start"
                     toolbar={false}
                     view={view}

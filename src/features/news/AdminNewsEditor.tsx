@@ -5,10 +5,10 @@ import ReactMarkdown, {defaultUrlTransform} from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
+import ConfirmDialog from "@/components/ui/overlay/ConfirmDialog";
 import type {CoverDisplayMode, MediaAsset, NewsAdminItem, NewsStatus} from "@/types/news";
 import NewsRichTextEditor, {type NewsEditorImageInsertion, type NewsEditorLabels} from "./NewsRichTextEditor";
 import {createAdminMediaUrl, createPublishedMediaPath, resolveAdminMediaUrl} from "./newsMedia";
-import styles from "./AdminNewsEditor.module.scss";
 import {
     type CreateNewsDto,
     useArchiveNewsMutation,
@@ -120,6 +120,7 @@ export default function AdminNewsEditor() {
     const [search, setSearch] = useState("");
     const [imageInsertion, setImageInsertion] = useState<NewsEditorImageInsertion | null>(null);
     const [dirty, setDirty] = useState(false);
+    const [confirmation, setConfirmation] = useState<{message: string; action: () => void | Promise<void>; destructive?: boolean} | null>(null);
     const createLock = useRef(false);
     const toolbarLabels: NewsEditorLabels = {
         bold: t("format.bold"),
@@ -165,7 +166,8 @@ export default function AdminNewsEditor() {
     }
 
     function selectNews(item: NewsAdminItem) {
-        if (dirty && !window.confirm(t("discardConfirm"))) {
+        if (dirty) {
+            setConfirmation({message: t("discardConfirm"), action: () => openNews(item)});
             return;
         }
         openNews(item);
@@ -178,10 +180,14 @@ export default function AdminNewsEditor() {
 
     async function addDraft() {
         if (createLock.current || isCreating) return;
-        if (dirty && !window.confirm(t("discardConfirm"))) {
+        if (dirty) {
+            setConfirmation({message: t("discardConfirm"), action: createOrReuseDraft});
             return;
         }
+        await createOrReuseDraft();
+    }
 
+    async function createOrReuseDraft() {
         const reusableDraft = (data?.content ?? []).find(isEmptyDraft);
         if (reusableDraft) {
             openNews(reusableDraft);
@@ -202,10 +208,12 @@ export default function AdminNewsEditor() {
     }
 
     async function removeDraft() {
-        if (!selectedItem || !canDeleteDraft(selectedItem) || !window.confirm(t("deleteDraftConfirm"))) {
-            return;
-        }
+        if (!selectedItem || !canDeleteDraft(selectedItem)) return;
+        setConfirmation({message: t("deleteDraftConfirm"), action: deleteSelectedDraft, destructive: true});
+    }
 
+    async function deleteSelectedDraft() {
+        if (!selectedItem || !canDeleteDraft(selectedItem)) return;
         try {
             await deleteNews(selectedItem.id).unwrap();
             const nextItem = (data?.content ?? []).find((item) => item.id !== selectedItem.id);
@@ -380,7 +388,12 @@ export default function AdminNewsEditor() {
     }
 
     async function detachImage(asset: MediaAsset) {
-        if (!selectedItem || archived || !window.confirm(t("media.detachConfirm"))) return;
+        if (!selectedItem || archived) return;
+        setConfirmation({message: t("media.detachConfirm"), action: () => detachConfirmedImage(asset), destructive: true});
+    }
+
+    async function detachConfirmedImage(asset: MediaAsset) {
+        if (!selectedItem || archived) return;
         try {
             await detachNewsMedia({newsId: selectedItem.id, mediaId: asset.id}).unwrap();
             if (selectedItem.coverMediaId === asset.id) {
@@ -464,6 +477,22 @@ export default function AdminNewsEditor() {
                     t={t}
                 /> : null}
             </div>
+            <ConfirmDialog
+                cancelLabel={t("confirmCancel")}
+                closeLabel={t("confirmCancel")}
+                confirmLabel={t("confirmAction")}
+                destructive={confirmation?.destructive}
+                onClose={() => setConfirmation(null)}
+                onConfirm={() => {
+                    const action = confirmation?.action;
+                    setConfirmation(null);
+                    if (action) void action();
+                }}
+                open={Boolean(confirmation)}
+                title={t("confirmTitle")}
+            >
+                {confirmation?.message ?? ""}
+            </ConfirmDialog>
         </div>
     );
 }
@@ -603,7 +632,7 @@ function ContentEditor({activeTab, draft, imageInsertion, onImageInserted, onSel
     const contentField = activeTab === "ua" ? "contentUa" : "contentEn";
 
     return (
-        <section className={`${styles.panel} min-w-0 space-y-4`}>
+        <section className="min-w-0 space-y-4 motion-safe:animate-[content-enter_180ms_ease-out_both] motion-reduce:animate-none">
             <div className="flex flex-wrap gap-2 border-b border-stone-200 pb-3" role="tablist" aria-label={t("versions")}>
                 <LanguageTab active={activeTab === "ua"} complete={state.uaComplete} label={t("ukrainian")} onSelect={() => onSelectTab("ua")} />
                 <LanguageTab active={activeTab === "en"} complete={state.enComplete} label={t("english")} onSelect={() => onSelectTab("en")} />
@@ -645,7 +674,7 @@ function PreviewPanel({activeTab, draft, item, onSelectTab, state, t}: {
     const content = activeTab === "ua" ? draft.contentUa : draft.contentEn;
 
     return (
-        <section className={`${styles.panel} min-w-0 space-y-4`}>
+        <section className="min-w-0 space-y-4 motion-safe:animate-[content-enter_180ms_ease-out_both] motion-reduce:animate-none">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3">
                 <h2 className="text-sm font-medium text-stone-500">{t("previewTitle")}</h2>
                 <div className="flex flex-wrap gap-2" role="tablist" aria-label={t("versions")}>

@@ -1,5 +1,5 @@
 import type {Booking} from "@/types/bookings";
-import type {PublicFixedEvent} from "@/types/schedule";
+import type {AccountTrainingParticipation} from "@/types/training";
 
 export type AccountBookingFilter = "upcoming" | "history" | "cancelled" | "all";
 export type AccountEventStatus = "ACTIVE" | "PAST" | "CANCELLED";
@@ -14,7 +14,7 @@ export function filterBookings(bookings: Booking[], filter: AccountBookingFilter
     });
 }
 
-export function filterEvents(events: PublicFixedEvent[], filter: AccountBookingFilter, nowMs = Date.now()) {
+export function filterEvents(events: AccountTrainingParticipation[], filter: AccountBookingFilter, nowMs = Date.now()) {
     return events.filter((event) => {
         const status = eventStatus(event, nowMs);
         if (filter === "all") return true;
@@ -24,8 +24,8 @@ export function filterEvents(events: PublicFixedEvent[], filter: AccountBookingF
     });
 }
 
-export function eventStatus(event: PublicFixedEvent, nowMs = Date.now()): AccountEventStatus {
-    if (event.enrollmentStatus === "CANCELLED") return "CANCELLED";
+export function eventStatus(event: AccountTrainingParticipation, nowMs = Date.now()): AccountEventStatus {
+    if (event.status === "CANCELLED" || event.status === "EXPIRED") return "CANCELLED";
     if (new Date(event.endsAt).getTime() < nowMs) return "PAST";
     return "ACTIVE";
 }

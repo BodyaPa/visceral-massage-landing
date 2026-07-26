@@ -1,5 +1,58 @@
 export type BookingStatus = "AWAITING_PAYMENT_CONFIRMATION" | "CONFIRMED" | "CANCELLED";
 export type SpecialistPayoutStatus = "PENDING" | "PAID";
+export type BookingSource = "PUBLIC_ACCOUNT" | "ADMIN_MANUAL" | "GUEST";
+export type RecordAuditEntry = {
+    id: number;
+    action: "CREATED" | "JOINED" | "CANCELLED" | "PAYMENT_CONFIRMED";
+    actorUserId: number | null;
+    actorName: string | null;
+    occurredAt: string;
+};
+
+export interface AdminBookingRecord {
+    id: number;
+    status: BookingStatus;
+    source: BookingSource;
+    direction: "MASSAGE" | "TRAINING";
+    clientId: number;
+    clientName: string;
+    clientContact: string | null;
+    specialistId: number;
+    specialistName: string;
+    serviceId: number;
+    serviceTitleUa: string;
+    serviceTitleEn: string | null;
+    serviceVariantId: number | null;
+    serviceVariantName: string | null;
+    officeId: number | null;
+    officeName: string | null;
+    resourceId: number | null;
+    resourceName: string | null;
+    startsAt: string;
+    endsAt: string;
+    durationMinutes: number | null;
+    bufferBeforeMinutes: number | null;
+    bufferAfterMinutes: number | null;
+    originalPrice: number | null;
+    bookedPrice: number;
+    depositAmount: number;
+    promoCode: string | null;
+    discountPercent: number | null;
+    discountAmount: number | null;
+    paidWithMembership: boolean;
+    paidWithLoyaltyVoucher: boolean;
+    reminderOptIn: boolean;
+    cancellationReason: string | null;
+    cancellationDetails: string | null;
+    cancelledAt: string | null;
+    attendanceStatus: "ATTENDED" | "NO_SHOW" | null;
+    attendanceDecidedAt: string | null;
+    attendanceDefaulted: boolean;
+    createdByUserId: number;
+    createdByName: string;
+    createdAt: string;
+    updatedAt: string;
+}
 
 export interface Booking {
     id: number;
@@ -64,27 +117,21 @@ export interface FinanceBooking {
     updatedAt: string;
 }
 
-export type FixedEventEnrollmentStatus = "ACTIVE" | "CANCELLED";
-
-export interface FinanceEventEnrollment {
+export interface FinanceTrainingParticipant {
     id: number;
-    status: FixedEventEnrollmentStatus;
+    status: "PAYMENT_PENDING" | "CONFIRMED" | "CANCELLED" | "EXPIRED" | "ATTENDED" | "NO_SHOW";
     userId: number;
     clientName: string;
     clientContact: string | null;
-    eventId: number;
-    serviceId: number;
+    sessionId: number;
+    trainingTypeId: number;
     serviceTitleUa: string;
     serviceTitleEn: string | null;
-    externalPaymentUrl: string | null;
-    membershipPurchaseId: number | null;
     paidWithMembership: boolean;
-    loyaltyVoucherId?: number | null;
     paidWithLoyaltyVoucher?: boolean;
     bookedPrice: number;
     paymentConfirmed: boolean;
     paymentConfirmedAt: string | null;
-    paymentConfirmedByUserId: number | null;
     specialistId: number;
     specialistName: string;
     officeId: number | null;
@@ -106,6 +153,59 @@ export interface FinanceSummary {
     quarterlyTaxPercent: number;
     estimatedTax: number;
     result: number;
+}
+
+export type FinancialTransactionType =
+    | "PAYMENT_COLLECTED" | "REFUND_REQUIRED" | "REFUND_COMPLETED"
+    | "FORFEITURE_RECOGNIZED" | "FORFEITURE_REVERSED" | "SPECIALIST_PAYOUT_LIABILITY"
+    | "SPECIALIST_PAYOUT_REVERSED" | "SPECIALIST_PAYOUT_PAID"
+    | "EXPENSE_RECORDED" | "EXPENSE_REVERSED";
+
+export interface FinancialTransaction {
+    id: number;
+    type: FinancialTransactionType;
+    sourceType: "BOOKING" | "TRAINING_PARTICIPANT" | "TRAINING_PARTICIPANT" | "MEMBERSHIP_PURCHASE" | "FINANCE_EXPENSE";
+    sourceId: number;
+    amount: number;
+    currency: "UAH";
+    clientName: string | null;
+    clientContact: string | null;
+    specialistUserId: number | null;
+    externalReference: string | null;
+    relatedTransactionId: number | null;
+    payoutBase: number | null;
+    payoutRatePercent: number | null;
+    description: string | null;
+    occurredAt: string;
+}
+
+export interface FinanceReconciliation {
+    readyForLedgerReporting: boolean;
+    missingPaymentFacts: number;
+    missingExpenseFacts: number;
+    missingPayoutFacts: number;
+    samples: string[];
+}
+
+export interface FinanceAnalytics {
+    from: string;
+    to: string;
+    collectedAmount: number;
+    refundedAmount: number;
+    netCollectedAmount: number;
+    specialistPayoutLiability: number;
+    expenses: number;
+    businessResultBeforeTax: number;
+    bookingCount: number;
+    completedCount: number;
+    cancelledCount: number;
+    noShowCount: number;
+    averageCheck: number;
+    bookedMinutes: number;
+    plannedWorkMinutes: number;
+    occupancyPercent: number;
+    sources: Array<{key: string; label: string; records: number; collectedAmount: number}>;
+    offerings: Array<{key: string; label: string; records: number; collectedAmount: number}>;
 }
 
 export interface FinanceSettings {
@@ -207,15 +307,24 @@ export type BookingInput = {
     availabilityBlockId: number;
     resourceId?: number | null;
     serviceId: number;
-    serviceVariantId?: number | null;
+    serviceVariantId: number;
     startsAt?: string;
     reminderOptIn: boolean;
     membershipPurchaseId?: number | null;
     loyaltyVoucherId?: number | null;
     promoCode?: string | null;
+    cancellationPolicyAccepted: boolean;
 };
 
-export type ManualBookingInput = BookingInput & {
+export type ManualBookingInput = Omit<BookingInput, "cancellationPolicyAccepted"> & {
     specialistId?: number | null;
     clientIdentifier: string;
+    overrideClientBuffer: boolean;
+    clientBufferOverrideReason?: string | null;
+};
+
+export type ManualBookingConflictPreview = {
+    specialistConflict: boolean;
+    resourceConflict: boolean;
+    clientBufferConflict: boolean;
 };

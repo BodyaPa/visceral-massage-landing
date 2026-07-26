@@ -21,8 +21,8 @@ export default async function AccountWorkspaceShell({active, children, locale, u
     ];
 
     return (
-        <main className="fixed inset-0 z-[5] overflow-y-auto overflow-x-clip p-2 sm:p-5">
-            <section className="account-workspace mx-auto flex w-full max-w-6xl flex-col rounded-2xl border border-stone-200/80 bg-stone-50/95 shadow-2xl backdrop-blur-sm">
+        <main className="fixed inset-0 z-[5] overflow-y-auto overflow-x-clip bg-stone-100 p-2 sm:p-5">
+            <section className="account-workspace mx-auto flex min-h-full w-full max-w-6xl flex-col rounded-2xl border border-stone-200 bg-stone-50 shadow-xl">
                 <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-stone-200 px-3 py-3 sm:gap-4 sm:px-6 sm:py-4">
                     <Link className="shrink-0 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100" href={withLocale("/", locale)}>{t("back")}</Link>
                     <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 sm:gap-4">
@@ -31,7 +31,7 @@ export default async function AccountWorkspaceShell({active, children, locale, u
                     </div>
                 </div>
                 <div className="account-layout min-w-0 p-3 sm:p-6">
-                    <div className="w-full min-w-0 space-y-5 rounded-2xl border border-stone-200 bg-white/90 p-4 shadow-sm sm:p-8">
+                    <div className="w-full min-w-0 space-y-5 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm sm:p-8">
                         <header className="border-b border-stone-100 pb-5">
                             <h1 className="text-2xl font-semibold text-stone-950 sm:text-3xl">{t(`pageTitles.${active}`)}</h1>
                             <p className="mt-2 max-w-2xl text-sm text-stone-600 sm:text-base">{t(`pageSubtitles.${active}`)}</p>

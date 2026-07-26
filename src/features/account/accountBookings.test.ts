@@ -1,7 +1,7 @@
 import {describe, expect, it} from "vitest";
 import {buildAccountRange, eventStatus, filterBookings, filterEvents} from "./accountBookings";
 import type {Booking} from "@/types/bookings";
-import type {PublicFixedEvent} from "@/types/schedule";
+import type {AccountTrainingParticipation, TrainingParticipantStatus} from "@/types/training";
 
 const nowMs = new Date("2035-06-15T12:00:00Z").getTime();
 
@@ -16,6 +16,8 @@ function booking(id: number, status: Booking["status"], startsAt: string, endsAt
         specialistName: "Specialist",
         officeId: 30,
         officeName: "Office",
+        resourceId: 40,
+        resourceName: "Room",
         officeAddress: null,
         officeDirections: null,
         officeGoogleMapsUrl: null,
@@ -32,39 +34,30 @@ function booking(id: number, status: Booking["status"], startsAt: string, endsAt
     };
 }
 
-function event(id: number, endsAt: string, enrollmentStatus: PublicFixedEvent["enrollmentStatus"]): PublicFixedEvent {
+function event(id: number, endsAt: string, status: TrainingParticipantStatus): AccountTrainingParticipation {
     return {
-        id,
-        serviceId: 10,
+        participantId: id,
+        sessionId: id + 100,
         title: "Event",
-        description: null,
-        specialistId: 20,
-        specialistName: "Specialist",
-        specialistAvatarMediaId: null,
-        specialistAvatarMediaUrl: null,
+        trainerId: 20,
+        trainerName: "Specialist",
         officeId: 30,
         officeName: "Office",
         officeAddress: null,
         officeDirections: null,
         officeGoogleMapsUrl: null,
-        officePhotoMediaId: null,
-        officePhotoMediaUrl: null,
-        officeVideoMediaId: null,
-        officeVideoMediaUrl: null,
+        resourceId: 40,
+        resourceName: "Room",
         startsAt: "2035-06-15T10:00:00Z",
         endsAt,
-        capacity: 8,
-        enrolledCount: 2,
-        remainingPlaces: 6,
-        full: false,
-        enrolled: true,
-        enrollmentStatus,
-        price: 1000,
+        status,
+        originalPrice: 1000,
+        finalPrice: 1000,
         externalPaymentUrl: null,
         paymentConfirmed: false,
-        note: null,
-        membershipPurchaseId: null,
-        paidWithMembership: false
+        paidWithMembership: false,
+        paidWithLoyaltyVoucher: false,
+        reminderOptIn: false
     };
 }
 
@@ -84,17 +77,17 @@ describe("accountBookings", () => {
 
     it("classifies and filters fixed event enrollments", () => {
         const events = [
-            event(1, "2035-06-16T11:00:00Z", "ACTIVE"),
-            event(2, "2035-06-14T11:00:00Z", "ACTIVE"),
+            event(1, "2035-06-16T11:00:00Z", "CONFIRMED"),
+            event(2, "2035-06-14T11:00:00Z", "ATTENDED"),
             event(3, "2035-06-16T11:00:00Z", "CANCELLED")
         ];
 
         expect(eventStatus(events[0], nowMs)).toBe("ACTIVE");
         expect(eventStatus(events[1], nowMs)).toBe("PAST");
         expect(eventStatus(events[2], nowMs)).toBe("CANCELLED");
-        expect(filterEvents(events, "upcoming", nowMs).map((item) => item.id)).toEqual([1]);
-        expect(filterEvents(events, "history", nowMs).map((item) => item.id)).toEqual([2]);
-        expect(filterEvents(events, "cancelled", nowMs).map((item) => item.id)).toEqual([3]);
+        expect(filterEvents(events, "upcoming", nowMs).map((item) => item.participantId)).toEqual([1]);
+        expect(filterEvents(events, "history", nowMs).map((item) => item.participantId)).toEqual([2]);
+        expect(filterEvents(events, "cancelled", nowMs).map((item) => item.participantId)).toEqual([3]);
     });
 
     it("builds the account booking query range around the current day", () => {

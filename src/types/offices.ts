@@ -31,15 +31,12 @@ export type OfficeInput = {
 };
 
 export type BusinessDirection = "MASSAGE" | "TRAINING";
-export type OfficeResourceType = "MASSAGE_ROOM" | "TRAINING_HALL";
 
 export interface OfficeResource {
     id: number;
     officeId: number;
     name: string;
-    resourceType: OfficeResourceType;
-    capacity: number;
     active: boolean;
 }
 
-export type OfficeResourceInput = Pick<OfficeResource, "name" | "resourceType" | "capacity" | "active">;
+export type OfficeResourceInput = Pick<OfficeResource, "name" | "active">;

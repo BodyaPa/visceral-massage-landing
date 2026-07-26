@@ -59,11 +59,11 @@ export default async function LocaleLayout({
 
     return (
         <html lang={toLanguageTag(locale)} suppressHydrationWarning>
-        <body>
+        <body className="bg-stone-50 text-stone-950">
         <NextIntlClientProvider locale={locale} messages={messages}>
             <ToastProvider>
                 <RouteScrollReset />
-                <div className="flex min-h-dvh w-full flex-col">
+                <div className="flex min-h-dvh w-full flex-col bg-stone-50">
                     <HeaderComponent />
                     <Providers>{children}</Providers>
                     <FooterComponent />

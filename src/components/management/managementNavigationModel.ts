@@ -15,6 +15,7 @@ export type ManagementNavigationVisibility = {
     showRecords: boolean;
     showClients: boolean;
     showSiteSettings: boolean;
+    showLegal: boolean;
 };
 
 export type ManagementNavigationModel = ManagementNavigationVisibility & {locale: Locale};
@@ -35,7 +36,7 @@ export function createNavigationGroups({locale, ...visibility}: ManagementNaviga
         {id: "finance", label: label("groups.finance"), items: compact([item("/admin/finance", "finance", visibility.showFinance), item("/admin/analytics", "analytics", visibility.showAnalytics)])},
         {id: "loyalty", label: label("groups.loyalty"), items: compact([item("/admin/loyalty", "loyalty", visibility.showServices), item("/admin/promo-codes", "promos", visibility.showServices)])},
         {id: "content", label: label("groups.content"), items: compact([item("/admin/news", "news", visibility.showNews), item("/admin/reviews", "reviews", visibility.showReviews)])},
-        {id: "system", label: label("groups.system"), items: compact([item("/admin/site-settings", "siteSettings", visibility.showSiteSettings)])}
+        {id: "system", label: label("groups.system"), items: compact([item("/admin/site-settings", "siteSettings", visibility.showSiteSettings), item("/admin/legal", "legal", visibility.showLegal)])}
     ];
     return candidates.filter((group) => group.items.length > 0);
 }

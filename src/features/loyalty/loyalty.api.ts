@@ -1,11 +1,11 @@
 import {createApi} from "@reduxjs/toolkit/query/react";
 import {baseQuery} from "@/shared/api/baseQuery";
-import type {LoyaltyLedgerPage, LoyaltyReward, LoyaltyVoucher, LoyaltyVoucherPage} from "@/types/loyalty";
+import type {LoyaltyEarningRule, LoyaltyLedgerPage, LoyaltyProgram, LoyaltyReward, LoyaltyVoucher, LoyaltyVoucherPage} from "@/types/loyalty";
 
 export const loyaltyApi = createApi({
     reducerPath: "loyaltyApi",
     baseQuery,
-    tagTypes: ["LoyaltyBalance", "LoyaltyLedger", "LoyaltyVouchers", "LoyaltyRewards"],
+    tagTypes: ["LoyaltyBalance", "LoyaltyLedger", "LoyaltyVouchers", "LoyaltyRewards", "LoyaltyPrograms", "LoyaltyRules"],
     endpoints: (build) => ({
         getLoyaltyBalance: build.query<{balance: number}, void>({
             query: () => "/loyalty/balance",
@@ -43,8 +43,29 @@ export const loyaltyApi = createApi({
             query: ({id, body}) => ({url: `/admin/loyalty/rewards/${id}`, method: "PUT", body}),
             invalidatesTags: ["LoyaltyRewards"]
         }),
-        createLoyaltyAdjustment: build.mutation<void, {userId: number; amount: number; reason: string}>({
+        createLoyaltyAdjustment: build.mutation<void, {userId: number; amount: number; reason: string; expiresAt: string | null}>({
             query: (body) => ({url: "/admin/loyalty/adjustments", method: "POST", body})
+        }),
+        getLoyaltyPrograms: build.query<LoyaltyProgram[], void>({
+            query: () => "/admin/loyalty/programs", providesTags: ["LoyaltyPrograms"]
+        }),
+        createLoyaltyProgram: build.mutation<LoyaltyProgram, {name: string; active: boolean}>({
+            query: (body) => ({url: "/admin/loyalty/programs", method: "POST", body}),
+            invalidatesTags: ["LoyaltyPrograms"]
+        }),
+        getLoyaltyRules: build.query<LoyaltyEarningRule[], void>({
+            query: () => "/admin/loyalty/earning-rules", providesTags: ["LoyaltyRules"]
+        }),
+        createLoyaltyRule: build.mutation<LoyaltyEarningRule, Omit<LoyaltyEarningRule, "id" | "createdAt">>({
+            query: (body) => ({url: "/admin/loyalty/earning-rules", method: "POST", body}),
+            invalidatesTags: ["LoyaltyRules"]
+        }),
+        reverseLoyaltyEntry: build.mutation<void, {id: number; reason: string}>({
+            query: ({id, reason}) => ({url: `/admin/loyalty/ledger/${id}/reverse`, method: "POST", body: {reason}})
+        }),
+        invalidateLoyaltyVoucher: build.mutation<LoyaltyVoucher, {id: number; reason: string; restoreSpentPoints: boolean}>({
+            query: ({id, ...body}) => ({url: `/admin/loyalty/vouchers/${id}/invalidate`, method: "POST", body}),
+            invalidatesTags: ["LoyaltyBalance", "LoyaltyLedger", "LoyaltyVouchers"]
         })
     })
 });
@@ -59,5 +80,11 @@ export const {
     useGetAdminLoyaltyRewardsQuery,
     useCreateAdminLoyaltyRewardMutation,
     useUpdateAdminLoyaltyRewardMutation,
-    useCreateLoyaltyAdjustmentMutation
+    useCreateLoyaltyAdjustmentMutation,
+    useGetLoyaltyProgramsQuery,
+    useCreateLoyaltyProgramMutation,
+    useGetLoyaltyRulesQuery,
+    useCreateLoyaltyRuleMutation,
+    useReverseLoyaltyEntryMutation,
+    useInvalidateLoyaltyVoucherMutation
 } = loyaltyApi;

@@ -95,6 +95,24 @@ describe("client authentication requests", () => {
         );
     });
 
+    it("persists the shared website and bot locale as a CSRF-protected mutation", async () => {
+        const user = {id: 1, phone: null, email: "client@example.com", firstName: "Olena", lastName: "Koval", preferredLocale: "en", roles: ["USER"]};
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce(new Response(JSON.stringify({token: "locale-token"}), {status: 200, headers: {"Content-Type": "application/json"}}))
+            .mockResolvedValueOnce(new Response(JSON.stringify(user), {status: 200, headers: {"Content-Type": "application/json"}}));
+        vi.stubGlobal("fetch", fetchMock);
+
+        const {updatePreferredLocale} = await import("./auth.client");
+
+        await expect(updatePreferredLocale("en")).resolves.toEqual(user);
+        expect(fetchMock).toHaveBeenNthCalledWith(2, "http://localhost:8080/api/auth/me/locale", expect.objectContaining({
+            method: "PUT",
+            credentials: "include",
+            body: JSON.stringify({locale: "en"}),
+            headers: {"Content-Type": "application/json", "X-XSRF-TOKEN": "locale-token"}
+        }));
+    });
+
     it("submits contact change requests and confirmations as CSRF-protected mutations", async () => {
         const user = {id: 1, phone: "+380000000001", email: "new@example.com", firstName: "Olena", lastName: "Koval", dateOfBirth: null, roles: ["USER"]};
         const fetchMock = vi.fn()

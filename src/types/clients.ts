@@ -10,6 +10,9 @@ export type ClientSummary = {
     firstVisitAt: string | null;
     lastVisitAt: string | null;
     loyaltyBalance: number;
+    noShowCount: number;
+    lateCancellationCount: number;
+    restricted: boolean;
     registeredAt: string;
 };
 
@@ -25,3 +28,4 @@ export type ClientVoucher = {id: number; titleUa: string; titleEn: string | null
 export type ClientReview = {id: number; rating: number; text: string | null; status: string; offeringTitleUa: string; offeringTitleEn: string | null; direction: "MASSAGE" | "TRAINING"; companyResponse: string | null; createdAt: string; updatedAt: string};
 export type ClientNote = {id: number; authorUserId: number; authorName: string; text: string; createdAt: string};
 export type ClientPromoUsage = {id: number; code: string; bookingId: number | null; trainingParticipantId: number | null; discountPercent: number; originalPrice: number; discountAmount: number; finalPrice: number; usedAt: string};
+export type ClientRestrictionEvent = {id: number; action: "ADDED" | "REMOVED"; reason: string; actorUserId: number; occurredAt: string};

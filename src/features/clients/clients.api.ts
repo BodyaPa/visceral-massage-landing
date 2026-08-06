@@ -1,14 +1,14 @@
 import {createApi} from "@reduxjs/toolkit/query/react";
 import {baseQuery} from "@/shared/api/baseQuery";
 import type {PageResponse} from "@/types/news";
-import type {ClientMembership, ClientNote, ClientProfile, ClientPromoUsage, ClientReview, ClientSummary, ClientVoucher} from "@/types/clients";
+import type {ClientMembership, ClientNote, ClientProfile, ClientPromoUsage, ClientRestrictionEvent, ClientReview, ClientSummary, ClientVoucher} from "@/types/clients";
 import type {AdminBookingRecord} from "@/types/bookings";
 import type {AdminTrainingRecord} from "@/types/training";
 
 export const clientsApi = createApi({
     reducerPath: "clientsApi",
     baseQuery,
-    tagTypes: ["ClientNotes"],
+    tagTypes: ["ClientNotes", "Restrictions", "Clients"],
     endpoints: build => ({
         listClients: build.query<PageResponse<ClientSummary>, {query?: string; enabled?: boolean | ""; segment?: "NO_VISITS" | "HAS_VISITS" | "ACTIVE_MEMBERSHIP" | ""; page?: number; size?: number}>({
             query: ({query, enabled, segment, page = 0, size = 25}) => {
@@ -47,8 +47,20 @@ export const clientsApi = createApi({
         addClientNote: build.mutation<ClientNote, {id: number; text: string}>({
             query: ({id, text}) => ({url: `/admin/clients/${id}/notes`, method: "POST", body: {text}}),
             invalidatesTags: ["ClientNotes"]
+        }),
+        listRestrictions: build.query<ClientRestrictionEvent[], number>({
+            query: id => `/admin/clients/${id}/restrictions`,
+            providesTags: ["Restrictions"]
+        }),
+        addRestriction: build.mutation<ClientRestrictionEvent, {id: number; reason: string}>({
+            query: ({id, reason}) => ({url: `/admin/clients/${id}/restrictions`, method: "POST", body: {reason}}),
+            invalidatesTags: ["Restrictions", "Clients"]
+        }),
+        removeRestriction: build.mutation<ClientRestrictionEvent, {id: number; reason: string}>({
+            query: ({id, reason}) => ({url: `/admin/clients/${id}/restrictions/remove`, method: "POST", body: {reason}}),
+            invalidatesTags: ["Restrictions", "Clients"]
         })
     })
 });
 
-export const {useListClientsQuery, useGetClientProfileQuery, useListClientBookingsQuery, useListClientTrainingQuery, useListClientMembershipsQuery, useListClientVouchersQuery, useListClientReviewsQuery, useListClientPromoUsagesQuery, useListClientNotesQuery, useAddClientNoteMutation} = clientsApi;
+export const {useListClientsQuery, useGetClientProfileQuery, useListClientBookingsQuery, useListClientTrainingQuery, useListClientMembershipsQuery, useListClientVouchersQuery, useListClientReviewsQuery, useListClientPromoUsagesQuery, useListClientNotesQuery, useAddClientNoteMutation, useListRestrictionsQuery, useAddRestrictionMutation, useRemoveRestrictionMutation} = clientsApi;

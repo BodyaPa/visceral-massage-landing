@@ -59,6 +59,7 @@ export default async function AdminLayout({children, params}: Props) {
                         showRecords={hasRole(user, "ADMIN")}
                         showClients={hasRole(user, "ADMIN")}
                         showSiteSettings={hasRole(user, "ADMIN")}
+                        showLegal={hasRole(user, "ADMIN")}
                     />
                     <AnimatedManagementContent>
                         {children}

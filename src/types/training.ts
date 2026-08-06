@@ -6,6 +6,7 @@ export type TrainingType = {
     descriptionEn: string | null;
     durationMinutes: number;
     price: number;
+    prepaymentEnabled: boolean;
     depositAmount: number;
     defaultCapacity: number;
     active: boolean;
@@ -36,6 +37,7 @@ export type TrainingSession = {
     note: string | null;
     durationMinutes: number;
     price: number;
+    prepaymentEnabled: boolean;
     depositAmount: number;
 };
 
@@ -73,11 +75,15 @@ export type PublicTrainingSession = {
     externalPaymentUrl: string | null;
 };
 
-export type TrainingEnrollment = Pick<PublicTrainingSession, "enrolledCount" | "remainingPlaces" | "full" | "enrolled" | "enrollmentStatus" | "externalPaymentUrl"> & {
+export type TrainingEnrollment = Pick<PublicTrainingSession, "enrolledCount" | "remainingPlaces" | "full" | "enrolled" | "enrollmentStatus"> & {
     sessionId: number;
     paidWithMembership: boolean;
     paidWithLoyaltyVoucher: boolean;
     paymentConfirmed: boolean;
+    paymentId: string | null;
+    paymentHoldExpiresAt: string | null;
+    paymentRequiredAmount: number;
+    paymentPaidAmount: number;
 };
 
 export type CalendarTrainingParticipant = {
@@ -116,7 +122,12 @@ export type AccountTrainingParticipation = {
     paidWithMembership: boolean;
     paidWithLoyaltyVoucher: boolean;
     paymentConfirmed: boolean;
-    externalPaymentUrl: string | null;
+    paymentId: string | null;
+    paymentHoldExpiresAt: string | null;
+    paymentRequiredAmount: number;
+    paymentPaidAmount: number;
+    canSelfCancel: boolean;
+    canSelfCancelUntil: string | null;
     reminderOptIn: boolean;
 };
 

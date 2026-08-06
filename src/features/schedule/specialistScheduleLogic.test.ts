@@ -18,6 +18,7 @@ const variant: ServiceVariant = {
     bufferAfterMinutes: 30,
     bufferBeforeMinutes: 0,
     depositAmount: 250,
+    prepaymentEnabled: true,
     durationMinutes: 60,
     id: 200,
     nameEn: "Service",

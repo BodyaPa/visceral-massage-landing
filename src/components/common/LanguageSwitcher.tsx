@@ -10,7 +10,7 @@ import {
     restoreScrollAfterNavigation
 } from "@/shared/lib/scroll/scrollManager";
 import {withLocale} from "@/shared/lib/locale/withLocale";
-import {getCurrentUser} from "@/features/auth/auth.client";
+import {getCurrentUser, updatePreferredLocale} from "@/features/auth/auth.client";
 
 
 function replaceLocaleInPath(pathname: string, newLocale: Locale) {
@@ -59,6 +59,24 @@ export default function LanguageSwitcher({requiresSession = false, tone = "dark"
         };
     }, []);
 
+    useEffect(() => {
+        let active = true;
+        void getCurrentUser()
+            .then((user) => {
+                if (active && user && user.preferredLocale !== currentLocale) {
+                    return updatePreferredLocale(currentLocale);
+                }
+                return undefined;
+            })
+            .catch(() => {
+                // Session enforcement and visible errors remain owned by the account shell.
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [currentLocale]);
+
     function switchLocale(newLocale: Locale) {
         if (newLocale === currentLocale) return;
 
@@ -70,13 +88,18 @@ export default function LanguageSwitcher({requiresSession = false, tone = "dark"
         prepareLocaleSwitchScrollRestore();
 
         timeoutRef.current = window.setTimeout(async () => {
-            if (requiresSession) {
-                try {
-                    if (!await getCurrentUser()) {
+            try {
+                const user = await getCurrentUser();
+                if (!user) {
+                    if (requiresSession) {
                         router.replace(withLocale("/auth?mode=login", newLocale));
                         return;
                     }
-                } catch {
+                } else {
+                    await updatePreferredLocale(newLocale);
+                }
+            } catch {
+                if (requiresSession) {
                     router.replace(withLocale("/auth?mode=login", newLocale));
                     return;
                 }

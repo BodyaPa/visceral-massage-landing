@@ -1,4 +1,4 @@
-export type BookingStatus = "AWAITING_PAYMENT_CONFIRMATION" | "CONFIRMED" | "CANCELLED";
+export type BookingStatus = "PAYMENT_PENDING" | "CONFIRMED" | "CANCELLED" | "EXPIRED" | "ATTENDED" | "NO_SHOW";
 export type SpecialistPayoutStatus = "PENDING" | "PAID";
 export type BookingSource = "PUBLIC_ACCOUNT" | "ADMIN_MANUAL" | "GUEST";
 export type RecordAuditEntry = {
@@ -76,7 +76,12 @@ export interface Booking {
     startsAt: string;
     endsAt: string;
     reminderOptIn: boolean;
-    externalPaymentUrl: string | null;
+    paymentId: string | null;
+    paymentHoldExpiresAt: string | null;
+    paymentRequiredAmount: number;
+    paymentPaidAmount: number;
+    canSelfCancel: boolean;
+    canSelfCancelUntil: string | null;
     membershipPurchaseId: number | null;
     paidWithMembership: boolean;
     loyaltyVoucherId?: number | null;
@@ -311,16 +316,20 @@ export type BookingInput = {
     startsAt?: string;
     reminderOptIn: boolean;
     membershipPurchaseId?: number | null;
+    certificateId?: number | null;
     loyaltyVoucherId?: number | null;
     promoCode?: string | null;
     cancellationPolicyAccepted: boolean;
+    legalVersions: import("@/features/legal/legal.api").LegalVersionSelection;
 };
 
-export type ManualBookingInput = Omit<BookingInput, "cancellationPolicyAccepted"> & {
+export type ManualBookingInput = Omit<BookingInput, "cancellationPolicyAccepted" | "legalVersions"> & {
     specialistId?: number | null;
     clientIdentifier: string;
     overrideClientBuffer: boolean;
     clientBufferOverrideReason?: string | null;
+    overrideClientRestriction: boolean;
+    clientRestrictionOverrideReason?: string | null;
 };
 
 export type ManualBookingConflictPreview = {

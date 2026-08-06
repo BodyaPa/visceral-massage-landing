@@ -77,27 +77,21 @@
     "page": {
       "eyebrow": "Memberships / certificates",
       "title": "A separate way to buy care in advance",
-      "subtitle": "Memberships and certificates are not mixed into the booking calendar. Choose a format, review the terms, and send a request for manual setup.",
-      "manualTitle": "First stage without automated payment",
-      "manualBody": "The purchase action creates a request for manual confirmation. The team verifies payment and activates the membership or certificate in the finance workspace.",
+      "subtitle": "Choose a fixed-visit membership or a monetary gift certificate.",
+      "manualTitle": "Secure WayForPay checkout",
+      "manualBody": "Activation happens only after a signed WayForPay confirmation. Refunds and balances remain in immutable history.",
       "loading": "Loading offers...",
       "loadError": "Unable to load memberships.",
-      "purchaseCreated": "Request created. It is awaiting manual payment confirmation.",
-      "manualSessionCreated": "Payment request created. Awaiting team confirmation.",
+      "purchaseCreated": "Payment created. Complete checkout with WayForPay.",
+      "manualSessionCreated": "Payment created. Awaiting signed WayForPay confirmation.",
       "checkoutEyebrow": "Payment",
       "checkoutTitle": "Payment: {kind}",
-      "checkoutBody": "Review what you are purchasing. Pressing the payment button opens the external payment page for this exact offer, while the request remains pending manual payment review.",
+      "checkoutBody": "Review the offer. The payment action opens the secure WayForPay checkout.",
       "checkoutOffer": "Offer",
-      "checkoutNotice": "After the Ataraksia team confirms the payment, the membership or certificate will be activated in your account.",
+      "checkoutNotice": "The membership or certificate activates automatically after the signed WayForPay callback.",
       "checkoutCancel": "Back",
       "checkoutPay": "Pay",
       "checkoutProcessing": "Processing...",
-      "manualPaymentEyebrow": "Awaiting confirmation",
-      "manualPaymentTitle": "Payment request created",
-      "manualPaymentBody": "You created a payment request for “{offer}” for {price}. After the Ataraksia team confirms the payment, this membership or certificate will be activated in your account.",
-      "manualPaymentNextTitle": "Next step",
-      "manualPaymentNextBody": "The finance manager will review the payment and update the request status. Until confirmation, it stays in awaiting-payment status.",
-      "manualPaymentClose": "Understood",
       "purchaseError": "Unable to create request.",
       "alreadyPending": "This offer already has a pending request.",
       "pending": "Pending confirmation",
@@ -108,7 +102,7 @@
       "showLess": "Collapse",
       "validityDays": "{count} days",
       "kinds": {"membership": "Membership", "certificate": "Certificate"},
-      "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Awaiting payment", "ACTIVE": "Active", "CANCELLED": "Cancelled"},
+      "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Awaiting payment", "PAYMENT_PENDING": "Awaiting payment", "ACTIVE": "Active", "CANCELLED": "Cancelled", "EXPIRED": "Expired", "REFUNDED": "Refunded", "ATTENDED": "Attended", "NO_SHOW": "No-show"},
       "price": "Price",
       "visits": "Visits",
       "validity": "Validity",
@@ -120,6 +114,9 @@
       "includedTitle": "Included",
       "eligibleServicesTitle": "Eligible services",
       "eligibleServicesEmpty": "This offer is not linked to any active services yet.",
+      "eligibleVariantCount": "Eligible service variants: {count}",
+      "giftCodeTitle": "Save the gift code",
+      "giftCodeBody": "The code is shown during purchase. Its recipient can claim it after payment confirmation.",
       "conditionsTitle": "Conditions",
       "offers": {
         "care-4": {"kind": "Membership", "title": "Care 4", "description": "Starter membership for regular bodywork without locking it to a specific day.", "validity": "60 days"},
@@ -133,13 +130,13 @@
         "priority": "Suitable for a longer regular-visit program.",
         "giftAmount": "Face value for gift setup.",
         "serviceChoice": "The recipient can confirm a relevant service before booking.",
-        "recipient": "Can be prepared for another person after manual confirmation."
+        "recipient": "After activation, the certificate can be transferred securely by unique code."
       },
       "conditions": {
-        "validity60": "Valid for 60 days after manual activation.",
-        "validity120": "Valid for 120 days after manual activation.",
-        "validity90": "Valid for 90 days after manual activation.",
-        "manualPayment": "Payment is confirmed manually outside automated checkout.",
+        "validity60": "Valid for 60 days after activation.",
+        "validity120": "Valid for 120 days after activation.",
+        "validity90": "Valid for 90 days after activation.",
+        "manualPayment": "Activation follows signed WayForPay confirmation.",
         "personal": "Membership is personal and cannot be transferred without approval.",
         "notCash": "Certificate is not a cash balance and is not paid out in cash."
       }
@@ -294,7 +291,6 @@
         "saving": "Saving...",
         "membershipUseTitle": "Membership",
         "membershipUseHint": "You can use one available visit instead of manual payment.",
-        "membershipUseEmpty": "No active membership with available visits is eligible for this service.",
         "membershipDoNotUse": "Do not use a membership",
         "membershipVisits": "remaining: {count}",
         "membershipWillUse": "1 visit will be used from “{title}”.",
@@ -366,6 +362,7 @@
     "securityText": "Account recovery is available from the login page through an email code. Password changes inside the account will be added separately.",
     "securityAction": "Recover access",
     "securitySettings": {"title": "Contacts and password", "body": "Contact changes require a confirmation code. After changing the password, sign in again.", "saving": "Saving...", "empty": "not set", "providers": {"title": "Linked sign-in providers", "hint": "Provider identity and notification consent are separate. You cannot remove your final sign-in method.", "loading": "Loading providers…", "linked": "Linked", "remove": "Unlink", "removing": "Unlinking…", "error": "Unable to update linked providers.", "names": {"GOOGLE": "Google", "APPLE": "Apple", "TELEGRAM": "Telegram"}}, "contact": {"title": "Change contact", "current": "Current email: {email}. Current phone: {phone}.", "type": "Contact type", "email": "Email", "phone": "Phone", "code": "Confirmation code", "request": "Send code", "confirm": "Confirm contact", "requested": "Confirmation code sent.", "requestError": "Unable to send confirmation code.", "saved": "Contact updated.", "saveError": "Unable to confirm contact."}, "password": {"title": "Change password", "current": "Current password", "next": "New password", "repeat": "Repeat new password", "save": "Change password", "saved": "Password changed. Sign in again.", "saveError": "Unable to change password.", "mismatch": "New passwords do not match."}},
+    "serviceMessages": {"title": "Service messages", "subtitle": "One-way history of reminders, cancellations, and important notices.", "telegramConnected": "Telegram is connected to this account.", "telegramDisconnected": "Telegram is not connected yet.", "connectionLoading": "Loading Telegram connection…", "serviceConsent": "Receive proactive service messages", "consentHint": "This consent is separate from bot linking. You can disable notifications and continue using the on-demand cabinet.", "consentError": "Unable to update notification consent.", "connectTelegram": "Connect Telegram", "reconnectTelegram": "Reconnect Telegram", "openingTelegram": "Opening Telegram…", "connectError": "Unable to load or create the secure Telegram connection.", "telegramHint": "The secure link is valid for 10 minutes. Press Start in Telegram. Linking does not change your sign-in methods and does not enable proactive messages by itself.", "linkGenerated": "Secure link generated. It expires around {date}.", "openGeneratedLink": "Open Telegram link", "lastConnected": "Last connected: {date}", "unlinkTelegram": "Unlink Telegram", "unlinkTitle": "Unlink Telegram?", "unlinkDescription": "Cabinet access and Telegram notifications will stop immediately. Your Ataraksia account and sign-in methods will not be removed.", "confirmUnlink": "Unlink", "keepConnected": "Keep connected", "closeDialog": "Close dialog", "unlinkError": "Unable to unlink Telegram. Please try again.", "loading": "Loading…"},
     "deleteSection": "Account deletion",
     "deleteText": "Self-service account deletion is disabled: bookings, payments, memberships, and audit records are business history. A disable or anonymization request must go through manual review.",
     "deleteAction": "Contact about account",
@@ -406,8 +403,8 @@
       "bookingSource": "Individual booking award",
       "trainingSource": "Attended training award",
       "eventSource": "Event enrollment award",
-      "statuses": {"AVAILABLE": "Awaiting activation", "ACTIVE": "Active", "USED": "Used", "CANCELLED": "Cancelled"},
-      "entryTypes": {"EARN": "Earned", "SPEND": "Spent", "REVERSAL": "Reversal", "MANUAL_ADJUSTMENT": "Manual adjustment"}
+      "statuses": {"AVAILABLE": "Awaiting activation", "ACTIVE": "Active", "RESERVED": "Reserved for booking", "USED": "Used", "CANCELLED": "Cancelled", "EXPIRED": "Expired", "INVALIDATED": "Invalidated"},
+      "entryTypes": {"EARN": "Earned", "SPEND": "Spent", "REVERSAL": "Reversal", "RESTORATION": "Restoration", "MANUAL_ADJUSTMENT": "Manual adjustment"}
     },
     "bookings": {
       "title": "My bookings",
@@ -452,10 +449,10 @@
       "leaveReview": "Leave a review", "reviewTitle": "Rate your visit", "reviewBody": "Your verified review of “{title}” will enter moderation. The team cannot rewrite your text.", "reviewRating": "Rating", "reviewStar": "{value} out of 5", "reviewText": "Comment (optional)", "reviewSubmit": "Submit review", "reviewSaving": "Submitting…", "reviewCreated": "Thank you. Your review was sent for moderation.", "reviewError": "Unable to submit the review. It may already exist or the appointment is not completed yet.", "close": "Close",
       "cancelReasons": {"plans": "Plans changed", "health": "Health", "emergency": "Unexpected circumstances", "other": "Other"},
       "filters": {"upcoming": "Upcoming", "history": "History", "cancelled": "Cancelled", "all": "All"},
-      "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Payment pending", "CONFIRMED": "Confirmed", "CANCELLED": "Cancelled", "PAST": "Past"},
-      "eventStatuses": {"ACTIVE": "Enrolled", "PAST": "Past", "CANCELLED": "Cancelled"}
+      "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Payment pending", "PAYMENT_PENDING": "Payment pending", "CONFIRMED": "Confirmed", "CANCELLED": "Cancelled", "EXPIRED": "Expired", "ATTENDED": "Attended", "NO_SHOW": "No-show", "PAST": "Past"},
+      "eventStatuses": {"ACTIVE": "Enrolled", "PAST": "Past", "CANCELLED": "Cancelled", "EXPIRED": "Expired", "ATTENDED": "Attended", "NO_SHOW": "No-show"}
     },
-    "memberships": {"title": "My memberships", "body": "Memberships and certificates are shown separately from calendar bookings.", "loading": "Updating memberships...", "loadError": "Unable to load memberships.", "empty": "No memberships or certificates yet.", "visits": "Remaining", "certificate": "Certificate", "expires": "Valid until", "pay": "Pay ↗", "paymentOpening": "Opening…", "manualPayment": "Payment awaits manual confirmation.", "paymentError": "Unable to open payment.", "showing": "Showing {visible} of {total}", "showMore": "Show more", "showLess": "Collapse", "previous": "Previous", "next": "Next", "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Awaiting payment", "ACTIVE": "Active", "CANCELLED": "Cancelled"}},
+    "memberships": {"title": "My memberships", "body": "Memberships are shown separately from calendar bookings.", "loading": "Updating memberships...", "loadError": "Unable to load memberships.", "empty": "No memberships yet.", "visits": "Remaining", "certificate": "Certificate", "expires": "Valid until", "pay": "Pay ↗", "paymentOpening": "Opening…", "manualPayment": "Awaiting signed WayForPay confirmation.", "paymentError": "Unable to open payment.", "showing": "Showing {visible} of {total}", "showMore": "Show more", "showLess": "Collapse", "previous": "Previous", "next": "Next", "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Awaiting WayForPay", "PAYMENT_PENDING": "Awaiting WayForPay", "ACTIVE": "Active", "CANCELLED": "Cancelled", "EXPIRED": "Expired", "REFUNDED": "Refunded", "ATTENDED": "Attended", "NO_SHOW": "No-show"}},
     "roles": {
       "USER": "User",
       "ADMIN": "Administrator",
@@ -516,6 +513,7 @@
       "users": "Users",
       "offices": "Offices",
       "siteSettings": "Settings",
+      "legal": "Legal and privacy",
       "services": "Services",
       "training": "Training",
       "promos": "Promo codes",
@@ -538,7 +536,7 @@
       "loading": "Loading…", "error": "Could not load clients.", "empty": "No clients match these filters.", "previous": "Previous", "next": "Next", "page": "Page {current} of {total}", "close": "Close", "profile": "Client profile",
       "phone": "Phone", "email": "Email", "registered": "Registered", "birthDate": "Date of birth", "individualBookings": "Individual bookings", "trainingVisits": "Training visits", "firstVisit": "First visit", "points": "{count} points",
       "bookingHistory": "Individual bookings", "trainingHistory": "Training participation", "historyEmpty": "No history yet",
-      "bookingStatuses": {"AWAITING_PAYMENT_CONFIRMATION": "awaiting payment", "CONFIRMED": "confirmed", "CANCELLED": "cancelled"},
+      "bookingStatuses": {"AWAITING_PAYMENT_CONFIRMATION": "awaiting payment", "PAYMENT_PENDING": "awaiting payment", "CONFIRMED": "confirmed", "CANCELLED": "cancelled"},
       "trainingStatuses": {"ACTIVE": "active", "CANCELLED": "cancelled"}
       ,"memberships": "Memberships", "vouchers": "Certificates and vouchers", "promoUsages": "Used promo codes", "reviews": "Reviews"
       ,"notes": "Internal notes", "notesPrivacy": "Do not add passwords, payment details, or excessive medical information. Notes are immutable and retain author and date.", "notesPlaceholder": "Short operational context…", "notesAdd": "Add note", "notesSaving": "Saving…"
@@ -552,15 +550,15 @@
       "record": "Record", "loading": "Loading…", "error": "Could not load the registry.", "empty": "No bookings match these filters.", "previous": "Previous", "next": "Next", "page": "Page {current} of {total}", "close": "Close", "membership": "Membership", "voucher": "Loyalty voucher",
       "recordKindsLabel": "Registry type", "recordKinds": {"BOOKING": "Individual bookings", "TRAINING": "Training participation"},
       "participantStatus": "Participation", "sessionStatus": "Session status", "trainer": "Trainer", "training": "Training", "trainingRecord": "Participation", "emptyTraining": "No training participation matches these filters.",
-      "participantStatuses": {"PAYMENT_PENDING": "Payment pending", "CONFIRMED": "Confirmed", "ATTENDED": "Attended", "NO_SHOW": "No-show", "CANCELLED": "Cancelled", "EXPIRED": "Payment expired"},
-      "sessionStatuses": {"DRAFT": "Draft", "PUBLISHED": "Published", "CANCELLED": "Cancelled"},
+      "participantStatuses": {"PAYMENT_PENDING": "Payment pending", "CONFIRMED": "Confirmed", "ATTENDED": "Attended", "NO_SHOW": "No-show", "CANCELLED": "Cancelled", "EXPIRED": "Expired", "ATTENDED": "Attended", "NO_SHOW": "No-show", "EXPIRED": "Payment expired"},
+      "sessionStatuses": {"DRAFT": "Draft", "PUBLISHED": "Published", "CANCELLED": "Cancelled", "EXPIRED": "Expired", "ATTENDED": "Attended", "NO_SHOW": "No-show"},
       "payment": "Payment", "paymentConfirmed": "Confirmed", "paymentPending": "Awaiting confirmation", "joinedAt": "Registration date",
       "attendance": "Attendance", "attendancePending": "Not decided yet", "markAttended": "Mark attended", "markNoShow": "Mark no-show", "attendanceStatuses": {"ATTENDED": "Attended", "NO_SHOW": "No-show"},
       "advancedFilters": "Advanced filters", "office": "Office", "resource": "Room / resource", "trainingType": "Training type",
       "sort": "Sorting", "sortOptions": {"startsAt_desc": "Visit: newest first", "startsAt_asc": "Visit: oldest first", "createdAt_desc": "Created: newest first", "createdAt_asc": "Created: oldest first"},
-      "timeline": "Change history", "systemActor": "System", "auditActions": {"CREATED": "Booking created", "JOINED": "Participation registered", "CANCELLED": "Cancelled", "PAYMENT_CONFIRMED": "Payment confirmed"},
+      "timeline": "Change history", "systemActor": "System", "auditActions": {"CREATED": "Booking created", "JOINED": "Participation registered", "CANCELLED": "Cancelled", "EXPIRED": "Expired", "ATTENDED": "Attended", "NO_SHOW": "No-show", "PAYMENT_CONFIRMED": "Payment confirmed"},
       "exportCsv": "Export CSV",
-      "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Awaiting payment", "CONFIRMED": "Confirmed", "CANCELLED": "Cancelled"},
+      "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Awaiting payment", "PAYMENT_PENDING": "Awaiting payment", "CONFIRMED": "Confirmed", "CANCELLED": "Cancelled", "EXPIRED": "Expired", "ATTENDED": "Attended", "NO_SHOW": "No-show"},
       "sources": {"PUBLIC_ACCOUNT": "Account booking", "ADMIN_MANUAL": "Administrator", "GUEST": "Guest booking"},
       "directions": {"MASSAGE": "Massage", "TRAINING": "Training"}
     },
@@ -606,9 +604,15 @@
       "saveError": "Unable to save the training type.",
       "sessionSaved": "Session saved.",
       "sessionSaveError": "Unable to save the session. Check work schedule, hall, and conflicts.",
+      "sessionCancelled": "The session and active participations were cancelled.",
+      "sessionCancelError": "Unable to complete cancellation and refund orchestration.",
+      "cancelSessionTitle": "Ataraksia cancellation",
+      "cancelSessionPreview": "Participants: {participants}; WayForPay refunds: {provider}; manual refunds: {manual}; benefit restorations: {benefits}.",
+      "cancelSessionReason": "Mandatory cancellation and audit reason",
+      "cancelSessionConfirm": "Cancel session and orchestrate refunds",
       "cancel": "Cancel",
       "close": "Close",
-      "status": {"DRAFT": "Draft", "PUBLISHED": "Published", "CANCELLED": "Cancelled"}
+      "status": {"DRAFT": "Draft", "PUBLISHED": "Published", "CANCELLED": "Cancelled", "EXPIRED": "Expired", "ATTENDED": "Attended", "NO_SHOW": "No-show"}
     },
     "workSchedule": {
       "eyebrow": "Team planning", "title": "Work schedule", "intro": "Planned shifts, days off, vacations and absences kept separate from customer appointments.",
@@ -658,6 +662,7 @@
       "noHistory": "No usage yet.",
       "activate": "Activate",
       "deactivate": "Deactivate"
+      ,"loyaltyRewardCompatible": "Explicitly allow compatibility with a loyalty reward"
     },
     "loyalty": {
       "title": "Loyalty and rewards", "subtitle": "Configure service points, the reward catalog, gift behavior, and controlled manual adjustments.",
@@ -665,7 +670,8 @@
       "titleUa": "Ukrainian title", "titleEn": "English title", "descriptionUa": "Ukrainian description", "descriptionEn": "English description", "pointCost": "Point cost", "validityDays": "Validity after redemption, days (optional)", "validityUnlimited": "Leave empty for no expiration", "transferable": "Transferable", "personal": "Personal", "active": "Active", "inactive": "Inactive", "eligibleServices": "Eligible services", "noServices": "No services yet.",
       "eligibleVariants": "Service variants", "eligibleVariantsHint": "Stable reward restriction to specific service variants.", "eligibleTrainingTypes": "Training types", "eligibleTrainingTypesHint": "Stable reward restriction to training types.",
       "save": "Save reward", "saving": "Saving…", "created": "Reward created.", "updated": "Reward updated.", "saveError": "Unable to save the reward.", "cancelEdit": "Cancel", "catalog": "Reward catalog", "loading": "Loading…", "loadError": "Unable to load the catalog.", "empty": "No rewards yet.", "pointsShort": "points", "daysShort": "days", "unlimited": "no expiration", "edit": "Edit",
-      "user": "User", "userSearch": "Enter a name, email, or phone", "usersLoading": "Searching users…", "noUsers": "No users found.", "clearUser": "Change", "amount": "Point adjustment", "reason": "Reason", "adjust": "Apply", "adjusted": "Balance adjusted.", "adjustError": "Unable to adjust the balance. Check the user, amount, and current balance."
+      "user": "User", "userSearch": "Enter a name, email, or phone", "usersLoading": "Searching users…", "noUsers": "No users found.", "clearUser": "Change", "amount": "Point adjustment (max 2000)", "reason": "Reason", "expiresAt": "Grant expiry (optional)", "adjust": "Apply", "adjusted": "Balance adjusted.", "adjustError": "Unable to adjust the balance. Check the user, amount, and current balance.",
+      "effectType": "Reward effect", "effectValue": "Effect value", "freeProcedure": "Free procedure", "percentageDiscount": "Percentage discount", "fixedDiscount": "Fixed discount", "maxUses": "Usage count", "promoCompatible": "Compatible with an explicitly enabled promo", "programs": "Loyalty programs", "programName": "Program name", "addProgram": "Add program", "earningRules": "Earning rules", "direction": "Direction", "allDirections": "All directions", "category": "Category", "rulePoints": "Points per ATTENDED", "startsAt": "Starts at", "endsAt": "Ends at", "addRule": "Add rule", "rulesCount": "Configured rules: {count}", "reverseGrant": "Reverse manual grant", "ledgerEntryId": "Ledger entry ID", "reverse": "Reverse", "invalidateVoucher": "Invalidate issued voucher", "voucherId": "Voucher ID", "restoreSpentPoints": "Restore spent points with a linked entry", "invalidate": "Invalidate"
     },
     "reviews": {
       "title": "Review moderation", "subtitle": "Publish, hide or reject verified reviews and add the company response.", "loading": "Loading…", "loadError": "Unable to load reviews.", "ratingOnly": "Rating without text.", "moderate": "Moderate", "immutableHint": "Customer text is immutable. Only the status and Ataraksia response can change.", "status": "Status", "response": "Company response", "save": "Save", "saving": "Saving…", "saved": "Moderation saved.", "saveError": "Unable to save moderation.", "close": "Close", "previous": "Previous", "next": "Next", "page": "Page {current} of {total}", "reports": "Open reports", "resolve": "Resolved", "dismiss": "Dismiss report", "reportReasons": {"SPAM": "Spam", "ABUSE": "Abuse", "PRIVACY": "Privacy", "MISLEADING": "Misleading", "OTHER": "Other"}, "statuses": {"PENDING": "Pending", "PUBLISHED": "Published", "HIDDEN": "Hidden", "REJECTED": "Rejected"}
@@ -1142,9 +1148,9 @@
           "loading": "Loading bookings...",
           "loadError": "Unable to load bookings.",
           "statuses": {
-            "AWAITING_PAYMENT_CONFIRMATION": "Awaiting payment",
+            "AWAITING_PAYMENT_CONFIRMATION": "Awaiting payment", "PAYMENT_PENDING": "Awaiting payment",
             "CONFIRMED": "Confirmed",
-            "CANCELLED": "Cancelled"
+            "CANCELLED": "Cancelled", "EXPIRED": "Expired", "ATTENDED": "Attended", "NO_SHOW": "No-show"
           }
         },
         "exceptions": {
@@ -1173,9 +1179,9 @@
         "withoutOffice": "No office",
         "statuses": {
           "all": "All statuses",
-          "AWAITING_PAYMENT_CONFIRMATION": "Awaiting payment",
+          "AWAITING_PAYMENT_CONFIRMATION": "Awaiting payment", "PAYMENT_PENDING": "Awaiting payment",
           "CONFIRMED": "Confirmed",
-          "CANCELLED": "Cancelled"
+          "CANCELLED": "Cancelled", "EXPIRED": "Expired", "ATTENDED": "Attended", "NO_SHOW": "No-show"
         },
         "filters": {"status": "Status", "office": "Office", "allOffices": "All offices", "allPeriods": "All periods", "period": "Period", "from": "From", "to": "To"},
         "scope": {"title": "Current scope", "body": "Status applies to bookings; office and period apply where a record has an office and date. Membership purchases may not have an office."},
@@ -1186,15 +1192,15 @@
         "pending": {"title": "Awaiting manual confirmation", "subtitle": "Verify payment outside the system before confirming.", "emptyTitle": "Everything is reviewed", "empty": "There are no bookings awaiting manual confirmation."},
         "transactions": {"title": "Transactions and bookings", "subtitle": "Available financial records matching the current filters.", "emptyTitle": "No records found", "empty": "Change the filters or period to review other records."},
         "ledger": {"title": "Financial ledger", "subtitle": "Immutable history of collections, refunds, expenses, and payouts.", "emptyTitle": "No operations yet", "empty": "The ledger is empty.", "reconciled": "Operational records reconcile with the ledger.", "reconciliationPending": "Operational records and ledger contain discrepancies.", "completeRefund": "Refund completed", "refundReference": "Optional bank or manual operation reference", "refundCompleted": "Refund marked as completed.", "types": {"PAYMENT_COLLECTED": "Payment collected", "REFUND_REQUIRED": "Refund required", "REFUND_COMPLETED": "Refund completed", "FORFEITURE_RECOGNIZED": "No-show funds forfeited", "FORFEITURE_REVERSED": "Forfeiture reversed", "SPECIALIST_PAYOUT_LIABILITY": "Specialist payout accrued", "SPECIALIST_PAYOUT_REVERSED": "Payout accrual reversed", "SPECIALIST_PAYOUT_PAID": "Specialist payout paid", "EXPENSE_RECORDED": "Expense recorded", "EXPENSE_REVERSED": "Expense reversed"}},
-        "events": {"title": "Training participants", "subtitle": "Finance visibility for training participation matching the current filters.", "loading": "Loading training participants...", "loadError": "Unable to load training participants.", "emptyTitle": "No training participants", "empty": "There are no training participants in the selected period.", "eyebrow": "Training #{id}", "itemEyebrow": "Training participation", "confirm": "Confirm payment", "confirmed": "Training payment confirmed.", "confirmError": "Unable to confirm training payment.", "reviewBody": "Confirm training participation payment only after verifying the actual payment outside the system.", "paymentConfirmed": "Payment confirmed", "paymentPending": "Awaiting review", "confirmedAt": "Confirmed at: {date}", "statuses": {"PAYMENT_PENDING": "Payment pending", "CONFIRMED": "Confirmed", "CANCELLED": "Cancelled", "EXPIRED": "Payment expired", "ATTENDED": "Attended", "NO_SHOW": "No-show"}},
+        "events": {"title": "Training participants", "subtitle": "Finance visibility for training participation matching the current filters.", "loading": "Loading training participants...", "loadError": "Unable to load training participants.", "emptyTitle": "No training participants", "empty": "There are no training participants in the selected period.", "eyebrow": "Training #{id}", "itemEyebrow": "Training participation", "confirm": "Confirm payment", "confirmed": "Training payment confirmed.", "confirmError": "Unable to confirm training payment.", "reviewBody": "Confirm training participation payment only after verifying the actual payment outside the system.", "paymentConfirmed": "Payment confirmed", "paymentPending": "Awaiting review", "confirmedAt": "Confirmed at: {date}", "statuses": {"PAYMENT_PENDING": "Payment pending", "CONFIRMED": "Confirmed", "CANCELLED": "Cancelled", "EXPIRED": "Expired", "ATTENDED": "Attended", "NO_SHOW": "No-show", "EXPIRED": "Payment expired", "ATTENDED": "Attended", "NO_SHOW": "No-show"}},
         "expenses": {"title": "Expenses", "subtitle": "Operating expenses matching the selected filters.", "emptyTitle": "No expenses yet", "empty": "Add the first expense or change the filters.", "hint": "Enter the actual operating expense details.", "action": "Add expense", "amount": "Amount", "category": "Category", "description": "Short description", "date": "Date", "office": "Office", "loading": "Loading expenses...", "loadError": "Unable to load expenses.", "saving": "Saving...", "created": "Expense added.", "createError": "Unable to add expense.", "delete": "Reverse expense", "deleteConfirm": "Reverse this expense? The original entry remains in the ledger.", "deleted": "Expense reversed.", "deleteError": "Unable to reverse expense."},
-        "memberships": {"title": "Membership payments", "subtitle": "User requests awaiting manual payment review and active unused purchases.", "loading": "Loading requests...", "loadError": "Unable to load membership requests.", "emptyTitle": "No requests", "empty": "There are no memberships or certificates to review.", "confirm": "Confirm payment", "confirmed": "Membership payment confirmed.", "confirmError": "Unable to confirm membership payment.", "reviewBody": "Confirm the membership or certificate only after manually checking the actual payment.", "cancel": "Cancel", "cancelling": "Cancelling...", "cancelled": "Membership purchase cancelled.", "cancelError": "Unable to cancel membership purchase.", "cancelConfirmTitle": "Cancel this membership purchase?", "cancelConfirmBody": "The record stays in finance and user history. Used memberships cannot be cancelled.", "confirmCancel": "Yes, cancel it", "membership": "Membership", "certificate": "Certificate", "user": "User", "visits": "Visits remaining", "createdAt": "Created", "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Awaiting payment", "ACTIVE": "Active", "CANCELLED": "Cancelled"}},
+        "memberships": {"title": "Membership payments", "subtitle": "Purchases follow the signed WayForPay lifecycle; statuses and permitted refund operations are available here.", "loading": "Loading purchases...", "loadError": "Unable to load membership purchases.", "emptyTitle": "No purchases", "empty": "There are no memberships to review.", "paymentAwaitingProvider": "Awaiting signed WayForPay confirmation.", "cancel": "Cancel", "cancelling": "Cancelling...", "cancelled": "Membership purchase cancelled.", "cancelError": "Unable to cancel membership purchase.", "cancelConfirmTitle": "Cancel this membership purchase?", "cancelConfirmBody": "The unfinished purchase remains in history. Active memberships use a separate proportional unused-visits refund operation.", "confirmCancel": "Yes, cancel it", "membership": "Membership", "certificate": "Certificate", "user": "User", "visits": "Visits remaining", "createdAt": "Created", "statuses": {"AWAITING_PAYMENT_CONFIRMATION": "Awaiting WayForPay", "PAYMENT_PENDING": "Awaiting WayForPay", "ACTIVE": "Active", "CANCELLED": "Cancelled", "EXPIRED": "Expired", "REFUNDED": "Refunded", "ATTENDED": "Attended", "NO_SHOW": "No-show"}},
         "reports": {"title": "Reports and tax", "subtitle": "Current period summary and export preparation.", "income": "Gross income", "specialistEarnings": "Specialist payouts", "businessIncome": "Business share", "expenses": "Expenses", "taxable": "Estimated base after expenses", "estimatedTax": "Estimated tax ({value})", "exportTitle": "Export report", "exportHint": "Export uses the status, office, and date period selected above.", "exportScopeHint": "PDF/XLSX now includes individual bookings, fixed-training participants, and membership purchases. Booking status filters apply to the individual bookings section; office filters do not include membership purchases.", "disabledHint": "Available after report generation is connected.", "pdf": "Download PDF", "excel": "Download Excel"},
         "calculation": {"title": "Transparent calculation", "subtitle": "Current formula for the selected filters and period.", "gross": "Gross income", "specialist": "Minus specialist payouts", "business": "Business share", "expenses": "Minus expenses", "taxable": "Tax base", "tax": "Minus estimated tax ({value})", "result": "Estimated result"},
         "taxSettings": {"title": "Tax percentage", "subtitle": "Quarterly percentage for estimated tax calculation.", "percent": "Quarterly tax, %", "current": "Current value: {value}", "loading": "Loading settings...", "loadError": "Unable to load tax settings.", "save": "Save tax", "saving": "Saving...", "saved": "Tax percentage updated.", "saveError": "Unable to update tax percentage.", "hint": "Tax is calculated from the base after specialist payouts and expenses."},
         "settings": {"title": "Specialist percentages", "subtitle": "Specialist share settings for finance calculations.", "specialist": "Specialist", "sharePercent": "Share, %", "current": "Current value: {value}", "lastUpdated": "Last updated: {date}", "loading": "Loading specialists...", "loadError": "Unable to load specialist settings.", "empty": "There are no active specialists yet.", "save": "Save percentage", "saving": "Saving...", "saved": "Specialist percentage updated.", "saveError": "Unable to update specialist percentage.", "hint": "The new percentage applies to finance lists and summaries after refresh.", "unnamedSpecialist": "Unnamed specialist"},
         "details": {"eyebrow": "Transaction details", "close": "Close details", "paymentLink": "Payment link"},
-        "paymentReview": {"eyebrow": "Manual review", "title": "Confirm payment", "body": "Confirm the booking only after checking the actual payment in the external system or bank.", "verified": "Payment was verified outside the system", "verifyHint": "After confirmation, the booking becomes confirmed and the specialist payout moves to pending.", "confirm": "Confirm payment", "cancel": "Cancel", "noPaymentLink": "This booking does not have an external payment link. Verify the payment manually using the client details."},
+        "paymentReview": {"eyebrow": "Manual payment", "title": "Confirm manual payment", "body": "Use this flow only for money received in cash or through the studio terminal. Provider orders are confirmed only by a signed callback.", "method": "Payment method", "cash": "Cash", "terminal": "Studio terminal", "verified": "The manual payment was received", "verifyHint": "After confirmation, the booking becomes confirmed and the specialist payout moves to pending.", "confirm": "Confirm payment", "cancel": "Cancel", "noPaymentLink": "This booking does not have an external payment link. Verify payment using the client details."},
         "table": {
           "client": "Client",
           "service": "Service",
@@ -1387,7 +1393,7 @@
       "memberships": {
         "eyebrow": "Memberships and certificates",
         "title": "Membership offers",
-        "subtitle": "Edit price, payment URL, active status, card background, and services that can be paid with a membership.",
+        "subtitle": "Edit price, active status, card background, and exact eligible service variants.",
         "loadError": "Unable to load offers.",
         "updated": "Offer updated.",
         "created": "Offer created.",
@@ -1401,11 +1407,11 @@
         "descriptionUa": "Ukrainian description",
         "descriptionEn": "English description",
         "price": "Price",
-        "externalPaymentUrl": "Payment URL",
-        "externalPaymentUrlHint": "External payment link for this specific membership or certificate amount.",
         "validityDays": "Validity, days",
         "visitsTotal": "Visit count",
-        "eligibleServices": "Eligible services",
+        "eligibleServices": "Eligible service variants",
+        "eligibleTrainingTypes": "Eligible training types",
+        "transferable": "Transferable before first use",
         "membership": "Membership",
         "certificate": "Certificate",
         "backgroundUpload": "Upload background",

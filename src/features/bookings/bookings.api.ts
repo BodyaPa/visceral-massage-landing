@@ -157,8 +157,8 @@ export const bookingsApi = createApi({
             query: listFinanceTrainingParticipantsPath,
             providesTags: [{type: "Bookings", id: "TRAINING_PARTICIPANTS"}]
         }),
-        confirmTrainingParticipantPayment: build.mutation<FinanceTrainingParticipant, number>({
-            query: (id) => ({url: `/admin/finance/training-participants/${id}/confirm-payment`, method: "POST"}),
+        confirmTrainingParticipantPayment: build.mutation<FinanceTrainingParticipant, {id: number; method: "CASH" | "TERMINAL"}>({
+            query: ({id, method}) => ({url: `/admin/finance/training-participants/${id}/confirm-payment`, method: "POST", body: {method}}),
             invalidatesTags: [{type: "Bookings", id: "TRAINING_PARTICIPANTS"}]
         }),
         getFinanceSummary: build.query<FinanceSummary, FinanceSummaryArgs>({
@@ -248,7 +248,7 @@ export const bookingsApi = createApi({
                 if (specialistId !== "" && specialistId !== undefined) params.set("specialistId", String(specialistId));
                 if (officeId !== "" && officeId !== undefined) params.set("officeId", String(officeId));
                 if (serviceId !== "" && serviceId !== undefined) params.set("serviceId", String(serviceId));
-                if (status === "AWAITING_PAYMENT_CONFIRMATION" || status === "CONFIRMED" || status === "CANCELLED") params.set("status", status);
+                if (status === "PAYMENT_PENDING" || status === "CONFIRMED" || status === "CANCELLED") params.set("status", status);
                 return `/admin/schedule/bookings?${params.toString()}`;
             },
             providesTags: [{type: "Bookings", id: "LIST"}]
@@ -299,9 +299,9 @@ export const bookingsApi = createApi({
                 {type: "FinanceSummary", id: "CURRENT"}
             ]
         }),
-        confirmPayment: build.mutation<FinanceBooking, number>({
-            query: (id) => ({url: `/admin/finance/bookings/${id}/confirm-payment`, method: "POST"}),
-            invalidatesTags: (result, error, id) => [
+        confirmPayment: build.mutation<FinanceBooking, {id: number; method: "CASH" | "TERMINAL"}>({
+            query: ({id, method}) => ({url: `/admin/finance/bookings/${id}/confirm-payment`, method: "POST", body: {method}}),
+            invalidatesTags: (result, error, {id}) => [
                 {type: "Bookings", id},
                 {type: "Bookings", id: "LIST"},
                 {type: "FinanceSummary", id: "CURRENT"},
@@ -315,6 +315,14 @@ export const bookingsApi = createApi({
                 {type: "Bookings", id: "LIST"},
                 {type: "FinanceSummary", id: "SPECIALIST_OVERVIEW"}
             ]
+        }),
+        cancelAdminBooking: build.mutation<unknown, {id: number; details: string; ataraksiaCancellation: boolean; refundPaidAmount: boolean; restoreBenefits: boolean}>({
+            query: ({id, ...body}) => ({url: `/admin/cancellations/bookings/${id}`, method: "POST", body: {reason: "OTHER", ...body}}),
+            invalidatesTags: [{type: "Bookings", id: "ADMIN_REGISTRY"}, {type: "Bookings", id: "LIST"}]
+        }),
+        cancelAdminTrainingParticipant: build.mutation<unknown, {id: number; details: string; ataraksiaCancellation: boolean; refundPaidAmount: boolean; restoreBenefits: boolean}>({
+            query: ({id, ...body}) => ({url: `/admin/cancellations/training-participants/${id}`, method: "POST", body: {reason: "OTHER", ...body}}),
+            invalidatesTags: [{type: "Bookings", id: "TRAINING_PARTICIPANTS"}]
         }),
         cancelBooking: build.mutation<Booking, {id: number; reason: string; details?: string | null}>({
             query: ({id, reason, details}) => ({url: `/bookings/${id}/cancel`, method: "POST", body: {reason, details}}),
@@ -331,6 +339,8 @@ export const bookingsApi = createApi({
 });
 
 export const {
+    useCancelAdminBookingMutation,
+    useCancelAdminTrainingParticipantMutation,
     useCancelBookingMutation,
     useConfirmTrainingParticipantPaymentMutation,
     useConfirmPaymentMutation,

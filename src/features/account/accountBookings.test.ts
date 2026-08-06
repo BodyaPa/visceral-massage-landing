@@ -28,7 +28,12 @@ function booking(id: number, status: Booking["status"], startsAt: string, endsAt
         startsAt,
         endsAt,
         reminderOptIn: false,
-        externalPaymentUrl: null,
+        paymentId: null,
+        paymentHoldExpiresAt: null,
+        paymentRequiredAmount: 1200,
+        paymentPaidAmount: 0,
+        canSelfCancel: true,
+        canSelfCancelUntil: "2035-06-15T12:00:00Z",
         membershipPurchaseId: null,
         paidWithMembership: false
     };
@@ -53,10 +58,15 @@ function event(id: number, endsAt: string, status: TrainingParticipantStatus): A
         status,
         originalPrice: 1000,
         finalPrice: 1000,
-        externalPaymentUrl: null,
+        paymentId: null,
+        paymentHoldExpiresAt: null,
+        paymentRequiredAmount: 1200,
+        paymentPaidAmount: 0,
         paymentConfirmed: false,
         paidWithMembership: false,
         paidWithLoyaltyVoucher: false,
+        canSelfCancel: true,
+        canSelfCancelUntil: "2035-06-15T12:00:00Z",
         reminderOptIn: false
     };
 }

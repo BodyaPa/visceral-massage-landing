@@ -13,11 +13,12 @@ import StatusBadge from "@/components/ui/state/StatusBadge";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {useListUsersQuery} from "@/features/users/users.api";
 import {useListOfficeResourcesQuery, useListPublicOfficesQuery} from "@/features/offices/offices.api";
-import {useCreateTrainingSessionMutation, useCreateTrainingTypeMutation, useListTrainingSessionsQuery, useListTrainingTypesQuery, useUpdateTrainingSessionMutation, useUpdateTrainingTypeMutation} from "./training.api";
+import {useCancelAdminTrainingSessionMutation, useCreateTrainingSessionMutation, useCreateTrainingTypeMutation, useGetTrainingSessionCancellationPreviewQuery, useListTrainingSessionsQuery, useListTrainingTypesQuery, useUpdateTrainingSessionMutation, useUpdateTrainingTypeMutation} from "./training.api";
 import {formatWholeCurrencyAmount} from "@/shared/lib/i18n/formatNumbers";
 import type {TrainingSession, TrainingSessionInput, TrainingType, TrainingTypeInput} from "@/types/training";
+import {useSendTrainingBulkMutation} from "@/features/messages/messages.api";
 
-const emptyType: TrainingTypeInput = {titleUa: "", descriptionUa: null, titleEn: null, descriptionEn: null, durationMinutes: 90, price: 0, depositAmount: 0, defaultCapacity: 8, active: true, trainerIds: []};
+const emptyType: TrainingTypeInput = {titleUa: "", descriptionUa: null, titleEn: null, descriptionEn: null, durationMinutes: 90, price: 0, prepaymentEnabled: false, depositAmount: 0, defaultCapacity: 8, active: true, trainerIds: []};
 const emptySession: TrainingSessionInput = {trainingTypeId: 0, trainerId: 0, officeId: 0, resourceId: 0, startsAt: "", capacity: null, status: "DRAFT", note: null};
 
 export default function TrainingManagement() {
@@ -28,6 +29,7 @@ export default function TrainingManagement() {
     const [form, setForm] = useState<TrainingTypeInput>(emptyType);
     const [editingSession, setEditingSession] = useState<TrainingSession | "new" | null>(null);
     const [sessionForm, setSessionForm] = useState<TrainingSessionInput>(emptySession);
+    const [cancellationReason, setCancellationReason] = useState("");
     const {data: types = [], isLoading, isError, refetch} = useListTrainingTypesQuery();
     const {data: users} = useListUsersQuery({role: "SPECIALIST", enabled: true, size: 100});
     const {data: officesData} = useListPublicOfficesQuery({size: 100});
@@ -40,10 +42,15 @@ export default function TrainingManagement() {
     const [updateType, {isLoading: updating}] = useUpdateTrainingTypeMutation();
     const [createSession, {isLoading: creatingSession}] = useCreateTrainingSessionMutation();
     const [updateSession, {isLoading: updatingSession}] = useUpdateTrainingSessionMutation();
+    const [cancelAdminTrainingSession, {isLoading: cancellingSession}] = useCancelAdminTrainingSessionMutation();
+    const cancellationPreview = useGetTrainingSessionCancellationPreviewQuery(
+        editingSession && editingSession !== "new" ? editingSession.id : 0,
+        {skip: !editingSession || editingSession === "new"}
+    );
 
     useEffect(() => {
         if (editing === "new") setForm({...emptyType});
-        else if (editing) setForm({titleUa: editing.titleUa, descriptionUa: editing.descriptionUa, titleEn: editing.titleEn, descriptionEn: editing.descriptionEn, durationMinutes: editing.durationMinutes, price: editing.price, depositAmount: editing.depositAmount, defaultCapacity: editing.defaultCapacity, active: editing.active, trainerIds: editing.trainerIds});
+        else if (editing) setForm({titleUa: editing.titleUa, descriptionUa: editing.descriptionUa, titleEn: editing.titleEn, descriptionEn: editing.descriptionEn, durationMinutes: editing.durationMinutes, price: editing.price, prepaymentEnabled: editing.prepaymentEnabled, depositAmount: editing.depositAmount, defaultCapacity: editing.defaultCapacity, active: editing.active, trainerIds: editing.trainerIds});
     }, [editing]);
 
     useEffect(() => {
@@ -80,6 +87,18 @@ export default function TrainingManagement() {
         }
     }
 
+    async function cancelSession() {
+        if (!editingSession || editingSession === "new" || !cancellationReason.trim()) return;
+        try {
+            await cancelAdminTrainingSession({id: editingSession.id, reason: cancellationReason.trim()}).unwrap();
+            toast.success(t("sessionCancelled"));
+            setCancellationReason("");
+            setEditingSession(null);
+        } catch {
+            toast.error(t("sessionCancelError"));
+        }
+    }
+
     return (
         <section className="space-y-5">
             <header className="flex flex-wrap items-start justify-between gap-3">
@@ -87,6 +106,7 @@ export default function TrainingManagement() {
                 {tab === "types" ? <Button onClick={() => setEditing("new")}>{t("newType")}</Button> : <Button disabled={types.length === 0} onClick={() => setEditingSession("new")}>{t("newSession")}</Button>}
             </header>
             <Tabs label={t("tabsLabel")} onChange={setTab} options={[{value: "types", label: t("types")}, {value: "sessions", label: t("sessions")}] } value={tab} />
+            {tab === "sessions" ? <TrainingBulkMessagePanel sessions={sessions} /> : null}
             {tab === "types" ? (
                 isLoading ? <LoadingState label={t("loading")} /> : isError ? <ErrorState action={<Button onClick={() => void refetch()} variant="secondary">{t("retry")}</Button>} description={t("loadError")} title={t("loadError")} /> : types.length === 0 ? <EmptyState description={t("emptyTypes")} title={t("types")} /> :
                     <div className="grid gap-3 xl:grid-cols-2">{types.map((type) => <button className="rounded-2xl border border-stone-200 bg-white p-4 text-left shadow-sm transition hover:border-stone-400 hover:shadow-md" key={type.id} onClick={() => setEditing(type)} type="button"><div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold text-stone-950">{type.titleUa}</h2><p className="mt-1 text-sm text-stone-500">{type.durationMinutes} {t("minutes")} · {formatWholeCurrencyAmount(type.price, "ua")}</p></div><StatusBadge tone={type.active ? "success" : "neutral"}>{type.active ? t("active") : t("inactive")}</StatusBadge></div><p className="mt-3 text-xs text-stone-500">{t("capacity", {count: type.defaultCapacity})} · {t("trainers", {count: type.trainerIds.length})}</p></button>)}</div>
@@ -103,12 +123,26 @@ export default function TrainingManagement() {
                     <SelectField label={t("hall")} onChange={(resourceId) => setSessionForm(current => ({...current, resourceId}))} value={sessionForm.resourceId}><option value={0}>{t("select")}</option>{resources.filter(resource => resource.active).map(resource => <option key={resource.id} value={resource.id}>{resource.name}</option>)}</SelectField>
                     <TrainingField label={t("startsAt")}><Input onChange={(event) => setSessionForm(current => ({...current, startsAt: event.target.value}))} type="datetime-local" value={sessionForm.startsAt} /></TrainingField>
                     <NumberField label={t("capacityLabel")} onChange={(capacity) => setSessionForm(current => ({...current, capacity}))} value={sessionForm.capacity ?? 1} />
-                    <TrainingField label={t("sessionStatus")}><select className={selectClass} onChange={(event) => setSessionForm(current => ({...current, status: event.target.value as TrainingSessionInput["status"]}))} value={sessionForm.status}><option value="DRAFT">{t("status.DRAFT")}</option><option value="PUBLISHED">{t("status.PUBLISHED")}</option><option value="CANCELLED">{t("status.CANCELLED")}</option></select></TrainingField>
+                    <TrainingField label={t("sessionStatus")}><select className={selectClass} onChange={(event) => setSessionForm(current => ({...current, status: event.target.value as TrainingSessionInput["status"]}))} value={sessionForm.status}><option value="DRAFT">{t("status.DRAFT")}</option><option value="PUBLISHED">{t("status.PUBLISHED")}</option>{sessionForm.status === "CANCELLED" ? <option value="CANCELLED">{t("status.CANCELLED")}</option> : null}</select></TrainingField>
                     <TrainingField label={t("note")}><textarea className={textareaClass} onChange={(event) => setSessionForm(current => ({...current, note: event.target.value || null}))} value={sessionForm.note ?? ""} /></TrainingField>
+                    {editingSession && editingSession !== "new" && editingSession.status !== "CANCELLED" ? <section className="rounded-xl border border-red-200 bg-red-50 p-4"><h3 className="font-semibold text-red-900">{t("cancelSessionTitle")}</h3><p className="mt-1 text-sm text-red-800">{t("cancelSessionPreview", {participants: cancellationPreview.data?.activeParticipants ?? 0, provider: cancellationPreview.data?.providerRefunds ?? 0, manual: cancellationPreview.data?.manualRefunds ?? 0, benefits: cancellationPreview.data?.benefitRestorations ?? 0})}</p><textarea className={`${textareaClass} mt-3 bg-white`} onChange={(event) => setCancellationReason(event.target.value)} placeholder={t("cancelSessionReason")} value={cancellationReason} /><Button disabled={cancellingSession || !cancellationReason.trim() || cancellationPreview.isFetching} onClick={cancelSession} variant="danger">{t("cancelSessionConfirm")}</Button></section> : null}
                 </div>
             </Sheet>
         </section>
     );
+}
+
+function TrainingBulkMessagePanel({sessions}: {sessions: TrainingSession[]}) {
+    const [sessionId, setSessionId] = useState(0);
+    const [subject, setSubject] = useState("");
+    const [body, setBody] = useState("");
+    const [send, {isLoading}] = useSendTrainingBulkMutation();
+    async function submit() {
+        if (!sessionId || !subject.trim() || !body.trim()) return;
+        await send({sessionId, subject: subject.trim(), body: body.trim()}).unwrap();
+        setSubject(""); setBody("");
+    }
+    return <section className="rounded-xl border border-stone-200 bg-white p-4"><h2 className="font-semibold text-stone-950">Service message to training participants</h2><p className="mt-1 text-sm text-stone-500">Each active participant receives an independent private message and delivery. Contacts are never disclosed.</p><div className="mt-3 grid gap-3 md:grid-cols-3"><select className={selectClass} onChange={event => setSessionId(Number(event.target.value))} value={sessionId}><option value={0}>Select session…</option>{sessions.filter(s => s.status === "PUBLISHED").map(s => <option key={s.id} value={s.id}>{s.titleUa} · {new Date(s.startsAt).toLocaleString()}</option>)}</select><Input onChange={event => setSubject(event.target.value)} placeholder="Subject" value={subject}/><Input onChange={event => setBody(event.target.value)} placeholder="Service message" value={body}/></div><Button className="mt-3" disabled={isLoading || !sessionId || !subject.trim() || !body.trim()} onClick={submit}>Send individual messages</Button></section>;
 }
 
 const textareaClass = "min-h-28 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-stone-700 focus:ring-2 focus:ring-stone-900/15";

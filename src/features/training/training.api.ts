@@ -102,6 +102,14 @@ export const trainingApi = createApi({
             query: ({id, body}) => ({url: `/admin/training/sessions/${id}`, method: "PUT", body}),
             invalidatesTags: ["TrainingSessions"]
         }),
+        getTrainingSessionCancellationPreview: build.query<{sessionId: number; activeParticipants: number; providerRefunds: number; manualRefunds: number; benefitRestorations: number; alreadyCancelled: boolean}, number>({
+            query: (id) => `/admin/training/sessions/${id}/cancellation-preview`,
+            providesTags: ["TrainingSessions"]
+        }),
+        cancelAdminTrainingSession: build.mutation<unknown, {id: number; reason: string}>({
+            query: ({id, reason}) => ({url: `/admin/training/sessions/${id}/cancel`, method: "POST", body: {reason}}),
+            invalidatesTags: ["TrainingSessions"]
+        }),
         listPublicTrainingSessions: build.query<PublicTrainingSession[], {from: string; to: string; officeId?: number | ""; trainerId?: number | ""; lang: Locale}>({
             query: ({from, to, officeId, trainerId, lang}) => {
                 const params = new URLSearchParams({from, to, lang});
@@ -118,7 +126,7 @@ export const trainingApi = createApi({
             },
             providesTags: ["TrainingSessions"]
         }),
-        enrollTrainingSession: build.mutation<TrainingEnrollment, {id: number; lang: Locale; reminderOptIn: boolean; membershipPurchaseId?: number | null; loyaltyVoucherId?: number | null; promoCode?: string | null; cancellationPolicyAccepted: boolean}>({
+        enrollTrainingSession: build.mutation<TrainingEnrollment, {id: number; lang: Locale; reminderOptIn: boolean; membershipPurchaseId?: number | null; certificateId?: number | null; loyaltyVoucherId?: number | null; promoCode?: string | null; cancellationPolicyAccepted: boolean; legalVersions: import("@/features/legal/legal.api").LegalVersionSelection}>({
             query: ({id, lang, ...body}) => ({url: `/training/sessions/${id}/enroll?lang=${lang}`, method: "POST", body}),
             invalidatesTags: ["TrainingSessions"]
         }),
@@ -140,6 +148,8 @@ export const {
     useListCalendarTrainingParticipantsQuery,
     useCreateTrainingSessionMutation,
     useUpdateTrainingSessionMutation,
+    useGetTrainingSessionCancellationPreviewQuery,
+    useCancelAdminTrainingSessionMutation,
     useListPublicTrainingSessionsQuery,
     useListMyTrainingParticipationsQuery,
     useEnrollTrainingSessionMutation,

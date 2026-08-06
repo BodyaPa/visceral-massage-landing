@@ -16,6 +16,7 @@ export type AuthenticatedUser = {
     dateOfBirth: string | null;
     avatarMediaId: string | null;
     avatarMediaUrl: string | null;
+    preferredLocale: "ua" | "en";
     roles: UserRole[];
 };
 

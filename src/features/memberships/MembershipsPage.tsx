@@ -10,13 +10,16 @@ import {
     useListMembershipOffersQuery,
     useListMyMembershipPurchasesQuery
 } from "@/features/memberships/memberships.api";
-import {useListServicesQuery} from "@/features/services/services.api";
 import type {Locale} from "@/i18n";
 import {formatWholeCurrencyAmount as formatAmount} from "@/shared/lib/i18n/formatNumbers";
 import {resolveApiMediaUrl} from "@/shared/lib/media/resolveApiMediaUrl";
 import type {MembershipOffer, MembershipPurchase} from "@/types/memberships";
 import Button from "@/components/ui/button/Button";
 import Dialog from "@/components/ui/overlay/Dialog";
+import {useCreateCheckoutMutation} from "@/features/payments/payments.api";
+import {submitWayForPayCheckout} from "@/features/payments/PaymentButton";
+import {usePurchaseCertificateMutation} from "@/features/certificates/certificates.api";
+import type {Certificate} from "@/types/certificates";
 
 const includedByCode: Record<string, string[]> = {
     "care-4": ["individual", "office", "support"],
@@ -29,14 +32,14 @@ export default function MembershipsPage() {
     const locale = useLocale() as Locale;
     const toast = useToast();
     const {data: offers = [], isFetching, isError} = useListMembershipOffersQuery();
-    const {data: servicesData} = useListServicesQuery({lang: locale, size: 200});
-    const services = servicesData?.content ?? [];
     const {data: purchasesData} = useListMyMembershipPurchasesQuery({size: 50});
     const [createPurchase, {isLoading}] = useCreateMembershipPurchaseMutation();
     const [createPaymentSession, {isLoading: isCreatingPaymentSession}] = useCreateMembershipPaymentSessionMutation();
+    const [createCheckout] = useCreateCheckoutMutation();
+    const [purchaseCertificate] = usePurchaseCertificateMutation();
+    const [issuedCertificate, setIssuedCertificate] = useState<Certificate | null>(null);
     const [selectedOffer, setSelectedOffer] = useState<MembershipOffer | null>(null);
     const [checkoutOffer, setCheckoutOffer] = useState<MembershipOffer | null>(null);
-    const [manualPaymentOffer, setManualPaymentOffer] = useState<MembershipOffer | null>(null);
     const purchases = useMemo(() => purchasesData?.content ?? [], [purchasesData?.content]);
     const pendingPurchases = new Map(purchases.filter((item) => item.status === "AWAITING_PAYMENT_CONFIRMATION").map((item) => [item.offerId, item]));
     const isProcessingCheckout = isLoading || isCreatingPaymentSession;
@@ -47,38 +50,30 @@ export default function MembershipsPage() {
     }
 
     async function confirmPayment(offer: MembershipOffer) {
-        const paymentWindow = window.open("about:blank", "_blank");
         try {
-            const purchase = await createPurchase({offerId: offer.id}).unwrap();
-            const session = await createPaymentSession(purchase.id).unwrap();
-            if (session.checkoutUrl) {
-                openCheckoutInPreparedWindow(paymentWindow, session.checkoutUrl);
+            if (offer.kind === "CERTIFICATE") {
+                const certificate = await purchaseCertificate({offerId: offer.id}).unwrap();
+                if (!certificate.paymentId) throw new Error("Missing certificate payment order");
+                setIssuedCertificate(certificate);
+                submitWayForPayCheckout(await createCheckout(certificate.paymentId).unwrap());
                 setCheckoutOffer(null);
                 return;
             }
-            paymentWindow?.close();
-            if (session.requiresManualConfirmation) {
-                setCheckoutOffer(null);
-                setManualPaymentOffer(offer);
-            }
-            toast.success(session.requiresManualConfirmation ? t("manualSessionCreated") : t("purchaseCreated"));
+            const purchase = await createPurchase({offerId: offer.id}).unwrap();
+            const session = await createPaymentSession(purchase.id).unwrap();
+            submitWayForPayCheckout(await createCheckout(session.paymentId).unwrap());
+            setCheckoutOffer(null);
+            toast.success(t("purchaseCreated"));
         } catch {
-            paymentWindow?.close();
             toast.error(t("purchaseError"));
         }
     }
 
     async function resumePayment(purchase: MembershipPurchase) {
-        const paymentWindow = window.open("about:blank", "_blank");
         try {
             const session = await createPaymentSession(purchase.id).unwrap();
-            if (session.checkoutUrl) openCheckoutInPreparedWindow(paymentWindow, session.checkoutUrl);
-            else {
-                paymentWindow?.close();
-                toast.success(t("manualSessionCreated"));
-            }
+            submitWayForPayCheckout(await createCheckout(session.paymentId).unwrap());
         } catch {
-            paymentWindow?.close();
             toast.error(t("purchaseError"));
         }
     }
@@ -123,7 +118,7 @@ export default function MembershipsPage() {
                 <PurchaseSummary locale={locale} onPay={(purchase) => void resumePayment(purchase)} purchases={purchases} t={t} />
             </section>
 
-            {selectedOffer ? <OfferDetails locale={locale} offer={selectedOffer} onBuy={openPaymentDialog} onClose={() => setSelectedOffer(null)} pending={pendingPurchases.has(selectedOffer.id)} services={services} t={t} /> : null}
+            {selectedOffer ? <OfferDetails locale={locale} offer={selectedOffer} onBuy={openPaymentDialog} onClose={() => setSelectedOffer(null)} pending={pendingPurchases.has(selectedOffer.id)} t={t} /> : null}
             {checkoutOffer ? (
                 <PaymentConfirmationDialog
                     isLoading={isProcessingCheckout}
@@ -134,7 +129,7 @@ export default function MembershipsPage() {
                     t={t}
                 />
             ) : null}
-            {manualPaymentOffer ? <ManualPaymentDialog locale={locale} offer={manualPaymentOffer} onClose={() => setManualPaymentOffer(null)} t={t} /> : null}
+            {issuedCertificate?.giftCode ? <Dialog closeLabel={t("close")} footer={<Button onClick={()=>setIssuedCertificate(null)}>{t("close")}</Button>} onClose={()=>setIssuedCertificate(null)} open title={t("giftCodeTitle")}><p className="text-sm text-stone-600">{t("giftCodeBody")}</p><code className="mt-4 block break-all rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm font-semibold text-stone-950">{issuedCertificate.giftCode}</code></Dialog>:null}
         </main>
     );
 }
@@ -177,7 +172,7 @@ function OfferCard({disabled, locale, offer, onBuy, onDetails, onPayPending, pen
     );
 }
 
-function OfferDetails({locale, offer, onBuy, onClose, pending, services, t}: {locale: Locale; offer: MembershipOffer; onBuy: (offer: MembershipOffer) => void; onClose: () => void; pending: boolean; services: Array<{id: number; title: string}>; t: T}) {
+function OfferDetails({locale, offer, onBuy, onClose, pending, t}: {locale: Locale; offer: MembershipOffer; onBuy: (offer: MembershipOffer) => void; onClose: () => void; pending: boolean; t: T}) {
     return (
         <Dialog closeLabel={t("close")} eyebrow={kindLabel(offer, t)} footer={<>
             <Button onClick={onClose} variant="secondary">{t("close")}</Button>
@@ -198,8 +193,7 @@ function OfferDetails({locale, offer, onBuy, onClose, pending, services, t}: {lo
                 <section className="mt-4 min-w-0 rounded-xl border border-stone-200 bg-white p-4">
                     <h3 className="text-sm font-semibold text-stone-950">{t("eligibleServicesTitle")}</h3>
                     <div className="mt-3 flex flex-wrap gap-2">
-                        {services.filter((service) => offer.eligibleServiceIds.includes(service.id)).map((service) => <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-medium text-stone-700" key={service.id}>{service.title}</span>)}
-                        {services.every((service) => !offer.eligibleServiceIds.includes(service.id)) ? <p className="text-sm text-stone-500">{t("eligibleServicesEmpty")}</p> : null}
+                        {offer.eligibleServiceVariantIds.length>0?<p className="text-sm text-stone-600">{t("eligibleVariantCount",{count:offer.eligibleServiceVariantIds.length})}</p>:<p className="text-sm text-stone-500">{t("eligibleServicesEmpty")}</p>}
                     </div>
                 </section>
         </Dialog>
@@ -229,18 +223,6 @@ function PaymentConfirmationDialog({isLoading, locale, offer, onClose, onConfirm
                 <InfoRow label={t("validity")} value={t("validityDays", {count: offer.validityDays})} />
             </dl>
             <p className="mt-4 rounded-xl border border-stone-200 bg-white p-4 text-sm leading-6 text-stone-600">{t("checkoutNotice")}</p>
-        </Dialog>
-    );
-}
-
-function ManualPaymentDialog({locale, offer, onClose, t}: {locale: Locale; offer: MembershipOffer; onClose: () => void; t: T}) {
-    return (
-        <Dialog closeLabel={t("manualPaymentClose")} eyebrow={t("manualPaymentEyebrow")} footer={<Button onClick={onClose}>{t("manualPaymentClose")}</Button>} onClose={onClose} open title={t("manualPaymentTitle")}>
-                <p className="mt-3 break-words text-sm leading-6 text-stone-600">{t("manualPaymentBody", {offer: localizedTitle(offer, locale), price: formatAmount(offer.price, locale)})}</p>
-                <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-                    <p className="font-semibold">{t("manualPaymentNextTitle")}</p>
-                    <p className="mt-1">{t("manualPaymentNextBody")}</p>
-                </div>
         </Dialog>
     );
 }
@@ -298,13 +280,4 @@ function localizedDescription(offer: MembershipOffer, locale: Locale) {
 
 function kindLabel(offer: MembershipOffer, t: T) {
     return offer.kind === "CERTIFICATE" ? t("kinds.certificate") : t("kinds.membership");
-}
-
-function openCheckoutInPreparedWindow(paymentWindow: Window | null, checkoutUrl: string) {
-    if (paymentWindow) {
-        paymentWindow.opener = null;
-        paymentWindow.location.href = checkoutUrl;
-    } else {
-        window.open(checkoutUrl, "_blank", "noopener,noreferrer");
-    }
 }

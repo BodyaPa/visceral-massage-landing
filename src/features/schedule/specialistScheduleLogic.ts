@@ -55,7 +55,7 @@ export function filterCalendarBookings(bookings: SpecialistBooking[], filters: C
         if (filters.serviceId !== "" && booking.serviceId !== filters.serviceId) return false;
         if (filters.itemType !== "all" && filters.itemType !== "BOOKING") return false;
         if (filters.status === "PAST") return booking.status !== "CANCELLED" && isPastRange(booking.endsAt);
-        if (filters.status !== "all" && !["AWAITING_PAYMENT_CONFIRMATION", "CONFIRMED", "CANCELLED"].includes(filters.status)) return false;
+        if (filters.status !== "all" && !["PAYMENT_PENDING", "CONFIRMED", "CANCELLED"].includes(filters.status)) return false;
         if (filters.status !== "all" && booking.status !== filters.status) return false;
         return true;
     });

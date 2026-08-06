@@ -1,5 +1,5 @@
 export type MembershipOfferKind = "MEMBERSHIP" | "CERTIFICATE";
-export type MembershipPurchaseStatus = "AWAITING_PAYMENT_CONFIRMATION" | "ACTIVE" | "CANCELLED";
+export type MembershipPurchaseStatus = "AWAITING_PAYMENT_CONFIRMATION" | "ACTIVE" | "CANCELLED" | "EXPIRED" | "REFUNDED";
 
 export interface MembershipOffer {
     id: number;
@@ -10,11 +10,12 @@ export interface MembershipOffer {
     descriptionUa: string | null;
     descriptionEn: string | null;
     price: number;
-    externalPaymentUrl: string | null;
     visitsTotal: number | null;
     validityDays: number;
+    transferableBeforeFirstUse: boolean;
     active: boolean;
-    eligibleServiceIds: number[];
+    eligibleServiceVariantIds: number[];
+    eligibleTrainingTypeIds: number[];
     backgroundMediaId: string | null;
     backgroundMediaUrl: string | null;
 }
@@ -25,11 +26,12 @@ export type MembershipOfferUpdateInput = {
     descriptionUa: string | null;
     descriptionEn: string | null;
     price: number;
-    externalPaymentUrl: string | null;
     visitsTotal: number | null;
     validityDays: number;
+    transferableBeforeFirstUse: boolean;
     active: boolean;
-    eligibleServiceIds: number[];
+    eligibleServiceVariantIds: number[];
+    eligibleTrainingTypeIds: number[];
     backgroundMediaId: string | null;
 };
 
@@ -63,7 +65,6 @@ export type MembershipPurchaseInput = {
 
 export interface MembershipPaymentSession {
     purchaseId: number;
-    mode: "MANUAL_REVIEW" | string;
-    checkoutUrl: string | null;
-    requiresManualConfirmation: boolean;
+    paymentId: string;
+    mode: "WAYFORPAY";
 }

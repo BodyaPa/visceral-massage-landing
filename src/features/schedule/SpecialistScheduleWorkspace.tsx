@@ -1172,7 +1172,7 @@ function CalendarFilters({
                     <select className={compactSelectClass} onChange={(event) => onChange("status", event.target.value as CalendarFilterState["status"])} value={filters.status}>
                         <option value="all">{copy.allStatuses}</option>
                         <option value="AVAILABLE">{copy.statusAvailable}</option>
-                        <option value="AWAITING_PAYMENT_CONFIRMATION">{copy.statusAwaitingPayment}</option>
+                        <option value="PAYMENT_PENDING">{copy.statusAwaitingPayment}</option>
                         <option value="CONFIRMED">{copy.statusConfirmed}</option>
                         <option value="CANCELLED">{copy.statusCancelled}</option>
                         <option value="PAST">{copy.statusPast}</option>
@@ -1232,7 +1232,7 @@ function calendarItemFilterLabel(value: CalendarFilterState["itemType"], copy: R
 function calendarStatusFilterLabel(value: CalendarFilterState["status"], copy: ReturnType<typeof scheduleCopy>) {
     if (value === "AVAILABLE") return copy.statusAvailable;
     if (value === "BLOCKED") return copy.statusBlocked;
-    if (value === "AWAITING_PAYMENT_CONFIRMATION") return copy.statusAwaitingPayment;
+    if (value === "PAYMENT_PENDING") return copy.statusAwaitingPayment;
     if (value === "CONFIRMED") return copy.statusConfirmed;
     if (value === "CANCELLED") return copy.statusCancelled;
     if (value === "PAST") return copy.statusPast;
@@ -1736,6 +1736,8 @@ function ManualBookingForm({
     const [reminderOptIn, setReminderOptIn] = useState(false);
     const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
     const [overrideReason, setOverrideReason] = useState("");
+    const [restrictionOverride, setRestrictionOverride] = useState(false);
+    const [restrictionOverrideReason, setRestrictionOverrideReason] = useState("");
     const selectedService = services.find((service) => String(service.id) === serviceId);
     const {data: serviceVariants = [], isFetching: variantsFetching, isError: variantsError} = useListServiceVariantsQuery(Number(serviceId), {skip: !serviceId});
     const selectedVariant = serviceVariants.find((variant) => String(variant.id) === variantId);
@@ -1754,7 +1756,9 @@ function ManualBookingForm({
             startsAt: selectedSlot.startsAt,
             reminderOptIn,
             overrideClientBuffer,
-            clientBufferOverrideReason: overrideClientBuffer ? overrideReason.trim() : null
+            clientBufferOverrideReason: overrideClientBuffer ? overrideReason.trim() : null,
+            overrideClientRestriction: restrictionOverride,
+            clientRestrictionOverrideReason: restrictionOverride ? restrictionOverrideReason.trim() : null
         };
     }
 
@@ -1780,6 +1784,8 @@ function ManualBookingForm({
             setVariantId("");
             setReminderOptIn(false);
             setOverrideReason("");
+            setRestrictionOverride(false);
+            setRestrictionOverrideReason("");
             setOverrideDialogOpen(false);
             onCreated();
             toast.success(t("manualBooking.created"));
@@ -1788,7 +1794,8 @@ function ManualBookingForm({
         }
     }
 
-    const disabled = isLoading || isPreviewing || !clientIdentifier.trim() || !selectedSlot || !selectedService || !selectedVariant;
+    const disabled = isLoading || isPreviewing || !clientIdentifier.trim() || !selectedSlot || !selectedService || !selectedVariant
+        || (restrictionOverride && !restrictionOverrideReason.trim());
 
     return (
         <>
@@ -1845,6 +1852,11 @@ function ManualBookingForm({
                     <input checked={reminderOptIn} className="mt-0.5" onChange={(event) => setReminderOptIn(event.target.checked)} type="checkbox" />
                     <span className="min-w-0"><strong className="block break-words font-medium text-stone-900">{t("manualBooking.reminder")}</strong><span className="mt-1 block break-words text-xs leading-5 text-stone-500">{t("manualBooking.reminderHint")}</span></span>
                 </label>
+                <label className="flex min-w-0 items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-950">
+                    <input checked={restrictionOverride} className="mt-0.5" onChange={(event) => setRestrictionOverride(event.target.checked)} type="checkbox" />
+                    <span className="min-w-0"><strong className="block font-medium">{locale === "ua" ? "Виняток для обмеженого клієнта" : "Restricted-client exception"}</strong><span className="mt-1 block text-xs leading-5">{locale === "ua" ? "Лише для свідомого ADMIN override; дія потрапить в audit." : "Use only for an intentional ADMIN override; the action is audited."}</span></span>
+                </label>
+                {restrictionOverride ? <Field label={locale === "ua" ? "Обов’язкова причина винятку" : "Required exception reason"}><textarea className="min-h-20 w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm" maxLength={500} onChange={(event) => setRestrictionOverrideReason(event.target.value)} value={restrictionOverrideReason}/></Field> : null}
                 <button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={disabled} onClick={() => void submit()} type="button">
                     {isLoading ? t("manualBooking.saving") : t("manualBooking.action")}
                 </button>

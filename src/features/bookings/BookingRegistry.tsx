@@ -11,7 +11,7 @@ import {useListUsersQuery} from "@/features/users/users.api";
 import {useListAdminServicesQuery} from "@/features/services/services.api";
 import {API_URL} from "@/shared/constants/env";
 
-const statuses: BookingStatus[] = ["AWAITING_PAYMENT_CONFIRMATION", "CONFIRMED", "CANCELLED"];
+const statuses: BookingStatus[] = ["PAYMENT_PENDING", "CONFIRMED", "CANCELLED"];
 const sources: BookingSource[] = ["PUBLIC_ACCOUNT", "ADMIN_MANUAL", "GUEST"];
 
 export default function BookingRegistry() {

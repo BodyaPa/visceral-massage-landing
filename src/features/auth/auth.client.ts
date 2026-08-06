@@ -12,6 +12,7 @@ export type AuthenticatedUser = {
     dateOfBirth: string | null;
     avatarMediaId: string | null;
     avatarMediaUrl: string | null;
+    preferredLocale: "ua" | "en";
     roles: UserRole[];
 };
 
@@ -286,6 +287,10 @@ export function logout() {
 
 export function updateProfile(request: ProfileUpdateRequest) {
     return putAuth<AuthenticatedUser>("me", request);
+}
+
+export function updatePreferredLocale(locale: "ua" | "en") {
+    return putAuth<AuthenticatedUser>("me/locale", {locale});
 }
 
 export function uploadAvatar(file: File) {

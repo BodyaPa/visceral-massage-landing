@@ -14,7 +14,8 @@ const hidden: ManagementNavigationVisibility = {
     showReviews: false,
     showRecords: false,
     showClients: false,
-    showSiteSettings: false
+    showSiteSettings: false,
+    showLegal: false
 };
 
 const label = (key: string) => key;
@@ -33,7 +34,8 @@ describe("management navigation groups", () => {
             showReviews: true,
             showRecords: true,
             showClients: true,
-            showSiteSettings: true
+            showSiteSettings: true,
+            showLegal: true
         }, label);
 
         expect(groups.map((group) => group.id)).toEqual(["operations", "clientsUsers", "catalog", "loyalty", "content", "system"]);

@@ -13,6 +13,10 @@ import {loyaltyApi} from "@/features/loyalty/loyalty.api";
 import {trainingApi} from "@/features/training/training.api";
 import {reviewsApi} from "@/features/reviews/reviews.api";
 import {clientsApi} from "@/features/clients/clients.api";
+import {paymentsApi} from "@/features/payments/payments.api";
+import {messagesApi} from "@/features/messages/messages.api";
+import {legalApi} from "@/features/legal/legal.api";
+import {certificatesApi} from "@/features/certificates/certificates.api";
 
 export const rootReducer = combineReducers({
     [newsApi.reducerPath]: newsApi.reducer,
@@ -28,6 +32,10 @@ export const rootReducer = combineReducers({
     [trainingApi.reducerPath]: trainingApi.reducer,
     [reviewsApi.reducerPath]: reviewsApi.reducer,
     [clientsApi.reducerPath]: clientsApi.reducer,
+    [paymentsApi.reducerPath]: paymentsApi.reducer,
+    [messagesApi.reducerPath]: messagesApi.reducer,
+    [legalApi.reducerPath]: legalApi.reducer,
+    [certificatesApi.reducerPath]: certificatesApi.reducer,
     [siteSettingsApi.reducerPath]: siteSettingsApi.reducer,
 });
 

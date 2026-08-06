@@ -46,7 +46,8 @@ export default function PromoCodesManagement() {
                 perUserLimit: numberValue(form.get("perUserLimit")),
                 assignedUserId: assignedUser?.id ?? null,
                 serviceIds: [],
-                trainingTypeIds: form.getAll("trainingTypeIds").map(Number)
+                trainingTypeIds: form.getAll("trainingTypeIds").map(Number),
+                loyaltyRewardCompatible: form.get("loyaltyRewardCompatible") === "on"
             }).unwrap();
             formElement.reset();
             setAssignedUser(null);
@@ -67,7 +68,8 @@ export default function PromoCodesManagement() {
                 perUserLimit: promo.perUserLimit,
                 assignedUserId: promo.assignedUserId,
                 serviceIds: promo.serviceIds,
-                trainingTypeIds: promo.trainingTypeIds
+                trainingTypeIds: promo.trainingTypeIds,
+                loyaltyRewardCompatible: promo.loyaltyRewardCompatible
             }}).unwrap();
         } catch {
             toast.error(t("error"));
@@ -87,6 +89,7 @@ export default function PromoCodesManagement() {
                     </div>
                     <Field htmlFor="promo-start" label={t("startsAt")}><Input id="promo-start" name="startsAt" type="datetime-local" /></Field>
                     <Field htmlFor="promo-end" label={t("endsAt")}><Input id="promo-end" name="endsAt" type="datetime-local" /></Field>
+                    <Checkbox id="promo-loyalty-compatible" label={t("loyaltyRewardCompatible")} name="loyaltyRewardCompatible" />
                     <fieldset className="rounded-xl border border-stone-200 bg-stone-50 p-3 sm:col-span-2 xl:col-span-4">
                         <legend className="px-1 text-sm font-semibold text-stone-800">{t("trainingTypes")}</legend>
                         <p className="mb-3 text-xs leading-5 text-stone-500">{t("trainingTypesHint")}</p>

@@ -23,6 +23,7 @@ import type {AccountTrainingParticipation} from "@/types/training";
 import Dialog from "@/components/ui/overlay/Dialog";
 import Button from "@/components/ui/button/Button";
 import {useCreateReviewMutation, useGetReviewEligibilityQuery} from "@/features/reviews/reviews.api";
+import {PaymentButton} from "@/features/payments/PaymentButton";
 
 const INITIAL_VISIBLE_ITEMS = 6;
 
@@ -192,8 +193,8 @@ function AccountEmptyAction({body, href, label}: {body: string; href: string; la
 }
 
 function BookingCard({booking, cancelling, copy, locale, onCancel, onReview, reviewable}: {booking: Booking; cancelling: boolean; copy: Copy; locale: Locale; onCancel: (booking: Booking) => void; onReview: (booking: Booking) => void; reviewable: boolean}) {
-    const cancellable = booking.status !== "CANCELLED" && new Date(booking.startsAt).getTime() >= Date.now() + 2 * 60 * 60 * 1000;
-    const canPay = booking.status === "AWAITING_PAYMENT_CONFIRMATION" && Boolean(booking.externalPaymentUrl);
+    const cancellable = booking.canSelfCancel;
+    const canPay = booking.status === "PAYMENT_PENDING" && Boolean(booking.paymentId);
 
     return (
         <article className="rounded-lg border border-stone-200 bg-stone-50 p-3">
@@ -207,7 +208,7 @@ function BookingCard({booking, cancelling, copy, locale, onCancel, onReview, rev
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs font-medium text-stone-700">{formatDateTimeRange(booking.startsAt, booking.endsAt, locale)}</p>
                 <div className="flex flex-wrap justify-end gap-2">
-                    {canPay ? <a className="inline-flex min-h-9 items-center rounded-md bg-stone-950 px-3 py-1.5 text-xs font-semibold text-white outline-none transition-[background-color,box-shadow,transform] hover:bg-stone-800 hover:shadow-sm active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2" href={booking.externalPaymentUrl ?? undefined} rel="noreferrer" target="_blank">{copy.pay}</a> : null}
+                    {canPay && booking.paymentId ? <PaymentButton className="inline-flex min-h-9 items-center rounded-md bg-stone-950 px-3 py-1.5 text-xs font-semibold text-white outline-none transition-[background-color,box-shadow,transform] hover:bg-stone-800 hover:shadow-sm active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2" paymentId={booking.paymentId}>{copy.pay}</PaymentButton> : null}
                     {cancellable ? <button className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300" disabled={cancelling} onClick={() => onCancel(booking)} type="button">{copy.cancel}</button> : null}
                     {reviewable ? <button className={pagerButtonClass} onClick={() => onReview(booking)} type="button">{copy.leaveReview}</button> : null}
                 </div>
@@ -227,12 +228,12 @@ function BookingCard({booking, cancelling, copy, locale, onCancel, onReview, rev
 
 function EventCard({cancelling, copy, event, locale, onCancel, onReview, reviewable}: {cancelling: boolean; copy: Copy; event: AccountTrainingParticipation; locale: Locale; onCancel: (event: AccountTrainingParticipation) => void; onReview: (event: AccountTrainingParticipation) => void; reviewable: boolean}) {
     const status = eventStatus(event);
-    const cancellable = status === "ACTIVE" && new Date(event.startsAt).getTime() >= Date.now() + 2 * 60 * 60 * 1000;
+    const cancellable = event.canSelfCancel;
     const canPay = status === "ACTIVE"
         && !event.paymentConfirmed
         && !event.paidWithMembership
         && !event.paidWithLoyaltyVoucher
-        && Boolean(event.externalPaymentUrl);
+        && Boolean(event.paymentId);
 
     return (
         <article className="rounded-lg border border-stone-200 bg-stone-50 p-3">
@@ -246,7 +247,7 @@ function EventCard({cancelling, copy, event, locale, onCancel, onReview, reviewa
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs font-medium text-stone-700">{formatDateTimeRange(event.startsAt, event.endsAt, locale)}</p>
                 <div className="flex flex-wrap justify-end gap-2">
-                    {canPay ? <a className="inline-flex min-h-9 items-center rounded-md bg-stone-950 px-3 py-1.5 text-xs font-semibold text-white outline-none transition-[background-color,box-shadow,transform] hover:bg-stone-800 hover:shadow-sm active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2" href={event.externalPaymentUrl ?? undefined} rel="noreferrer" target="_blank">{copy.pay}</a> : null}
+                    {canPay && event.paymentId ? <PaymentButton className="inline-flex min-h-9 items-center rounded-md bg-stone-950 px-3 py-1.5 text-xs font-semibold text-white outline-none transition-[background-color,box-shadow,transform] hover:bg-stone-800 hover:shadow-sm active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-stone-950 focus-visible:ring-offset-2" paymentId={event.paymentId}>{copy.pay}</PaymentButton> : null}
                     {cancellable ? <button className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-red-300" disabled={cancelling} onClick={() => onCancel(event)} type="button">{copy.cancel}</button> : null}
                     {reviewable ? <button className={pagerButtonClass} onClick={() => onReview(event)} type="button">{copy.leaveReview}</button> : null}
                 </div>
@@ -266,7 +267,7 @@ function EventCard({cancelling, copy, event, locale, onCancel, onReview, reviewa
 
 function BookingMetaChips({booking, copy}: {booking: Booking; copy: Copy}) {
     const chips = [
-        booking.status === "AWAITING_PAYMENT_CONFIRMATION" ? copy.paymentPendingHint : null,
+        booking.status === "PAYMENT_PENDING" ? copy.paymentPendingHint : null,
         booking.paidWithMembership ? copy.paidWithMembership : null,
         booking.paidWithLoyaltyVoucher ? copy.paidWithLoyaltyVoucher : null,
         booking.reminderOptIn ? copy.reminderEnabled : null
@@ -463,9 +464,12 @@ function labels(t: T) {
             other: t("cancelReasons.other")
         },
         statuses: {
-            AWAITING_PAYMENT_CONFIRMATION: t("statuses.AWAITING_PAYMENT_CONFIRMATION"),
+            PAYMENT_PENDING: t("statuses.PAYMENT_PENDING"),
             CONFIRMED: t("statuses.CONFIRMED"),
             CANCELLED: t("statuses.CANCELLED"),
+            EXPIRED: t("statuses.EXPIRED"),
+            ATTENDED: t("statuses.ATTENDED"),
+            NO_SHOW: t("statuses.NO_SHOW"),
             PAST: t("statuses.PAST")
         },
         eventStatuses: {

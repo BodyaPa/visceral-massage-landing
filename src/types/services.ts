@@ -39,5 +39,5 @@ export type ServiceInput = {
     active: boolean;
 };
 
-export type ServiceVariant = {id:number;serviceId:number;nameUa:string;nameEn:string|null;durationMinutes:number;price:number;bufferBeforeMinutes:number;bufferAfterMinutes:number;depositAmount:number;active:boolean;specialistIds:number[];resourceIds:number[]};
+export type ServiceVariant = {id:number;serviceId:number;nameUa:string;nameEn:string|null;durationMinutes:number;price:number;bufferBeforeMinutes:number;bufferAfterMinutes:number;prepaymentEnabled:boolean;depositAmount:number;active:boolean;specialistIds:number[];resourceIds:number[]};
 export type ServiceVariantInput = Omit<ServiceVariant,"id"|"serviceId">;

@@ -39,7 +39,6 @@ import {
 import {useListPublicOfficesQuery} from "@/features/offices/offices.api";
 import {
     useCancelFinanceMembershipPurchaseMutation,
-    useConfirmMembershipPaymentMutation,
     useListFinanceMembershipPurchasesQuery
 } from "@/features/memberships/memberships.api";
 import type {BookingStatus, FinanceBooking, FinanceTrainingParticipant, FinanceExpense, FinanceSpecialistSettings, FinancialTransaction} from "@/types/bookings";
@@ -48,7 +47,7 @@ import type {Office} from "@/types/offices";
 import Tabs from "@/components/ui/navigation/Tabs";
 import Pagination from "@/components/ui/table/Pagination";
 
-const statuses: Array<BookingStatus | ""> = ["", "AWAITING_PAYMENT_CONFIRMATION", "CONFIRMED", "CANCELLED"];
+const statuses: Array<BookingStatus | ""> = ["", "PAYMENT_PENDING", "CONFIRMED", "CANCELLED"];
 const tabs = ["pending", "memberships", "events", "transactions", "expenses", "reports"] as const;
 type FinanceTab = typeof tabs[number];
 
@@ -63,7 +62,6 @@ export default function FinanceBookingsManagement() {
     const [to, setTo] = useState("");
     const [selectedBooking, setSelectedBooking] = useState<FinanceBooking | null>(null);
     const [bookingToConfirm, setBookingToConfirm] = useState<FinanceBooking | null>(null);
-    const [membershipToConfirm, setMembershipToConfirm] = useState<MembershipPurchase | null>(null);
     const [membershipToCancel, setMembershipToCancel] = useState<MembershipPurchase | null>(null);
     const [trainingParticipantToConfirm, setTrainingParticipantToConfirm] = useState<FinanceTrainingParticipant | null>(null);
     const [bookingPage, setBookingPage] = useState(0);
@@ -74,7 +72,7 @@ export default function FinanceBookingsManagement() {
 
     const {data: officesData} = useListPublicOfficesQuery({size: 100});
     const activeOffices = useMemo(() => officesData?.content ?? [], [officesData?.content]);
-    const bookingStatusFilter = tab === "pending" ? "AWAITING_PAYMENT_CONFIRMATION" : status;
+    const bookingStatusFilter = tab === "pending" ? "PAYMENT_PENDING" : status;
     const {data, isFetching, isError} = useListFinanceBookingsQuery({
         status: bookingStatusFilter,
         officeId: officeId ? Number(officeId) : undefined,
@@ -116,7 +114,6 @@ export default function FinanceBookingsManagement() {
     const [completeRefund, {isLoading: completingRefund}] = useCompleteRefundMutation();
     const [confirmPayment, {isLoading: isConfirming}] = useConfirmPaymentMutation();
     const [confirmTrainingParticipantPayment, {isLoading: isConfirmingTrainingParticipant}] = useConfirmTrainingParticipantPaymentMutation();
-    const [confirmMembershipPayment, {isLoading: isConfirmingMembership}] = useConfirmMembershipPaymentMutation();
     const [cancelMembershipPurchase, {isLoading: isCancellingMembership}] = useCancelFinanceMembershipPurchaseMutation();
     const [markPayoutPaid, {isLoading: isMarkingPayout}] = useMarkSpecialistPayoutPaidMutation();
     const allBookings = useMemo(() => data?.content ?? [], [data?.content]);
@@ -130,7 +127,7 @@ export default function FinanceBookingsManagement() {
     const pendingTrainingParticipantCount = trainingParticipants.filter((enrollment) => enrollment.status === "PAYMENT_PENDING").length;
     const selectedOffice = officeId ? activeOffices.find((office) => String(office.id) === officeId) : undefined;
     const scopeChips = [
-        tab === "pending" ? t("statuses.AWAITING_PAYMENT_CONFIRMATION") : status ? t(`statuses.${status}`) : t("statuses.all"),
+        tab === "pending" ? t("statuses.PAYMENT_PENDING") : status ? t(`statuses.${status}`) : t("statuses.all"),
         selectedOffice?.name ?? t("filters.allOffices"),
         from || to ? `${from || "..."} - ${to || "..."}` : t("filters.allPeriods")
     ];
@@ -151,9 +148,9 @@ export default function FinanceBookingsManagement() {
         setLedgerPage(0);
     }, [status, officeId, from, to, tab]);
 
-    async function confirm(bookingId: number) {
+    async function confirm(bookingId: number, method: "CASH" | "TERMINAL") {
         try {
-            await confirmPayment(bookingId).unwrap();
+            await confirmPayment({id: bookingId, method}).unwrap();
             setSelectedBooking(null);
             setBookingToConfirm(null);
             toast.success(t("confirmed"));
@@ -176,17 +173,6 @@ export default function FinanceBookingsManagement() {
         }
     }
 
-    async function confirmMembership(purchaseId: number) {
-        try {
-            await confirmMembershipPayment(purchaseId).unwrap();
-            await refetchSummary();
-            setMembershipToConfirm(null);
-            toast.success(t("memberships.confirmed"));
-        } catch {
-            toast.error(t("memberships.confirmError"));
-        }
-    }
-
     async function cancelMembership(purchaseId: number) {
         try {
             await cancelMembershipPurchase(purchaseId).unwrap();
@@ -198,9 +184,9 @@ export default function FinanceBookingsManagement() {
         }
     }
 
-    async function confirmTrainingParticipant(enrollmentId: number) {
+    async function confirmTrainingParticipant(enrollmentId: number, method: "CASH" | "TERMINAL") {
         try {
-            await confirmTrainingParticipantPayment(enrollmentId).unwrap();
+            await confirmTrainingParticipantPayment({id: enrollmentId, method}).unwrap();
             setTrainingParticipantToConfirm(null);
             toast.success(t("events.confirmed"));
         } catch {
@@ -285,7 +271,7 @@ export default function FinanceBookingsManagement() {
                     await completeRefund({id: item.id, externalReference}).unwrap();
                     toast.success(t("ledger.refundCompleted"));
                 }} reconciliation={reconciliation} pendingRefundIds={new Set((refundsData?.content ?? []).map((item) => item.id))} t={t} transactions={ledgerData?.content ?? []} /><ServerPager page={ledgerPage} totalPages={ledgerData?.totalPages ?? 0} onPage={setLedgerPage} t={t} /></> : null}
-                {tab === "memberships" ? <><MembershipFinanceSection cancelling={isCancellingMembership} confirming={isConfirmingMembership} isError={membershipPurchasesError} isFetching={membershipPurchasesFetching} locale={locale} onCancel={setMembershipToCancel} onConfirm={setMembershipToConfirm} purchases={membershipPurchases} t={t} /><ServerPager page={membershipPage} totalPages={membershipPurchasesData?.totalPages ?? 0} onPage={setMembershipPage} t={t} /></> : null}
+                {tab === "memberships" ? <><MembershipFinanceSection cancelling={isCancellingMembership} isError={membershipPurchasesError} isFetching={membershipPurchasesFetching} locale={locale} onCancel={setMembershipToCancel} purchases={membershipPurchases} t={t} /><ServerPager page={membershipPage} totalPages={membershipPurchasesData?.totalPages ?? 0} onPage={setMembershipPage} t={t} /></> : null}
                 {tab === "events" ? <><TrainingParticipantsFinanceSection confirming={isConfirmingTrainingParticipant} enrollments={trainingParticipants} isError={trainingParticipantsError} isFetching={trainingParticipantsFetching} locale={locale} onConfirm={setTrainingParticipantToConfirm} t={t} /><ServerPager page={eventPage} totalPages={trainingParticipantsData?.totalPages ?? 0} onPage={setEventPage} t={t} /></> : null}
                 {tab === "expenses" ? <><ExpensesSection expenses={expenses} isError={expensesError} isFetching={expensesFetching} locale={locale} offices={activeOffices} t={t} /><ServerPager page={expensePage} totalPages={expensesData?.totalPages ?? 0} onPage={setExpensePage} t={t} /></> : null}
                 {tab === "reports" ? <ReportsSection businessIncome={businessIncome} estimatedTax={estimatedTax} expenses={expenseTotal} income={income} locale={locale} officeId={officeId} quarterlyTaxPercent={quarterlyTaxPercent} result={result} specialistEarnings={specialistEarnings} status={status} taxableIncome={taxableIncome} t={t} to={to} from={from} /> : null}
@@ -293,9 +279,8 @@ export default function FinanceBookingsManagement() {
 
             {selectedBooking ? <BookingDetails booking={selectedBooking} confirming={isConfirming} locale={locale} markingPayout={isMarkingPayout} onClose={() => setSelectedBooking(null)} onConfirm={requestConfirm} onMarkPayout={markPayout} t={t} /> : null}
             {bookingToConfirm ? <PaymentReviewModal booking={bookingToConfirm} confirming={isConfirming} locale={locale} onClose={() => setBookingToConfirm(null)} onConfirm={confirm} t={t} /> : null}
-            {membershipToConfirm ? <ManualReviewModal amount={formatAmount(membershipToConfirm.priceSnapshot, locale)} body={t("memberships.reviewBody")} confirming={isConfirmingMembership} onClose={() => setMembershipToConfirm(null)} onConfirm={() => confirmMembership(membershipToConfirm.id)} subtitle={t(`memberships.statuses.${membershipToConfirm.status}`)} t={t} title={locale === "ua" ? membershipToConfirm.titleUa : membershipToConfirm.titleEn} /> : null}
             {membershipToCancel ? <MembershipCancelModal cancelling={isCancellingMembership} locale={locale} onClose={() => setMembershipToCancel(null)} onConfirm={() => cancelMembership(membershipToCancel.id)} purchase={membershipToCancel} t={t} /> : null}
-            {trainingParticipantToConfirm ? <ManualReviewModal amount={formatAmount(trainingParticipantToConfirm.bookedPrice, locale)} body={t("events.reviewBody")} confirming={isConfirmingTrainingParticipant} onClose={() => setTrainingParticipantToConfirm(null)} onConfirm={() => confirmTrainingParticipant(trainingParticipantToConfirm.id)} subtitle={`${formatDateTime(trainingParticipantToConfirm.startsAt, locale)} · ${trainingParticipantToConfirm.officeName ?? t("withoutOffice")}`} t={t} title={locale === "ua" ? trainingParticipantToConfirm.serviceTitleUa : trainingParticipantToConfirm.serviceTitleEn || trainingParticipantToConfirm.serviceTitleUa} /> : null}
+            {trainingParticipantToConfirm ? <ManualReviewModal amount={formatAmount(trainingParticipantToConfirm.bookedPrice, locale)} body={t("events.reviewBody")} confirming={isConfirmingTrainingParticipant} onClose={() => setTrainingParticipantToConfirm(null)} onConfirm={(method) => confirmTrainingParticipant(trainingParticipantToConfirm.id, method)} subtitle={`${formatDateTime(trainingParticipantToConfirm.startsAt, locale)} · ${trainingParticipantToConfirm.officeName ?? t("withoutOffice")}`} t={t} title={locale === "ua" ? trainingParticipantToConfirm.serviceTitleUa : trainingParticipantToConfirm.serviceTitleEn || trainingParticipantToConfirm.serviceTitleUa} /> : null}
         </section>
     );
 }
@@ -378,7 +363,7 @@ function PayoutBadge({booking, t}: {booking: FinanceBooking; t: T}) {
 }
 
 function FinanceAction({booking, confirming, markingPayout, onConfirm, onMarkPayout, t}: {booking: FinanceBooking; confirming: boolean; markingPayout: boolean; onConfirm: (booking: FinanceBooking) => void; onMarkPayout: (id: number) => void; t: T}) {
-    if (booking.status === "AWAITING_PAYMENT_CONFIRMATION") {
+    if (booking.status === "PAYMENT_PENDING") {
         return <div className="grid min-w-[150px] gap-2"><button className={financePrimaryActionClass} disabled={confirming} onClick={() => onConfirm(booking)} type="button">{confirming ? t("confirming") : t("confirm")}</button>{booking.externalPaymentUrl ? <a className={`${externalActionClass} w-full justify-center`} href={booking.externalPaymentUrl} rel="noreferrer" target="_blank">{t("details.paymentLink")}</a> : null}</div>;
     }
     if (booking.status === "CONFIRMED" && booking.specialistPayoutStatus === "PENDING") {
@@ -391,19 +376,19 @@ const financePrimaryActionClass = "inline-flex min-h-10 w-full min-w-[150px] ite
 const financeSecondaryActionClass = "inline-flex min-h-10 w-full min-w-[150px] items-center justify-center rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 shadow-sm transition-[background-color,transform] hover:bg-stone-100 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 disabled:text-stone-400";
 
 function StatusBadge({status, t}: {status: BookingStatus; t: T}) {
-    const tone = status === "CONFIRMED" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : status === "AWAITING_PAYMENT_CONFIRMATION" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-stone-200 bg-stone-100 text-stone-600";
+    const tone = status === "CONFIRMED" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : status === "PAYMENT_PENDING" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-stone-200 bg-stone-100 text-stone-600";
     return <span className={`inline-flex min-h-7 max-w-full items-center break-words rounded-full border px-2.5 py-1 text-xs font-medium ${tone}`}>{t(`statuses.${status}`)}</span>;
 }
 
-function MembershipFinanceSection({cancelling, confirming, isError, isFetching, locale, onCancel, onConfirm, purchases, t}: {cancelling: boolean; confirming: boolean; isError: boolean; isFetching: boolean; locale: string; onCancel: (purchase: MembershipPurchase) => void; onConfirm: (purchase: MembershipPurchase) => void; purchases: MembershipPurchase[]; t: T}) {
-    return <div className="p-4 sm:p-5"><div className="mb-4"><h2 className="text-base font-semibold text-stone-950">{t("memberships.title")}</h2><p className="mt-1 text-sm text-stone-500">{t("memberships.subtitle")}</p></div>{isError ? <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("memberships.loadError")}</p> : null}{isFetching ? <p className="py-8 text-center text-sm text-stone-500">{t("memberships.loading")}</p> : null}{!isFetching && purchases.length === 0 ? <EmptyState body={t("memberships.empty")} title={t("memberships.emptyTitle")} /> : null}<BoundedList initialCount={25} items={purchases} labels={{showLess: t("bounded.showLess"), showMore: t("bounded.showMore"), showing: (visible, total) => t("bounded.showing", {total, visible})}} renderItems={(visiblePurchases) => <div className="grid gap-3 lg:grid-cols-2">{visiblePurchases.map((purchase) => <MembershipFinanceCard cancelling={cancelling} confirming={confirming} key={purchase.id} locale={locale} onCancel={onCancel} onConfirm={onConfirm} purchase={purchase} t={t} />)}</div>} step={25} /></div>;
+function MembershipFinanceSection({cancelling, isError, isFetching, locale, onCancel, purchases, t}: {cancelling: boolean; isError: boolean; isFetching: boolean; locale: string; onCancel: (purchase: MembershipPurchase) => void; purchases: MembershipPurchase[]; t: T}) {
+    return <div className="p-4 sm:p-5"><div className="mb-4"><h2 className="text-base font-semibold text-stone-950">{t("memberships.title")}</h2><p className="mt-1 text-sm text-stone-500">{t("memberships.subtitle")}</p></div>{isError ? <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{t("memberships.loadError")}</p> : null}{isFetching ? <p className="py-8 text-center text-sm text-stone-500">{t("memberships.loading")}</p> : null}{!isFetching && purchases.length === 0 ? <EmptyState body={t("memberships.empty")} title={t("memberships.emptyTitle")} /> : null}<BoundedList initialCount={25} items={purchases} labels={{showLess: t("bounded.showLess"), showMore: t("bounded.showMore"), showing: (visible, total) => t("bounded.showing", {total, visible})}} renderItems={(visiblePurchases) => <div className="grid gap-3 lg:grid-cols-2">{visiblePurchases.map((purchase) => <MembershipFinanceCard cancelling={cancelling} key={purchase.id} locale={locale} onCancel={onCancel} purchase={purchase} t={t} />)}</div>} step={25} /></div>;
 }
 
-function MembershipFinanceCard({cancelling, confirming, locale, onCancel, onConfirm, purchase, t}: {cancelling: boolean; confirming: boolean; locale: string; onCancel: (purchase: MembershipPurchase) => void; onConfirm: (purchase: MembershipPurchase) => void; purchase: MembershipPurchase; t: T}) {
+function MembershipFinanceCard({cancelling, locale, onCancel, purchase, t}: {cancelling: boolean; locale: string; onCancel: (purchase: MembershipPurchase) => void; purchase: MembershipPurchase; t: T}) {
     const isAwaitingPayment = purchase.status === "AWAITING_PAYMENT_CONFIRMATION";
     const canCancel = isAwaitingPayment || (purchase.status === "ACTIVE" && purchase.visitsTotal != null && purchase.visitsRemaining === purchase.visitsTotal);
     const statusTone = purchase.status === "ACTIVE" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : purchase.status === "AWAITING_PAYMENT_CONFIRMATION" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-stone-200 bg-stone-100 text-stone-600";
-    return <article className="rounded-xl border border-stone-200 bg-white p-4"><div className="flex min-w-0 items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{purchase.offerKind === "CERTIFICATE" ? t("memberships.certificate") : t("memberships.membership")}</p><h3 className="mt-1 break-words text-base font-semibold text-stone-950">{locale === "ua" ? purchase.titleUa : purchase.titleEn}</h3><span className={`mt-2 inline-flex min-h-7 items-center rounded-full border px-2.5 py-1 text-xs font-medium ${statusTone}`}>{t(`memberships.statuses.${purchase.status}`)}</span></div><strong className="shrink-0 text-sm text-stone-950">{formatAmount(purchase.priceSnapshot, locale)}</strong></div><dl className="mt-4 grid gap-2 text-sm text-stone-600"><Detail label={t("memberships.visits")} value={purchase.visitsRemaining == null ? t("memberships.certificate") : `${purchase.visitsRemaining}/${purchase.visitsTotal ?? "—"}`} /><Detail label={t("memberships.createdAt")} value={formatDateTime(purchase.createdAt, locale)} /></dl><div className="mt-4 flex flex-wrap justify-end gap-2">{canCancel ? <button className="inline-flex min-h-9 items-center rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:text-red-300" disabled={confirming || cancelling} onClick={() => onCancel(purchase)} type="button">{cancelling ? t("memberships.cancelling") : t("memberships.cancel")}</button> : null}{isAwaitingPayment ? <button className="inline-flex min-h-9 items-center rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-stone-700 disabled:bg-stone-300" disabled={confirming || cancelling} onClick={() => onConfirm(purchase)} type="button">{confirming ? t("confirming") : t("memberships.confirm")}</button> : null}</div></article>;
+    return <article className="rounded-xl border border-stone-200 bg-white p-4"><div className="flex min-w-0 items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">{purchase.offerKind === "CERTIFICATE" ? t("memberships.certificate") : t("memberships.membership")}</p><h3 className="mt-1 break-words text-base font-semibold text-stone-950">{locale === "ua" ? purchase.titleUa : purchase.titleEn}</h3><span className={`mt-2 inline-flex min-h-7 items-center rounded-full border px-2.5 py-1 text-xs font-medium ${statusTone}`}>{t(`memberships.statuses.${purchase.status}`)}</span></div><strong className="shrink-0 text-sm text-stone-950">{formatAmount(purchase.priceSnapshot, locale)}</strong></div><dl className="mt-4 grid gap-2 text-sm text-stone-600"><Detail label={t("memberships.visits")} value={purchase.visitsRemaining == null ? t("memberships.certificate") : `${purchase.visitsRemaining}/${purchase.visitsTotal ?? "—"}`} /><Detail label={t("memberships.createdAt")} value={formatDateTime(purchase.createdAt, locale)} /></dl><div className="mt-4 flex flex-wrap justify-end gap-2">{canCancel ? <button className="inline-flex min-h-9 items-center rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:text-red-300" disabled={cancelling} onClick={() => onCancel(purchase)} type="button">{cancelling ? t("memberships.cancelling") : t("memberships.cancel")}</button> : null}{isAwaitingPayment ? <span className="text-xs text-stone-500">{t("memberships.paymentAwaitingProvider")}</span> : null}</div></article>;
 }
 
 function TrainingParticipantsFinanceSection({confirming, enrollments, isError, isFetching, locale, onConfirm, t}: {confirming: boolean; enrollments: FinanceTrainingParticipant[]; isError: boolean; isFetching: boolean; locale: string; onConfirm: (enrollment: FinanceTrainingParticipant) => void; t: T}) {
@@ -616,13 +601,15 @@ function BookingDetails({booking, confirming, locale, markingPayout, onClose, on
     return <ModalSurface className="max-w-md p-4 sm:p-5" label={booking.clientName} onClose={onClose}><div className="flex min-w-0 items-start justify-between gap-3 border-b border-stone-200 pb-4"><div className="min-w-0"><p className="break-words text-xs font-semibold uppercase tracking-wide text-stone-500">{t("details.eyebrow")}</p><h2 className="mt-1 break-words text-xl font-semibold text-stone-950">{booking.clientName}</h2></div><button aria-label={t("details.close")} className="shrink-0 rounded-lg border border-stone-200 px-3 py-2 text-stone-600 hover:bg-stone-100" onClick={onClose} type="button">×</button></div><dl className="mt-5 space-y-4"><Detail label={t("table.service")} value={bookingServiceTitle(booking, locale)} /><Detail label={t("table.specialist")} value={booking.specialistName} /><Detail label={t("table.office")} value={booking.officeName ?? t("withoutOffice")} /><Detail label={t("table.when")} value={formatDateTime(booking.startsAt, locale)} /><Detail label={t("table.amount")} value={formatAmount(booking.bookedPrice, locale)} />{booking.paidWithMembership ? <Detail label={t("table.paymentSource")} value={t("table.paidWithMembership")} /> : null}<Detail label={t("table.businessShare")} value={formatAmount(booking.businessShare, locale)} /><Detail label={t("table.specialistShare")} value={`${formatAmount(booking.specialistShare, locale)} · ${formatPercent(booking.specialistSharePercent, locale)}`} /><Detail label={t("payout.label")} value={t(`payout.statuses.${booking.specialistPayoutStatus}`)} />{booking.specialistPayoutPaidAt ? <Detail label={t("payout.paidAt")} value={formatDateTime(booking.specialistPayoutPaidAt, locale)} /> : null}{booking.externalPaymentUrl ? <DetailLink label={t("details.paymentLink")} value={booking.externalPaymentUrl} /> : null}<div><dt className="break-words text-xs font-medium uppercase tracking-wide text-stone-500">{t("table.status")}</dt><dd className="mt-1"><StatusBadge status={booking.status} t={t} /></dd></div></dl><div className="mt-6"><FinanceAction booking={booking} confirming={confirming} markingPayout={markingPayout} onConfirm={onConfirm} onMarkPayout={onMarkPayout} t={t} /></div></ModalSurface>;
 }
 
-function PaymentReviewModal({booking, confirming, locale, onClose, onConfirm, t}: {booking: FinanceBooking; confirming: boolean; locale: string; onClose: () => void; onConfirm: (id: number) => void; t: T}) {
+function PaymentReviewModal({booking, confirming, locale, onClose, onConfirm, t}: {booking: FinanceBooking; confirming: boolean; locale: string; onClose: () => void; onConfirm: (id: number, method: "CASH" | "TERMINAL") => void; t: T}) {
     const [verified, setVerified] = useState(false);
-    return <ModalSurface className="max-w-lg p-4 sm:p-5" label={t("paymentReview.title")} onClose={onClose}><div className="flex min-w-0 items-start justify-between gap-3 border-b border-stone-200 pb-4"><div className="min-w-0"><p className="break-words text-xs font-semibold uppercase tracking-wide text-amber-700">{t("paymentReview.eyebrow")}</p><h2 className="mt-1 break-words text-xl font-semibold text-stone-950">{t("paymentReview.title")}</h2><p className="mt-2 break-words text-sm leading-6 text-stone-600">{t("paymentReview.body")}</p></div><button aria-label={t("details.close")} className="shrink-0 rounded-lg border border-stone-200 px-3 py-2 text-stone-600 hover:bg-stone-100" onClick={onClose} type="button">×</button></div><dl className="mt-5 grid gap-3 sm:grid-cols-2"><Detail label={t("table.client")} value={booking.clientName} /><Detail label={t("table.service")} value={bookingServiceTitle(booking, locale)} /><Detail label={t("table.when")} value={formatDateTime(booking.startsAt, locale)} /><Detail label={t("table.amount")} value={formatAmount(booking.bookedPrice, locale)} /><Detail label={t("table.specialist")} value={booking.specialistName} /><Detail label={t("table.office")} value={booking.officeName ?? t("withoutOffice")} /></dl>{booking.externalPaymentUrl ? <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3"><DetailLink label={t("details.paymentLink")} value={booking.externalPaymentUrl} /></div> : <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{t("paymentReview.noPaymentLink")}</p>}<label className="mt-5 flex items-start gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm text-stone-700"><input checked={verified} className="mt-1 h-4 w-4 rounded border-stone-300 text-stone-900" onChange={(event) => setVerified(event.target.checked)} type="checkbox" /><span className="min-w-0"><strong className="block break-words text-stone-950">{t("paymentReview.verified")}</strong><span className="mt-1 block break-words text-xs leading-5 text-stone-500">{t("paymentReview.verifyHint")}</span></span></label><div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-100" onClick={onClose} type="button">{t("paymentReview.cancel")}</button><button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={!verified || confirming} onClick={() => onConfirm(booking.id)} type="button">{confirming ? t("confirming") : t("paymentReview.confirm")}</button></div></ModalSurface>;
+    const [method, setMethod] = useState<"CASH" | "TERMINAL">("CASH");
+    return <ModalSurface className="max-w-lg p-4 sm:p-5" label={t("paymentReview.title")} onClose={onClose}><div className="flex min-w-0 items-start justify-between gap-3 border-b border-stone-200 pb-4"><div className="min-w-0"><p className="break-words text-xs font-semibold uppercase tracking-wide text-amber-700">{t("paymentReview.eyebrow")}</p><h2 className="mt-1 break-words text-xl font-semibold text-stone-950">{t("paymentReview.title")}</h2><p className="mt-2 break-words text-sm leading-6 text-stone-600">{t("paymentReview.body")}</p></div><button aria-label={t("details.close")} className="shrink-0 rounded-lg border border-stone-200 px-3 py-2 text-stone-600 hover:bg-stone-100" onClick={onClose} type="button">×</button></div><dl className="mt-5 grid gap-3 sm:grid-cols-2"><Detail label={t("table.client")} value={booking.clientName} /><Detail label={t("table.service")} value={bookingServiceTitle(booking, locale)} /><Detail label={t("table.when")} value={formatDateTime(booking.startsAt, locale)} /><Detail label={t("table.amount")} value={formatAmount(booking.bookedPrice, locale)} /><Detail label={t("table.specialist")} value={booking.specialistName} /><Detail label={t("table.office")} value={booking.officeName ?? t("withoutOffice")} /></dl><label className="mt-4 block text-sm font-medium text-stone-800">{t("paymentReview.method")}<select className={`${inputClass} mt-1`} onChange={(event) => setMethod(event.target.value as "CASH" | "TERMINAL")} value={method}><option value="CASH">{t("paymentReview.cash")}</option><option value="TERMINAL">{t("paymentReview.terminal")}</option></select></label><label className="mt-5 flex items-start gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm text-stone-700"><input checked={verified} className="mt-1 h-4 w-4 rounded border-stone-300 text-stone-900" onChange={(event) => setVerified(event.target.checked)} type="checkbox" /><span className="min-w-0"><strong className="block break-words text-stone-950">{t("paymentReview.verified")}</strong><span className="mt-1 block break-words text-xs leading-5 text-stone-500">{t("paymentReview.verifyHint")}</span></span></label><div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-100" onClick={onClose} type="button">{t("paymentReview.cancel")}</button><button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={!verified || confirming} onClick={() => onConfirm(booking.id, method)} type="button">{confirming ? t("confirming") : t("paymentReview.confirm")}</button></div></ModalSurface>;
 }
 
-function ManualReviewModal({amount, body, confirming, onClose, onConfirm, subtitle, t, title}: {amount: string; body: string; confirming: boolean; onClose: () => void; onConfirm: () => void; subtitle: string; t: T; title: string}) {
+function ManualReviewModal({amount, body, confirming, onClose, onConfirm, subtitle, t, title}: {amount: string; body: string; confirming: boolean; onClose: () => void; onConfirm: (method: "CASH" | "TERMINAL") => void; subtitle: string; t: T; title: string}) {
     const [verified, setVerified] = useState(false);
+    const [method, setMethod] = useState<"CASH" | "TERMINAL">("CASH");
     return (
         <ModalSurface className="max-w-lg p-4 sm:p-5" label={t("paymentReview.title")} onClose={onClose}>
                 <div className="flex min-w-0 items-start justify-between gap-3 border-b border-stone-200 pb-4">
@@ -638,6 +625,7 @@ function ManualReviewModal({amount, body, confirming, onClose, onConfirm, subtit
                     <Detail label={t("table.amount")} value={amount} />
                     <Detail label={t("table.status")} value={subtitle} />
                 </dl>
+                <label className="mt-4 block text-sm font-medium text-stone-800">{t("paymentReview.method")}<select className={`${inputClass} mt-1`} onChange={(event) => setMethod(event.target.value as "CASH" | "TERMINAL")} value={method}><option value="CASH">{t("paymentReview.cash")}</option><option value="TERMINAL">{t("paymentReview.terminal")}</option></select></label>
                 <label className="mt-5 flex items-start gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3 text-sm text-stone-700">
                     <input checked={verified} className="mt-1 h-4 w-4 rounded border-stone-300 text-stone-900" onChange={(event) => setVerified(event.target.checked)} type="checkbox" />
                     <span className="min-w-0">
@@ -647,7 +635,7 @@ function ManualReviewModal({amount, body, confirming, onClose, onConfirm, subtit
                 </label>
                 <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <button className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-800 hover:bg-stone-100" onClick={onClose} type="button">{t("paymentReview.cancel")}</button>
-                    <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={!verified || confirming} onClick={onConfirm} type="button">{confirming ? t("confirming") : t("paymentReview.confirm")}</button>
+                    <button className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300" disabled={!verified || confirming} onClick={() => onConfirm(method)} type="button">{confirming ? t("confirming") : t("paymentReview.confirm")}</button>
                 </div>
         </ModalSurface>
     );

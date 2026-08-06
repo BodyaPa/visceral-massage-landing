@@ -4,12 +4,14 @@ import {useEffect, useState, type ChangeEvent, type ReactNode} from "react";
 import {useTranslations} from "next-intl";
 import {useToast} from "@/components/ui/toast/ToastProvider";
 import {useCreateAdminMembershipOfferMutation, useListAdminMembershipOffersQuery, useUpdateAdminMembershipOfferMutation, useUploadAdminMembershipOfferMediaMutation} from "@/features/memberships/memberships.api";
-import {useCreateServiceMutation, useListAdminServicesQuery, useUpdateServiceMutation, useListServiceVariantsQuery, useCreateServiceVariantMutation, useUpdateServiceVariantMutation} from "@/features/services/services.api";
+import {useCreateServiceMutation, useListAdminServicesQuery, useUpdateServiceMutation, useListServiceVariantsQuery, useListAllServiceVariantsQuery, useCreateServiceVariantMutation, useUpdateServiceVariantMutation} from "@/features/services/services.api";
 import {useListUsersQuery} from "@/features/users/users.api";
 import {useListPublicOfficesQuery,useListOfficeResourcesQuery} from "@/features/offices/offices.api";
+import {useListTrainingTypesQuery} from "@/features/training/training.api";
 import {resolveApiMediaUrl} from "@/shared/lib/media/resolveApiMediaUrl";
 import type {MembershipOffer, MembershipOfferKind, MembershipOfferUpdateInput} from "@/types/memberships";
-import type {AdminService, ServiceInput, ServiceVariantInput} from "@/types/services";
+import type {AdminService, ServiceInput, ServiceVariant, ServiceVariantInput} from "@/types/services";
+import type {TrainingType} from "@/types/training";
 
 type ServiceEditorLanguage = "ua" | "en";
 
@@ -30,11 +32,12 @@ const emptyOfferForm: MembershipOfferUpdateInput = {
     descriptionUa: "",
     descriptionEn: "",
     price: 0,
-    externalPaymentUrl: "",
     visitsTotal: 0,
     validityDays: 30,
+    transferableBeforeFirstUse: false,
     active: true,
-    eligibleServiceIds: [],
+    eligibleServiceVariantIds: [],
+    eligibleTrainingTypeIds: [],
     backgroundMediaId: null
 };
 
@@ -44,10 +47,10 @@ export default function ServicesManagement() {
     const [query, setQuery] = useState("");
     const [active, setActive] = useState<boolean | "">("");
     const {data, isFetching, isError} = useListAdminServicesQuery({query, active});
-    const {data: allServicesData} = useListAdminServicesQuery({query: "", active: "", size: 200});
     const {data: membershipOffers = [], isFetching: offersFetching, isError: offersError} = useListAdminMembershipOffersQuery();
+    const {data: allServiceVariants=[]}=useListAllServiceVariantsQuery();
+    const {data:allTrainingTypes=[]}=useListTrainingTypesQuery();
     const services = data?.content ?? emptyServices;
-    const allServices = allServicesData?.content ?? emptyServices;
     const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
     const selectedService = selectedServiceId === null
         ? null
@@ -120,11 +123,12 @@ export default function ServicesManagement() {
             descriptionUa: selectedOffer.descriptionUa ?? "",
             descriptionEn: selectedOffer.descriptionEn ?? "",
             price: selectedOffer.price,
-            externalPaymentUrl: selectedOffer.externalPaymentUrl ?? "",
             visitsTotal: selectedOffer.visitsTotal,
             validityDays: selectedOffer.validityDays,
+            transferableBeforeFirstUse: selectedOffer.transferableBeforeFirstUse,
             active: selectedOffer.active,
-            eligibleServiceIds: selectedOffer.eligibleServiceIds,
+            eligibleServiceVariantIds: selectedOffer.eligibleServiceVariantIds,
+            eligibleTrainingTypeIds:selectedOffer.eligibleTrainingTypeIds,
             backgroundMediaId: selectedOffer.backgroundMediaId
         });
     }, [creatingOfferKind, selectedOffer]);
@@ -178,10 +182,10 @@ export default function ServicesManagement() {
                 descriptionUa: offerForm.descriptionUa?.trim() || null,
                 descriptionEn: offerForm.descriptionEn?.trim() || null,
                 price: Number(offerForm.price),
-                externalPaymentUrl: offerForm.externalPaymentUrl?.trim() || null,
                 visitsTotal: offerForm.visitsTotal == null ? null : Number(offerForm.visitsTotal),
                 validityDays: Number(offerForm.validityDays),
-                eligibleServiceIds: offerForm.eligibleServiceIds,
+                eligibleServiceVariantIds: offerForm.eligibleServiceVariantIds,
+                eligibleTrainingTypeIds:offerForm.eligibleTrainingTypeIds,
                 backgroundMediaId: offerForm.backgroundMediaId
             };
             const saved = creatingOfferKind
@@ -405,7 +409,8 @@ export default function ServicesManagement() {
             </div>
             {selectedService ? <ServiceVariantsPanel service={selectedService} t={t} /> : null}
             <MembershipOffersPanel
-                allServices={allServices}
+                allServices={allServiceVariants}
+                allTrainingTypes={allTrainingTypes}
                 form={offerForm}
                 isError={offersError}
                 isFetching={offersFetching}
@@ -432,7 +437,7 @@ export default function ServicesManagement() {
     );
 }
 
-const emptyVariant:ServiceVariantInput={nameUa:"",nameEn:null,durationMinutes:60,price:0,bufferBeforeMinutes:0,bufferAfterMinutes:0,depositAmount:0,active:true,specialistIds:[],resourceIds:[]};
+const emptyVariant:ServiceVariantInput={nameUa:"",nameEn:null,durationMinutes:60,price:0,bufferBeforeMinutes:0,bufferAfterMinutes:0,prepaymentEnabled:false,depositAmount:0,active:true,specialistIds:[],resourceIds:[]};
 function ServiceVariantsPanel({service,t}:{service:AdminService;t:ReturnType<typeof useTranslations<"admin.services">>}){
     const {data:variants=[]}=useListServiceVariantsQuery(service.id);const {data:users}=useListUsersQuery({role:"SPECIALIST",enabled:true,size:100});const {data:officePage}=useListPublicOfficesQuery({size:100});
     const [selectedId,setSelectedId]=useState<number|null>(null);const selected=variants.find(item=>item.id===selectedId)??null;const [form,setForm]=useState<ServiceVariantInput>(emptyVariant);const [officeId,setOfficeId]=useState<number>(0);const {data:resources=[]}=useListOfficeResourcesQuery(officeId,{skip:!officeId});const [create,{isLoading:creating}]=useCreateServiceVariantMutation();const [update,{isLoading:updating}]=useUpdateServiceVariantMutation();
@@ -445,8 +450,9 @@ const variantInput="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm 
 function VariantField({label,children}:{label:string;children:ReactNode}){return <label className="block text-sm font-medium text-stone-800">{label}<span className="mt-1 block">{children}</span></label>}
 function NumberVariant({label,value,onChange}:{label:string;value:number;onChange:(value:number)=>void}){return <VariantField label={label}><input className={variantInput} min={0} onChange={e=>onChange(Number(e.target.value))} type="number" value={value}/></VariantField>}
 
-function MembershipOffersPanel({allServices, creatingKind, form, isError, isFetching, isSaving, isUploadingMedia, offers, onChange, onSave, onSelect, onStartCreate, onUploadMedia, selectedOffer, t}: {
-    allServices: AdminService[];
+function MembershipOffersPanel({allServices, allTrainingTypes, creatingKind, form, isError, isFetching, isSaving, isUploadingMedia, offers, onChange, onSave, onSelect, onStartCreate, onUploadMedia, selectedOffer, t}: {
+    allServices: ServiceVariant[];
+    allTrainingTypes:TrainingType[];
     creatingKind: MembershipOfferKind | null;
     form: MembershipOfferUpdateInput;
     isError: boolean;
@@ -468,10 +474,11 @@ function MembershipOffersPanel({allServices, creatingKind, form, isError, isFetc
 
     function toggleService(serviceId: number, enabled: boolean) {
         const nextIds = enabled
-            ? Array.from(new Set([...form.eligibleServiceIds, serviceId]))
-            : form.eligibleServiceIds.filter((id) => id !== serviceId);
-        updateField("eligibleServiceIds", nextIds);
+            ? Array.from(new Set([...form.eligibleServiceVariantIds, serviceId]))
+            : form.eligibleServiceVariantIds.filter((id) => id !== serviceId);
+        updateField("eligibleServiceVariantIds", nextIds);
     }
+    function toggleTrainingType(id:number,enabled:boolean){updateField("eligibleTrainingTypeIds",enabled?Array.from(new Set([...form.eligibleTrainingTypeIds,id])):form.eligibleTrainingTypeIds.filter(value=>value!==id));}
 
     const currentKind = creatingKind ?? selectedOffer?.kind ?? null;
     const saveDisabled = isSaving || isUploadingMedia || !currentKind || !form.titleUa.trim() || form.price < 0 || form.validityDays < 1 || (currentKind === "MEMBERSHIP" && (!form.visitsTotal || form.visitsTotal < 1));
@@ -532,10 +539,6 @@ function MembershipOffersPanel({allServices, creatingKind, form, isError, isFetc
                                     <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" min={0} onChange={(event) => updateField("price", Number(event.target.value))} step="0.01" type="number" value={form.price} />
                                 </Field>
                                 <div className="sm:col-span-2">
-                                    <Field label={t("memberships.externalPaymentUrl")}>
-                                        <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" onChange={(event) => updateField("externalPaymentUrl", event.target.value)} value={form.externalPaymentUrl ?? ""} />
-                                    </Field>
-                                    <p className="mt-1 text-xs leading-5 text-stone-500">{t("memberships.externalPaymentUrlHint")}</p>
                                 </div>
                                 <Field label={t("memberships.validityDays")}>
                                     <input className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-700" min={1} onChange={(event) => updateField("validityDays", Number(event.target.value))} type="number" value={form.validityDays} />
@@ -547,6 +550,7 @@ function MembershipOffersPanel({allServices, creatingKind, form, isError, isFetc
                                     <span className="min-w-0 break-words">{t("active")}</span>
                                     <input checked={form.active} onChange={(event) => updateField("active", event.target.checked)} type="checkbox" />
                                 </label>
+                                {currentKind==="MEMBERSHIP"?<label className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm"><span>{t("memberships.transferable")}</span><input checked={form.transferableBeforeFirstUse} onChange={e=>updateField("transferableBeforeFirstUse",e.target.checked)} type="checkbox"/></label>:null}
                                 </div>
                                 <div className="min-w-0 rounded-xl border border-stone-200 bg-stone-50 p-3">
                                     <div className="aspect-[4/3] overflow-hidden rounded-lg border border-stone-200 bg-white">
@@ -582,14 +586,15 @@ function MembershipOffersPanel({allServices, creatingKind, form, isError, isFetc
                                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                                     {allServices.map((service) => (
                                         <label className="flex min-w-0 items-start gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-700" key={service.id}>
-                                            <input checked={form.eligibleServiceIds.includes(service.id)} className="mt-1" onChange={(event) => toggleService(service.id, event.target.checked)} type="checkbox" />
+                                            <input checked={form.eligibleServiceVariantIds.includes(service.id)} className="mt-1" onChange={(event) => toggleService(service.id, event.target.checked)} type="checkbox" />
                                             <span className="min-w-0">
-                                                <span className="block break-words font-medium text-stone-900">{service.titleUa}</span>
+                                                <span className="block break-words font-medium text-stone-900">{service.nameUa}</span>
                                             </span>
                                         </label>
                                     ))}
                                 </div>
                             </div>
+                            {currentKind==="MEMBERSHIP"?<div className="rounded-lg border border-stone-200 bg-stone-50 p-3"><p className="text-sm font-semibold text-stone-900">{t("memberships.eligibleTrainingTypes")}</p><div className="mt-3 grid gap-2 sm:grid-cols-2">{allTrainingTypes.map(type=><label className="flex gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm" key={type.id}><input checked={form.eligibleTrainingTypeIds.includes(type.id)} onChange={e=>toggleTrainingType(type.id,e.target.checked)} type="checkbox"/><span>{type.titleUa}</span></label>)}</div></div>:null}
                             <div className="flex justify-end"><button className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-stone-700 disabled:cursor-not-allowed disabled:bg-stone-400 sm:w-fit" disabled={saveDisabled} onClick={onSave} type="button">
                                 {isSaving ? t("saving") : creatingKind ? t("memberships.create") : t("memberships.save")}
                             </button></div>

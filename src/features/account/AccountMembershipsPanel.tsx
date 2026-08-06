@@ -7,6 +7,8 @@ import BoundedList from "@/components/ui/list/BoundedList";
 import {useCreateMembershipPaymentSessionMutation, useListMyMembershipPurchasesQuery} from "@/features/memberships/memberships.api";
 import type {Locale} from "@/i18n";
 import {formatWholeCurrencyAmount as formatAmount} from "@/shared/lib/i18n/formatNumbers";
+import {useCreateCheckoutMutation} from "@/features/payments/payments.api";
+import {submitWayForPayCheckout} from "@/features/payments/PaymentButton";
 
 export default function AccountMembershipsPanel({locale}: {locale: Locale}) {
     const t = useTranslations("accountPage.memberships");
@@ -15,19 +17,13 @@ export default function AccountMembershipsPanel({locale}: {locale: Locale}) {
     const {data, isError, isFetching} = useListMyMembershipPurchasesQuery({page, size: 12});
     const purchases = data?.content ?? [];
     const [createPaymentSession, {isLoading: paymentOpening}] = useCreateMembershipPaymentSessionMutation();
+    const [createCheckout] = useCreateCheckoutMutation();
 
     async function openPayment(purchaseId: number) {
-        const paymentWindow = window.open("about:blank", "_blank");
         try {
             const session = await createPaymentSession(purchaseId).unwrap();
-            if (session.checkoutUrl) {
-                openCheckoutInPreparedWindow(paymentWindow, session.checkoutUrl);
-                return;
-            }
-            paymentWindow?.close();
-            toast.success(t("manualPayment"));
+            submitWayForPayCheckout(await createCheckout(session.paymentId).unwrap());
         } catch {
-            paymentWindow?.close();
             toast.error(t("paymentError"));
         }
     }
@@ -86,13 +82,4 @@ function Info({label, value}: {label: string; value: string}) {
 
 function formatDate(value: string, locale: Locale) {
     return new Intl.DateTimeFormat(locale === "ua" ? "uk-UA" : "en-US", {dateStyle: "medium"}).format(new Date(value));
-}
-
-function openCheckoutInPreparedWindow(paymentWindow: Window | null, checkoutUrl: string) {
-    if (paymentWindow) {
-        paymentWindow.opener = null;
-        paymentWindow.location.href = checkoutUrl;
-    } else {
-        window.open(checkoutUrl, "_blank", "noopener,noreferrer");
-    }
 }

@@ -13,9 +13,11 @@ const hidden: ManagementNavigationVisibility = {
     showAnalytics: false,
     showReviews: false,
     showRecords: false,
+    showNeedsCompletion: false,
     showClients: false,
     showSiteSettings: false,
-    showLegal: false
+    showLegal: false,
+    showOwnPayouts: false
 };
 
 const label = (key: string) => key;
@@ -33,6 +35,7 @@ describe("management navigation groups", () => {
             showWorkSchedule: true,
             showReviews: true,
             showRecords: true,
+            showNeedsCompletion: true,
             showClients: true,
             showSiteSettings: true,
             showLegal: true

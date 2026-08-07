@@ -57,11 +57,16 @@ export const trainingApi = createApi({
         getAdminTrainingTimeline: build.query<RecordAuditEntry[], number>({
             query: (id) => `/admin/records/training/${id}/timeline`
         }),
-        setTrainingAttendance: build.mutation<void, {id: number; status: "ATTENDED" | "NO_SHOW"}>({
-            query: ({id, status}) => ({
-                url: `/admin/records/training/${id}/attendance?status=${status}`,
-                method: "POST"
+        setTrainingAttendance: build.mutation<void, {id: number; status: "ATTENDED" | "NO_SHOW"; reason?: string}>({
+            query: ({id, status, reason}) => ({
+                url: `/admin/records/training/${id}/attendance`,
+                method: "POST",
+                body: {status, idempotencyKey: crypto.randomUUID(), reason}
             }),
+            invalidatesTags: ["TrainingSessions"]
+        }),
+        markAllTrainingAttended: build.mutation<{idempotencyKey: string; sessionId: number; changed: number; skipped: number}, {sessionId: number}>({
+            query: ({sessionId}) => ({url: `/admin/training/sessions/${sessionId}/attendance/mark-all-attended`, method: "POST", body: {idempotencyKey: crypto.randomUUID()}}),
             invalidatesTags: ["TrainingSessions"]
         }),
         createTrainingType: build.mutation<TrainingType, TrainingTypeInput>({
@@ -142,6 +147,7 @@ export const {
     useListAdminTrainingRecordsQuery,
     useGetAdminTrainingTimelineQuery,
     useSetTrainingAttendanceMutation,
+    useMarkAllTrainingAttendedMutation,
     useCreateTrainingTypeMutation,
     useUpdateTrainingTypeMutation,
     useListTrainingSessionsQuery,

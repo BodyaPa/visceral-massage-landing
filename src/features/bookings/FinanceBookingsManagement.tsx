@@ -46,9 +46,10 @@ import type {MembershipPurchase} from "@/types/memberships";
 import type {Office} from "@/types/offices";
 import Tabs from "@/components/ui/navigation/Tabs";
 import Pagination from "@/components/ui/table/Pagination";
+import SpecialistPayoutManagement from "./SpecialistPayoutManagement";
 
 const statuses: Array<BookingStatus | ""> = ["", "PAYMENT_PENDING", "CONFIRMED", "CANCELLED"];
-const tabs = ["pending", "memberships", "events", "transactions", "expenses", "reports"] as const;
+const tabs = ["pending", "memberships", "events", "transactions", "payouts", "expenses", "reports"] as const;
 type FinanceTab = typeof tabs[number];
 
 export default function FinanceBookingsManagement() {
@@ -273,6 +274,7 @@ export default function FinanceBookingsManagement() {
                 }} reconciliation={reconciliation} pendingRefundIds={new Set((refundsData?.content ?? []).map((item) => item.id))} t={t} transactions={ledgerData?.content ?? []} /><ServerPager page={ledgerPage} totalPages={ledgerData?.totalPages ?? 0} onPage={setLedgerPage} t={t} /></> : null}
                 {tab === "memberships" ? <><MembershipFinanceSection cancelling={isCancellingMembership} isError={membershipPurchasesError} isFetching={membershipPurchasesFetching} locale={locale} onCancel={setMembershipToCancel} purchases={membershipPurchases} t={t} /><ServerPager page={membershipPage} totalPages={membershipPurchasesData?.totalPages ?? 0} onPage={setMembershipPage} t={t} /></> : null}
                 {tab === "events" ? <><TrainingParticipantsFinanceSection confirming={isConfirmingTrainingParticipant} enrollments={trainingParticipants} isError={trainingParticipantsError} isFetching={trainingParticipantsFetching} locale={locale} onConfirm={setTrainingParticipantToConfirm} t={t} /><ServerPager page={eventPage} totalPages={trainingParticipantsData?.totalPages ?? 0} onPage={setEventPage} t={t} /></> : null}
+                {tab === "payouts" ? <SpecialistPayoutManagement locale={locale} /> : null}
                 {tab === "expenses" ? <><ExpensesSection expenses={expenses} isError={expensesError} isFetching={expensesFetching} locale={locale} offices={activeOffices} t={t} /><ServerPager page={expensePage} totalPages={expensesData?.totalPages ?? 0} onPage={setExpensePage} t={t} /></> : null}
                 {tab === "reports" ? <ReportsSection businessIncome={businessIncome} estimatedTax={estimatedTax} expenses={expenseTotal} income={income} locale={locale} officeId={officeId} quarterlyTaxPercent={quarterlyTaxPercent} result={result} specialistEarnings={specialistEarnings} status={status} taxableIncome={taxableIncome} t={t} to={to} from={from} /> : null}
             </section>
@@ -362,18 +364,14 @@ function PayoutBadge({booking, t}: {booking: FinanceBooking; t: T}) {
     return <span className={`inline-flex min-h-7 max-w-full items-center break-words rounded-full border px-2.5 py-1 text-xs font-medium ${tone}`}>{t(`payout.statuses.${booking.specialistPayoutStatus}`)}</span>;
 }
 
-function FinanceAction({booking, confirming, markingPayout, onConfirm, onMarkPayout, t}: {booking: FinanceBooking; confirming: boolean; markingPayout: boolean; onConfirm: (booking: FinanceBooking) => void; onMarkPayout: (id: number) => void; t: T}) {
+function FinanceAction({booking, confirming, onConfirm, t}: {booking: FinanceBooking; confirming: boolean; markingPayout: boolean; onConfirm: (booking: FinanceBooking) => void; onMarkPayout: (id: number) => void; t: T}) {
     if (booking.status === "PAYMENT_PENDING") {
         return <div className="grid min-w-[150px] gap-2"><button className={financePrimaryActionClass} disabled={confirming} onClick={() => onConfirm(booking)} type="button">{confirming ? t("confirming") : t("confirm")}</button>{booking.externalPaymentUrl ? <a className={`${externalActionClass} w-full justify-center`} href={booking.externalPaymentUrl} rel="noreferrer" target="_blank">{t("details.paymentLink")}</a> : null}</div>;
-    }
-    if (booking.status === "CONFIRMED" && booking.specialistPayoutStatus === "PENDING") {
-        return <button className={financeSecondaryActionClass} disabled={markingPayout} onClick={() => onMarkPayout(booking.id)} type="button">{markingPayout ? t("payout.marking") : t("payout.markPaid")}</button>;
     }
     return <span className="text-xs text-stone-400">—</span>;
 }
 
 const financePrimaryActionClass = "inline-flex min-h-10 w-full min-w-[150px] items-center justify-center rounded-lg bg-stone-900 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-[background-color,transform] hover:bg-stone-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 disabled:bg-stone-300";
-const financeSecondaryActionClass = "inline-flex min-h-10 w-full min-w-[150px] items-center justify-center rounded-lg border border-stone-300 bg-white px-3 py-2 text-xs font-semibold text-stone-800 shadow-sm transition-[background-color,transform] hover:bg-stone-100 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 disabled:text-stone-400";
 
 function StatusBadge({status, t}: {status: BookingStatus; t: T}) {
     const tone = status === "CONFIRMED" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : status === "PAYMENT_PENDING" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-stone-200 bg-stone-100 text-stone-600";

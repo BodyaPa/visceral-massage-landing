@@ -22,7 +22,7 @@ import type {
     ManualBookingInput,
     ManualBookingConflictPreview,
     SpecialistBooking,
-    SpecialistFinanceOverview
+    SpecialistFinanceOverview, SpecialistPayoutAccrual, SpecialistPayoutBatch, NeedsCompletionRecord, AttendanceOutcomeRecord
 } from "@/types/bookings";
 import type {PageResponse} from "@/types/news";
 
@@ -136,10 +136,19 @@ export const bookingsApi = createApi({
         getAdminBookingTimeline: build.query<RecordAuditEntry[], number>({
             query: (id) => `/admin/records/bookings/${id}/timeline`
         }),
-        setBookingAttendance: build.mutation<void, {id: number; status: "ATTENDED" | "NO_SHOW"}>({
-            query: ({id, status}) => ({
-                url: `/admin/records/bookings/${id}/attendance?status=${status}`,
-                method: "POST"
+        listNeedsCompletion: build.query<PageResponse<NeedsCompletionRecord>, {page?: number; size?: number}>({
+            query: ({page = 0, size = 50}) => `/admin/attendance/needs-completion?page=${page}&size=${size}`,
+            providesTags: [{type: "Bookings", id: "NEEDS_COMPLETION"}]
+        }),
+        listRecentAttendanceOutcomes: build.query<PageResponse<AttendanceOutcomeRecord>, {page?: number; size?: number}>({
+            query: ({page = 0, size = 20}) => `/admin/attendance/recent-outcomes?page=${page}&size=${size}`,
+            providesTags: [{type: "Bookings", id: "ATTENDANCE_OUTCOMES"}]
+        }),
+        setBookingAttendance: build.mutation<void, {id: number; status: "ATTENDED" | "NO_SHOW"; reason?: string}>({
+            query: ({id, status, reason}) => ({
+                url: `/admin/records/bookings/${id}/attendance`,
+                method: "POST",
+                body: {status, idempotencyKey: crypto.randomUUID(), reason}
             }),
             invalidatesTags: [{type: "Bookings", id: "ADMIN_REGISTRY"}]
         }),
@@ -265,6 +274,11 @@ export const bookingsApi = createApi({
             },
             providesTags: [{type: "FinanceSummary", id: "SPECIALIST_OVERVIEW"}]
         }),
+        listPayoutAccruals: build.query<SpecialistPayoutAccrual[], void>({query: () => "/admin/finance/payouts/accruals", providesTags: [{type: "FinanceSummary", id: "PAYOUTS"}]}),
+        listPayoutBatches: build.query<SpecialistPayoutBatch[], void>({query: () => "/admin/finance/payouts/batches", providesTags: [{type: "FinanceSummary", id: "PAYOUT_BATCHES"}]}),
+        preparePayoutBatch: build.mutation<SpecialistPayoutBatch, number>({query: (specialistId) => ({url: `/admin/finance/payouts/batches?specialistId=${specialistId}`, method: "POST"}), invalidatesTags: [{type: "FinanceSummary", id: "PAYOUTS"}, {type: "FinanceSummary", id: "PAYOUT_BATCHES"}]}),
+        payPayoutBatch: build.mutation<SpecialistPayoutBatch, {id: number; paymentMethod: string; receiptReference?: string}>({query: ({id, ...body}) => ({url: `/admin/finance/payouts/batches/${id}/pay`, method: "POST", body}), invalidatesTags: [{type: "FinanceSummary", id: "PAYOUTS"}, {type: "FinanceSummary", id: "PAYOUT_BATCHES"}]}),
+        listOwnPayouts: build.query<SpecialistPayoutAccrual[], void>({query: () => "/specialist/payouts", providesTags: [{type: "FinanceSummary", id: "SPECIALIST_OVERVIEW"}]}),
         createManualBooking: build.mutation<SpecialistBooking, ManualBookingInput>({
             query: (body) => ({url: "/admin/schedule/bookings", method: "POST", body}),
             invalidatesTags: [
@@ -353,6 +367,11 @@ export const {
     useGetFinanceAnalyticsQuery,
     useGetFinanceSettingsQuery,
     useGetSpecialistFinanceOverviewQuery,
+    useListPayoutAccrualsQuery,
+    useListPayoutBatchesQuery,
+    usePreparePayoutBatchMutation,
+    usePayPayoutBatchMutation,
+    useListOwnPayoutsQuery,
     useListFinanceBookingsQuery,
     useListFinanceTrainingParticipantsQuery,
     useListFinanceExpensesQuery,
@@ -363,6 +382,8 @@ export const {
     useListAdminBookingRecordsQuery,
     useGetAdminBookingTimelineQuery,
     useSetBookingAttendanceMutation,
+    useListNeedsCompletionQuery,
+    useListRecentAttendanceOutcomesQuery,
     useListSpecialistBookingsQuery,
     useLazyGetSpecialistBookingQuery,
     useListSpecialistFinanceSettingsQuery,

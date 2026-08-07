@@ -1,7 +1,7 @@
 import type {Metadata} from "next";
 import {getTranslations} from "next-intl/server";
 import type {Locale} from "@/i18n";
-import {requireRole} from "@/features/auth/auth.server";
+import {requireAnyRole} from "@/features/auth/auth.server";
 import FinanceBookingsManagement from "@/features/bookings/FinanceBookingsManagement";
 
 type Props = {
@@ -25,7 +25,7 @@ export async function generateMetadata({params}: Props): Promise<Metadata> {
 export default async function AdminFinancePage({params}: Props) {
     const {lang} = await params;
     const locale = lang as Locale;
-    await requireRole("FINANCE_MANAGER", locale);
+    await requireAnyRole(["ADMIN", "FINANCE_MANAGER"], locale);
 
     return <FinanceBookingsManagement />;
 }

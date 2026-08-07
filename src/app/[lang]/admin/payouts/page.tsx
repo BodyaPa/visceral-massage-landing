@@ -1,0 +1,3 @@
+import type {Metadata} from "next"; import {getTranslations} from "next-intl/server"; import type {Locale} from "@/i18n"; import {requireRole} from "@/features/auth/auth.server"; import OwnPayoutReport from "@/features/bookings/OwnPayoutReport";
+export async function generateMetadata({params}:{params:Promise<{lang:string}>}):Promise<Metadata>{const {lang}=await params;const t=await getTranslations({locale:lang as Locale,namespace:"admin.payoutReport"});return {title:t("title"),robots:{index:false,follow:false}};}
+export default async function Page({params}:{params:Promise<{lang:string}>}){const {lang}=await params;await requireRole("SPECIALIST",lang as Locale);return <OwnPayoutReport/>;}

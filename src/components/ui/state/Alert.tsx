@@ -9,10 +9,10 @@ const toneClasses: Record<AlertTone, string> = {
     success: "border-emerald-200 bg-emerald-50 text-emerald-800"
 };
 
-export default function Alert({children, tone = "info"}: {children: ReactNode; tone?: AlertTone}) {
+export default function Alert({children, tone = "info", title}: {children: ReactNode; tone?: AlertTone; title?: ReactNode}) {
     return (
         <div className={`rounded-xl border px-3 py-2.5 text-sm leading-6 ${toneClasses[tone]}`} role={tone === "error" ? "alert" : "status"}>
-            {children}
+            {title ? <strong className="block">{title}</strong> : null}{children}
         </div>
     );
 }

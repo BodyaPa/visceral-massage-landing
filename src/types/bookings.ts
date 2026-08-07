@@ -3,11 +3,28 @@ export type SpecialistPayoutStatus = "PENDING" | "PAID";
 export type BookingSource = "PUBLIC_ACCOUNT" | "ADMIN_MANUAL" | "GUEST";
 export type RecordAuditEntry = {
     id: number;
-    action: "CREATED" | "JOINED" | "CANCELLED" | "PAYMENT_CONFIRMED";
+    action: "CREATED" | "JOINED" | "CANCELLED" | "PAYMENT_CONFIRMED" | "ATTENDED" | "NO_SHOW";
     actorUserId: number | null;
     actorName: string | null;
+    reason: string | null;
     occurredAt: string;
 };
+export type NeedsCompletionRecord = {
+    sourceType: "BOOKING" | "TRAINING_PARTICIPANT";
+    sourceId: number;
+    trainingSessionId: number | null;
+    publicId: string;
+    clientName: string;
+    title: string;
+    specialistName: string;
+    officeName: string | null;
+    resourceName: string | null;
+    startsAt: string;
+    endsAt: string;
+    firstReminderAt: string | null;
+    secondReminderAt: string | null;
+};
+export type AttendanceOutcomeRecord = {sourceType:"BOOKING"|"TRAINING_PARTICIPANT";sourceId:number;status:"ATTENDED"|"NO_SHOW";clientName:string;title:string;endsAt:string;decidedAt:string};
 
 export interface AdminBookingRecord {
     id: number;
@@ -243,6 +260,14 @@ export interface SpecialistFinanceOverview {
     pendingSpecialistEarnings: number;
     specialistSharePercent: number;
 }
+
+export interface SpecialistPayoutAccrual {
+    id: number; sourceType: "BOOKING" | "TRAINING_PARTICIPANT"; sourceId: number;
+    specialistId: number; officeId: number | null; currency: string; originalBase: number;
+    ratePercent: number; amount: number; status: "ACCRUED" | "PAID" | "REVERSED";
+    attendedAt: string; batchId: number | null; batchPaidAt: string | null; paymentMethod: string | null;
+}
+export interface SpecialistPayoutBatch {id: number; publicId: string; specialistId: number; currency: string; status: "DRAFT" | "PAID"; totalAmount: number; createdAt: string; paidAt: string | null; paymentMethod: string | null; receiptReference: string | null;}
 
 export interface SpecialistBooking {
     id: number;
